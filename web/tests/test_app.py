@@ -187,6 +187,63 @@ def test_nicht_pdf_upload_bekommt_pdf_anleitung(client):
     assert "PDF" in detail["grund"]
 
 
+@benoetigt_gs
+def test_nummern_muster_und_verwendungszweck(client):
+    _richte_ein(client)
+    eigene = dict(
+        STAMMDATEN,
+        nummern_muster="MP{JJ}-{NNN}",
+        verwendungszweck_muster="Rechnung {NUMMER} vom {DATUM}",
+    )
+    assert client.put("/api/stammdaten", json=eigene).status_code == 200
+
+    vorschlag = client.get("/api/nummer/vorschlag").json()["nummer"]
+    assert vorschlag == "MP26-001"
+
+    rechnung = dict(RECHNUNG, nummer=vorschlag)
+    antwort = client.post("/api/rechnung", json=rechnung)
+    assert antwort.status_code == 200, antwort.text
+    xml = client.get(antwort.json()["xml"]).content
+    assert b"<ram:PaymentReference>Rechnung MP26-001 vom 21.08.2026</ram:PaymentReference>" in xml
+
+    # Zähler ist fortgeschrieben
+    assert client.get("/api/nummer/vorschlag").json()["nummer"] == "MP26-002"
+
+    # kaputtes Muster wird abgewiesen
+    kaputt = client.put("/api/stammdaten", json=dict(STAMMDATEN, nummern_muster="RE-{JJJJ}"))
+    assert kaputt.status_code == 422
+    assert kaputt.json()["detail"]["code"] == "nummern_muster"
+
+
+@benoetigt_gs
+def test_kundenstamm_wird_gepflegt(client):
+    _richte_ein(client)
+    mit_details = dict(
+        RECHNUNG,
+        empfaenger=dict(
+            RECHNUNG["empfaenger"],
+            ust_idnr="ATU12345678",
+            email="buchhaltung@beispielkunde.example",
+        ),
+    )
+    assert client.post("/api/rechnung", json=mit_details).status_code == 200
+    kunden = client.get("/api/kunden").json()
+    assert kunden[0]["name"] == "Beispielkunde GmbH"
+    assert kunden[0]["ust_idnr"] == "ATU12345678"
+    assert kunden[0]["email"] == "buchhaltung@beispielkunde.example"
+
+    # gleicher Kunde erneut, andere Daten → Upsert, kein Duplikat
+    geaendert = dict(
+        mit_details,
+        nummer="RE-2026-0002",
+        empfaenger=dict(mit_details["empfaenger"], email="neu@beispielkunde.example"),
+    )
+    assert client.post("/api/rechnung", json=geaendert).status_code == 200
+    kunden = client.get("/api/kunden").json()
+    assert len(kunden) == 1
+    assert kunden[0]["email"] == "neu@beispielkunde.example"
+
+
 def test_gestaltung_speichern_und_status(client):
     schriften = client.get("/api/gestaltung/schriften").json()
     assert {"liberation-sans", "carlito"} <= {s["schluessel"] for s in schriften}

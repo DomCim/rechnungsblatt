@@ -424,6 +424,8 @@ def rendere_blatt(
     if stammdaten.bic:
         bankzeile += f" · BIC {stammdaten.bic}"
     hinweise.append(bankzeile)
+    if rechnung.verwendungszweck:
+        hinweise.append(f"Verwendungszweck: {rechnung.verwendungszweck}")
     if rechnung.freitext:
         hinweise.append(rechnung.freitext)
 

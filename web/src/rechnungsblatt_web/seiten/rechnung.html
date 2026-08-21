@@ -475,6 +475,8 @@
       '<a class="knopf" target="_blank" rel="noopener" href="' + antwort.daten.pdf + '">' + RB.t("pdfOeffnen") + "</a>" +
       '<a class="knopf leise" href="' + antwort.daten.xml + '">' + RB.t("xmlLaden") + "</a>";
     ladeAblage();
+    ladeKunden();
+    el("nummer").value = "";  // nächster Vorschlag aus dem Nummernkreis
     ladeNummer();
   });
 
@@ -508,8 +510,6 @@
     if (!antwort.ok) return;
     var belege = antwort.daten;
     var zeilen = [];
-    var merk = ['<option value="">' + RB.t("merkliste") + "</option>"];
-    var gesehen = {};
     for (var i = 0; i < belege.length; i++) {
       var beleg = belege[i];
       zeilen.push(
@@ -522,29 +522,39 @@
         '<td><a class="verweis" href="' + beleg.xml + '">XML</a></td>' +
         "</tr>"
       );
-      if (beleg.empfaenger && !gesehen[beleg.empfaenger]) {
-        gesehen[beleg.empfaenger] = true;
-        merk.push('<option value="' + beleg.nummer + '">' + beleg.empfaenger + "</option>");
-      }
     }
     el("ablage").innerHTML = zeilen.join("");
-    el("merkliste").innerHTML = merk.join("");
   }
 
-  async function uebernehmeVorlage(nummer, nurEmpfaenger) {
-    var antwort = await RB.api("/api/ablage/" + encodeURIComponent(nummer) + "/daten");
+  // Merkliste: gepflegter Kundenstamm (wird bei jeder Rechnung fortgeschrieben)
+  var kunden = [];
+  async function ladeKunden() {
+    var antwort = await RB.api("/api/kunden");
     if (!antwort.ok) return;
-    var daten = antwort.daten;
-    var empfaenger = daten.empfaenger || {};
-    var anschrift = empfaenger.anschrift || {};
-    el("eName").value = empfaenger.name || "";
+    kunden = antwort.daten;
+    var optionen = ['<option value="">' + RB.t("merkliste") + "</option>"];
+    for (var i = 0; i < kunden.length; i++) {
+      optionen.push('<option value="' + i + '">' + kunden[i].name + "</option>");
+    }
+    el("merkliste").innerHTML = optionen.join("");
+  }
+
+  function fuelleEmpfaenger(kunde) {
+    var anschrift = kunde.anschrift || {};
+    el("eName").value = kunde.name || "";
     el("eStrasse").value = anschrift.strasse || "";
     el("ePlz").value = anschrift.plz || "";
     el("eOrt").value = anschrift.ort || "";
-    el("eUstIdnr").value = empfaenger.ust_idnr || "";
-    el("eEmail").value = empfaenger.email || "";
-    el("eLeitweg").value = empfaenger.leitweg_id || "";
-    if (nurEmpfaenger) return;
+    el("eUstIdnr").value = kunde.ust_idnr || "";
+    el("eEmail").value = kunde.email || "";
+    el("eLeitweg").value = kunde.leitweg_id || "";
+  }
+
+  async function uebernehmeVorlage(nummer) {
+    var antwort = await RB.api("/api/ablage/" + encodeURIComponent(nummer) + "/daten");
+    if (!antwort.ok) return;
+    var daten = antwort.daten;
+    fuelleEmpfaenger(daten.empfaenger || {});
     el("positionen").innerHTML = "";
     var positionen = daten.positionen || [];
     for (var i = 0; i < positionen.length; i++) neueZeile(positionen[i]);
@@ -558,10 +568,11 @@
     var verweis = ereignis.target.closest("a[data-vorlage]");
     if (!verweis) return;
     ereignis.preventDefault();
-    uebernehmeVorlage(verweis.getAttribute("data-vorlage"), false);
+    uebernehmeVorlage(verweis.getAttribute("data-vorlage"));
   });
   el("merkliste").addEventListener("change", function () {
-    if (this.value) uebernehmeVorlage(this.value, true);
+    var kunde = kunden[Number(this.value)];
+    if (kunde) fuelleEmpfaenger(kunde);
     this.value = "";
   });
 
@@ -589,6 +600,7 @@
     }
     rechne();
     ladeAblage();
+    ladeKunden();
   });
 
   RB.starte(texte);
@@ -597,6 +609,7 @@
   ladeNummer();
   pruefeEinrichtung();
   ladeAblage();
+  ladeKunden();
 })();
 </script>
 </body>

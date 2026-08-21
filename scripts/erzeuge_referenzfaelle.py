@@ -84,6 +84,7 @@ def _standard_rechnung() -> Rechnung:
         rabatt_betrag=Decimal("25.00"),
         rabatt_grund="Treuerabatt",
         freitext="Vielen Dank für Ihren Auftrag.",
+        verwendungszweck="RE-2026-0042 Beispielkunde GmbH",
         positionen=(
             Position(
                 bezeichnung="Montagearbeiten",

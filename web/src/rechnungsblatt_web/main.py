@@ -300,6 +300,13 @@ def stammdaten_setzen(daten: dict) -> dict:
         _stammdaten_aus_json(daten)  # Strukturprüfung; §14 blockiert erst je Rechnung
     except (KeyError, TypeError) as fehler:
         raise HTTPException(422, detail={"grund": f"Unvollständige Stammdaten: {fehler}"}) from fehler
+    if daten.get("nummern_muster"):
+        try:
+            _muster_zerlegen(daten["nummern_muster"])
+        except ValueError as fehler:
+            raise HTTPException(
+                422, detail={"code": "nummern_muster", "grund": str(fehler)}
+            ) from fehler
     _schreibe_json(DATEN / "stammdaten.json", daten)
     return daten
 
@@ -331,28 +338,129 @@ def _anschrift_aus_json(daten: dict) -> Anschrift:
 
 # ---------------------------------------------------------------- Nummernkreis
 
-_NUMMERN_MUSTER = re.compile(r"^RE-(\d{4})-(\d{4})$")
+STANDARD_NUMMERN_MUSTER = "RE-{JJJJ}-{NNNN}"
+STANDARD_VERWENDUNGSZWECK = "{NUMMER}"
+
+
+def _nummern_muster() -> str:
+    daten = _lese_json(DATEN / "stammdaten.json") or {}
+    return daten.get("nummern_muster") or STANDARD_NUMMERN_MUSTER
+
+
+def _muster_zerlegen(muster: str) -> tuple[re.Pattern, int, bool]:
+    """Zerlegt ein Nummern-Muster ({JJJJ}, {JJ}, genau ein {N…}-Zähler).
+
+    Liefert (Erkennungs-Regex, Zählerbreite, enthält Jahresanteil).
+    """
+    zaehler = re.findall(r"\{(N+)\}", muster)
+    if len(zaehler) != 1:
+        raise ValueError(
+            "Das Nummern-Muster braucht genau einen Zähler-Platzhalter "
+            "({N}, {NN}, {NNN} …), z. B. RE-{JJJJ}-{NNNN}."
+        )
+    breite = len(zaehler[0])
+    ausdruck = ""
+    for teil in re.split(r"(\{JJJJ\}|\{JJ\}|\{N+\})", muster):
+        if teil == "{JJJJ}":
+            ausdruck += r"(?P<jahr>\d{4})"
+        elif teil == "{JJ}":
+            ausdruck += r"(?P<jahr2>\d{2})"
+        elif teil and re.fullmatch(r"\{N+\}", teil):
+            ausdruck += r"(?P<lfd>\d{" + str(breite) + r",})"
+        elif teil:
+            ausdruck += re.escape(teil)
+    hat_jahr = "{JJJJ}" in muster or "{JJ}" in muster
+    return re.compile(f"^{ausdruck}$"), breite, hat_jahr
+
+
+def _formatiere_nummer(muster: str, jahr: int, laufend: int) -> str:
+    _, breite, _ = _muster_zerlegen(muster)
+    return (
+        muster.replace("{JJJJ}", f"{jahr:04d}")
+        .replace("{JJ}", f"{jahr % 100:02d}")
+        .replace("{" + "N" * breite + "}", str(laufend).zfill(breite))
+    )
+
+
+def _nummern_stand(jahr: int, jahr_zaehlt: bool) -> dict:
+    stand = _lese_json(DATEN / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
+    if jahr_zaehlt and stand["jahr"] != jahr:
+        stand = {"jahr": jahr, "laufend": 0}  # Jahreswechsel: Zähler beginnt neu
+    return stand
 
 
 @app.get("/api/nummer/vorschlag")
 def nummern_vorschlag() -> dict:
+    muster = _nummern_muster()
+    _, _, hat_jahr = _muster_zerlegen(muster)
     jahr = dt.date.today().year
-    stand = _lese_json(DATEN / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
-    if stand["jahr"] != jahr:
-        stand = {"jahr": jahr, "laufend": 0}
-    return {"nummer": f"RE-{jahr}-{stand['laufend'] + 1:04d}"}
+    stand = _nummern_stand(jahr, hat_jahr)
+    return {"nummer": _formatiere_nummer(muster, jahr, stand["laufend"] + 1)}
 
 
 def _nummernkreis_fortschreiben(nummer: str) -> None:
-    treffer = _NUMMERN_MUSTER.match(nummer)
+    muster = _nummern_muster()
+    ausdruck, _, hat_jahr = _muster_zerlegen(muster)
+    treffer = ausdruck.match(nummer)
     if not treffer:
         return  # überschriebene, freie Nummern zählen nicht mit
-    jahr, laufend = int(treffer.group(1)), int(treffer.group(2))
-    stand = _lese_json(DATEN / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
-    if stand["jahr"] != jahr:
-        stand = {"jahr": jahr, "laufend": 0}
-    stand["laufend"] = max(stand["laufend"], laufend)
+    gruppen = treffer.groupdict()
+    jahr = dt.date.today().year
+    if gruppen.get("jahr") and int(gruppen["jahr"]) != jahr:
+        return
+    if gruppen.get("jahr2") and int(gruppen["jahr2"]) != jahr % 100:
+        return
+    stand = _nummern_stand(jahr, hat_jahr)
+    stand["jahr"] = jahr
+    stand["laufend"] = max(stand["laufend"], int(gruppen["lfd"]))
     _schreibe_json(DATEN / "nummernkreis.json", stand)
+
+
+# ---------------------------------------------------------------- Verwendungszweck
+
+def _verwendungszweck(rechnung: Rechnung, angegeben: str | None) -> str | None:
+    """Verwendungszweck: explizit angegeben oder aus dem Muster erzeugt."""
+    if angegeben and angegeben.strip():
+        return angegeben.strip()
+    daten = _lese_json(DATEN / "stammdaten.json") or {}
+    muster = daten.get("verwendungszweck_muster", STANDARD_VERWENDUNGSZWECK)
+    if not muster:
+        return None
+    text = (
+        muster.replace("{NUMMER}", rechnung.nummer)
+        .replace("{DATUM}", rechnung.rechnungsdatum.strftime("%d.%m.%Y"))
+        .replace("{KUNDE}", rechnung.empfaenger.name)
+    )
+    return text.strip() or None
+
+
+# ---------------------------------------------------------------- Kundenstamm
+
+@app.get("/api/kunden")
+def kunden_liste() -> list[dict]:
+    return _lese_json(DATEN / "kunden.json") or []
+
+
+def _kunde_merken(rechnung: Rechnung) -> None:
+    """Merkliste: Empfänger jeder erzeugten Rechnung wird gepflegt (Upsert)."""
+    kunden = _lese_json(DATEN / "kunden.json") or []
+    eintrag = {
+        "name": rechnung.empfaenger.name,
+        "anschrift": {
+            "strasse": rechnung.empfaenger.anschrift.strasse,
+            "plz": rechnung.empfaenger.anschrift.plz,
+            "ort": rechnung.empfaenger.anschrift.ort,
+            "land": rechnung.empfaenger.anschrift.land,
+        },
+        "ust_idnr": rechnung.empfaenger.ust_idnr,
+        "email": rechnung.empfaenger.email,
+        "leitweg_id": rechnung.empfaenger.leitweg_id,
+        "zuletzt": rechnung.rechnungsdatum.isoformat(),
+    }
+    schluessel = rechnung.empfaenger.name.casefold()
+    kunden = [k for k in kunden if k.get("name", "").casefold() != schluessel]
+    kunden.insert(0, eintrag)
+    _schreibe_json(DATEN / "kunden.json", kunden)
 
 
 # ---------------------------------------------------------------- Rechnung
@@ -468,6 +576,10 @@ def _voraussetzungen() -> tuple[Stammdaten, Schreibzone]:
 def rechnung_erzeugen(daten: dict) -> JSONResponse:
     stammdaten, zone = _voraussetzungen()
     rechnung = _rechnung_aus_json(daten)
+    rechnung = dataclasses.replace(
+        rechnung,
+        verwendungszweck=_verwendungszweck(rechnung, daten.get("verwendungszweck")),
+    )
     try:
         ergebnis = erzeuge_rechnung(
             rechnung,
@@ -493,6 +605,7 @@ def rechnung_erzeugen(daten: dict) -> JSONResponse:
     (ordner / "factur-x.xml").write_bytes(ergebnis.xml)
     _schreibe_json(ordner / "daten.json", daten)
     _nummernkreis_fortschreiben(rechnung.nummer)
+    _kunde_merken(rechnung)
     return JSONResponse(
         {
             "nummer": rechnung.nummer,
@@ -507,6 +620,10 @@ def rechnung_erzeugen(daten: dict) -> JSONResponse:
 def xrechnung_erzeugen(daten: dict) -> Response:
     stammdaten, _ = _voraussetzungen()
     rechnung = _rechnung_aus_json(daten)
+    rechnung = dataclasses.replace(
+        rechnung,
+        verwendungszweck=_verwendungszweck(rechnung, daten.get("verwendungszweck")),
+    )
     try:
         xml = erzeuge_xrechnung(rechnung, stammdaten)
     except UngueltigeRechnung as fehler:

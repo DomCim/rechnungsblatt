@@ -212,6 +212,21 @@ def test_zahlweg_sepa_mit_iban_ohne_leerzeichen(rechnung, stammdaten):
     ) == "BYLADEM1HOF"
 
 
+def test_verwendungszweck_als_payment_reference(rechnung, stammdaten):
+    mit_zweck = dataclasses.replace(rechnung, verwendungszweck="RE-2026-0042 Beispielkunde")
+    wurzel = _xml(mit_zweck, stammdaten)
+    abrechnung = "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement"
+    assert _text(wurzel, f"{abrechnung}/ram:PaymentReference") == "RE-2026-0042 Beispielkunde"
+    # Reihenfolge: PaymentReference muss vor InvoiceCurrencyCode stehen
+    kinder = [k.tag for k in wurzel.find(abrechnung, NS)]
+    assert kinder.index(f"{{{NS['ram']}}}PaymentReference") < kinder.index(
+        f"{{{NS['ram']}}}InvoiceCurrencyCode"
+    )
+    # ohne Verwendungszweck kein Element
+    wurzel = _xml(rechnung, stammdaten)
+    assert wurzel.find(f"{abrechnung}/ram:PaymentReference", NS) is None
+
+
 def test_gutschrift_mit_bezug(rechnung, stammdaten):
     gutschrift = dataclasses.replace(
         rechnung,

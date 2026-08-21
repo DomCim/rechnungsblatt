@@ -203,6 +203,24 @@
           <input id="kontakt_telefon" name="kontakt_telefon" type="tel" autocomplete="tel">
           <span class="fehler"></span>
         </div>
+        <div class="feld" data-feld="stammdaten.nummern_muster">
+          <label for="nummern_muster" data-i18n="nummernMuster">Rechnungsnummern-Muster</label>
+          <input id="nummern_muster" name="nummern_muster" value="RE-{JJJJ}-{NNNN}" spellcheck="false">
+          <span class="fehler"></span>
+          <span class="beschreibung" style="margin:0;font-size:12.5px;" data-i18n="nummernMusterHilfe">
+            {JJJJ}/{JJ} = Jahr, {NNNN} = fortlaufender Zähler (Stellenzahl = Anzahl N).
+            Beispiel: RE-{JJJJ}-{NNNN} → RE-2026-0001
+          </span>
+        </div>
+        <div class="feld" data-feld="stammdaten.verwendungszweck_muster">
+          <label for="verwendungszweck_muster" data-i18n="zweckMuster">Verwendungszweck-Vorlage</label>
+          <input id="verwendungszweck_muster" name="verwendungszweck_muster" value="{NUMMER}" spellcheck="false">
+          <span class="fehler"></span>
+          <span class="beschreibung" style="margin:0;font-size:12.5px;" data-i18n="zweckMusterHilfe">
+            Erscheint auf dem Blatt und im E-Rechnungs-Datensatz (BT-83).
+            Platzhalter: {NUMMER}, {DATUM}, {KUNDE}. Leer = kein Verwendungszweck.
+          </span>
+        </div>
         <div class="feld breit">
           <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
             <input id="kleinunternehmer" name="kleinunternehmer" type="checkbox" style="width:auto;">
@@ -312,6 +330,10 @@
       kontaktEmail: "E-Mail",
       kontaktTelefon: "Telefon",
       kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      nummernMuster: "Rechnungsnummern-Muster",
+      nummernMusterHilfe: "{JJJJ}/{JJ} = Jahr, {NNNN} = fortlaufender Zähler (Stellenzahl = Anzahl N). Beispiel: RE-{JJJJ}-{NNNN} → RE-2026-0001",
+      zweckMuster: "Verwendungszweck-Vorlage",
+      zweckMusterHilfe: "Erscheint auf dem Blatt und im E-Rechnungs-Datensatz (BT-83). Platzhalter: {NUMMER}, {DATUM}, {KUNDE}. Leer = kein Verwendungszweck.",
       gestaltungTitel: "4 · Gestaltung",
       gestaltungText: "Schrift, Größe und eines von drei geprüften Layouts — jede Kombination bleibt eine gültige E-Rechnung. Die Vorschau zeigt eine Musterrechnung auf Ihrem Briefpapier.",
       schrift: "Schrift",
@@ -358,6 +380,10 @@
       kontaktEmail: "E-mail",
       kontaktTelefon: "Phone",
       kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      nummernMuster: "Invoice number pattern",
+      nummernMusterHilfe: "{JJJJ}/{JJ} = year, {NNNN} = sequential counter (digits = number of Ns). Example: RE-{JJJJ}-{NNNN} → RE-2026-0001",
+      zweckMuster: "Payment reference template",
+      zweckMusterHilfe: "Appears on the sheet and in the e-invoice data (BT-83). Placeholders: {NUMMER}, {DATUM}, {KUNDE}. Empty = no payment reference.",
       gestaltungTitel: "4 · Design",
       gestaltungText: "Font, size and one of three verified layouts — every combination stays a valid e-invoice. The preview shows a sample invoice on your letterhead.",
       schrift: "Font",
@@ -408,6 +434,8 @@
     el("kontakt_email").value = daten.kontakt_email || "";
     el("kontakt_telefon").value = daten.kontakt_telefon || "";
     el("kleinunternehmer").checked = !!daten.kleinunternehmer;
+    if (daten.nummern_muster !== undefined) el("nummern_muster").value = daten.nummern_muster;
+    if (daten.verwendungszweck_muster !== undefined) el("verwendungszweck_muster").value = daten.verwendungszweck_muster;
   }
 
   async function ladeStatus() {
@@ -527,7 +555,9 @@
       kontakt_name: el("kontakt_name").value.trim(),
       kontakt_email: el("kontakt_email").value.trim(),
       kontakt_telefon: el("kontakt_telefon").value.trim(),
-      kleinunternehmer: el("kleinunternehmer").checked
+      kleinunternehmer: el("kleinunternehmer").checked,
+      nummern_muster: el("nummern_muster").value.trim(),
+      verwendungszweck_muster: el("verwendungszweck_muster").value.trim()
     };
     var antwort = await RB.api("/api/stammdaten", {
       method: "PUT",
@@ -535,12 +565,21 @@
       body: JSON.stringify(daten)
     });
     var meldung = el("stammdatenMeldung");
+    var musterFeld = document.querySelector('[data-feld="stammdaten.nummern_muster"]');
+    musterFeld.classList.remove("hat-fehler");
     if (antwort.ok) {
       meldung.textContent = RB.t("gespeichert");
       setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
       ladeStatus();
     } else {
-      meldung.textContent = RB.t("fehlerAllgemein");
+      var detail = (antwort.daten && antwort.daten.detail) || {};
+      if (detail.code === "nummern_muster") {
+        musterFeld.classList.add("hat-fehler");
+        musterFeld.querySelector(".fehler").textContent = detail.grund;
+        meldung.textContent = "";
+      } else {
+        meldung.textContent = RB.t("fehlerAllgemein");
+      }
     }
   });
 

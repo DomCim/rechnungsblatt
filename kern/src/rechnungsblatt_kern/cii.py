@@ -206,6 +206,9 @@ def _abrechnung(
     summen: Summen,
 ) -> None:
     abrechnung = _el(transaktion, "ram", "ApplicableHeaderTradeSettlement")
+    if rechnung.verwendungszweck:
+        # BT-83: Verwendungszweck für die Überweisung (vor InvoiceCurrencyCode)
+        _el(abrechnung, "ram", "PaymentReference", rechnung.verwendungszweck)
     _el(abrechnung, "ram", "InvoiceCurrencyCode", rechnung.waehrung)
 
     zahlweg = _el(abrechnung, "ram", "SpecifiedTradeSettlementPaymentMeans")

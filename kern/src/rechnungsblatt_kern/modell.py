@@ -142,6 +142,7 @@ class Rechnung:
     bezugs_nummer: str | None = None  # Pflicht bei GUTSCHRIFT/KORREKTUR
     bezugs_datum: _dt.date | None = None
     faelligkeit: _dt.date | None = None
+    verwendungszweck: str | None = None  # BT-83, erscheint auf Blatt und im XML
 
 
 class Layoutvariante(enum.Enum):
