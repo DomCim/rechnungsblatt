@@ -1,13 +1,23 @@
 # Web-Schicht
 
-**Erster Baustein vorhanden:** der Schreibzonen-Editor unter
-[`zonen-editor/`](zonen-editor/) — zwei Regler, DE/EN, framework-frei,
-zum Einbetten in den späteren Stack. Der Rest der Web-Schicht ist noch
-nicht begonnen.
+FastAPI-App (`src/rechnungsblatt_web/`) über der schmalen Kern-Schnittstelle
+(`rechnungsblatt_kern.api`). Stand:
 
-Die Web-Schicht kommt **nach** dem Kern (Übergabe, §11 Schritt 6). Stack ist
-frei wählbar (Next.js oder FastAPI); sie spricht den Kern über die schmale
-Schnittstelle in `rechnungsblatt_kern.api` an.
+- **Einrichtung** (`/`): Briefpapier-Upload → Normalisierung → Ampel
+  (inkl. Schriftersetzungs-Warnung), Schreibzone (eingebetteter
+  [`zonen-editor/`](zonen-editor/)), Stammdaten.
+- **Neue Rechnung** (`/rechnung`): Formular mit Pflichtfeld-Erzwingung
+  (Befund-Codes vom Kern, feldgenau angezeigt), Positionen, Rabatt,
+  Gutschrift/Korrektur mit Bezug, Nummernkreis, Merkliste + Duplikat als
+  Vorlage aus der Ablage, ZUGFeRD-PDF- und XRechnung-Download.
+- Einzelmandant ohne Login (Konto kommt später) — Betrieb nur hinter
+  Zugriffsschutz, siehe [`../deploy/README.md`](../deploy/README.md).
+
+```bash
+pip install -e ./kern -e "./web[test]"
+python -m pytest web/tests
+DATEN_VERZEICHNIS=/tmp/rb-daten uvicorn rechnungsblatt_web.main:app --reload
+```
 
 ## Feststehende Anforderungen
 

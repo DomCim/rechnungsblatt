@@ -491,6 +491,12 @@
   var el = function (id) { return document.getElementById(id); };
   var blatt = el("blatt");
 
+  // Einbettung: ?bild= liefert die Bogen-Vorschau, ?kopf=/&fuss= den Startwert
+  var parameter = new URLSearchParams(location.search);
+  if (parameter.get("bild")) el("bogen").src = parameter.get("bild");
+  if (!isNaN(parseFloat(parameter.get("kopf")))) zustand.kopf = parseFloat(parameter.get("kopf"));
+  if (!isNaN(parseFloat(parameter.get("fuss")))) zustand.fuss = parseFloat(parameter.get("fuss"));
+
   el("bogen").addEventListener("error", function () {
     blatt.classList.add("ohne-bild");
   });
@@ -631,8 +637,14 @@
     this.textContent = t("uebernommen");
     var knopf = this;
     setTimeout(function () { knopf.textContent = t("uebernehmen"); }, 1600);
-    // Einbettung: die spätere Web-Schicht lauscht auf dieses Ereignis.
+    // Einbettung: die Web-Schicht lauscht auf Ereignis bzw. Nachricht.
     blatt.dispatchEvent(new CustomEvent("schreibzone", { detail: zone, bubbles: true }));
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        { typ: "schreibzone", kopf_ende_mm: zone.kopf_ende_mm, fuss_beginn_mm: zone.fuss_beginn_mm },
+        "*"
+      );
+    }
   });
 
   uebersetze();

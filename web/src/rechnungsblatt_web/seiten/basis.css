@@ -1,0 +1,278 @@
+/* Rechnungsblatt — gemeinsame Designsprache der Web-Schicht.
+   Gleiche Token wie der Schreibzonen-Editor. */
+
+:root {
+  --grund: #eceff1;
+  --flaeche: #ffffff;
+  --tinte: #16232e;
+  --tinte-2: #5b6b77;
+  --linie: #d3dade;
+  --akzent: #136f83;
+  --akzent-tinte: #0d5060;
+  --akzent-schleier: rgba(19, 111, 131, 0.07);
+  --gut: #2e7d4f;
+  --warn: #a3491b;
+  --schatten: 0 12px 40px rgba(22, 35, 46, 0.14);
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --grund: #101820;
+    --flaeche: #182430;
+    --tinte: #e7edf1;
+    --tinte-2: #8fa1ae;
+    --linie: #2a3945;
+    --akzent: #4fb3c5;
+    --akzent-tinte: #7fd0de;
+    --akzent-schleier: rgba(79, 179, 197, 0.10);
+    --gut: #63c78d;
+    --warn: #e0854f;
+    --schatten: 0 12px 40px rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  --grund: #101820;
+  --flaeche: #182430;
+  --tinte: #e7edf1;
+  --tinte-2: #8fa1ae;
+  --linie: #2a3945;
+  --akzent: #4fb3c5;
+  --akzent-tinte: #7fd0de;
+  --akzent-schleier: rgba(79, 179, 197, 0.10);
+  --gut: #63c78d;
+  --warn: #e0854f;
+  --schatten: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: var(--grund);
+  color: var(--tinte);
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.buehne {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 24px 24px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Kopfleiste mit Navigation */
+header.kopf {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.marke {
+  font-family: "Bricolage Grotesque", Georgia, serif;
+  font-weight: 500;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--akzent);
+}
+h1 {
+  font-family: "Bricolage Grotesque", Georgia, serif;
+  font-weight: 700;
+  font-size: clamp(24px, 4vw, 32px);
+  line-height: 1.15;
+  text-wrap: balance;
+  margin-top: 2px;
+}
+h2 {
+  font-family: "Bricolage Grotesque", Georgia, serif;
+  font-weight: 700;
+  font-size: 18px;
+}
+.untertitel { color: var(--tinte-2); max-width: 58ch; margin-top: 6px; }
+
+nav.reiter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+nav.reiter a {
+  color: var(--tinte-2);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+nav.reiter a:hover { color: var(--akzent); }
+nav.reiter a[aria-current="page"] {
+  color: var(--akzent-tinte);
+  background: var(--akzent-schleier);
+  border-color: color-mix(in srgb, var(--akzent) 30%, transparent);
+}
+
+.sprachen {
+  display: inline-flex;
+  border: 1px solid var(--linie);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--flaeche);
+  flex: none;
+}
+.sprachen button {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 14px;
+  font: 600 12px/1 "Instrument Sans", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--tinte-2);
+}
+.sprachen button[aria-pressed="true"] { background: var(--akzent); color: var(--flaeche); }
+.sprachen button:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
+
+/* Karten und Formulare */
+.karte {
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.karte > h2 { margin-bottom: 4px; }
+.karte .beschreibung { color: var(--tinte-2); font-size: 13.5px; margin-bottom: 14px; }
+
+.felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
+.feld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.feld.breit { grid-column: 1 / -1; }
+.feld label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tinte-2);
+}
+.feld input, .feld select, .feld textarea {
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  color: var(--tinte);
+  font: 500 15px/1.4 "Instrument Sans", system-ui, sans-serif;
+  padding: 9px 11px;
+  width: 100%;
+}
+.feld input:focus-visible, .feld select:focus-visible, .feld textarea:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: -1px;
+}
+.feld .fehler {
+  display: none;
+  color: var(--warn);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.feld.hat-fehler input, .feld.hat-fehler select { border-color: var(--warn); }
+.feld.hat-fehler .fehler { display: block; }
+
+.zeile { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Knöpfe */
+.knopf {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  background: var(--akzent);
+  color: #fff;
+  font-weight: 600;
+  padding: 11px 18px;
+  border-radius: var(--radius);
+  transition: filter 120ms ease;
+}
+.knopf:hover { filter: brightness(1.08); }
+.knopf:focus-visible { outline: 3px solid color-mix(in srgb, var(--akzent) 40%, transparent); }
+.knopf[disabled] { opacity: 0.45; cursor: not-allowed; }
+.knopf.leise {
+  background: transparent;
+  color: var(--akzent-tinte);
+  border: 1px solid color-mix(in srgb, var(--akzent) 40%, transparent);
+}
+.knopf.leise:hover { background: var(--akzent-schleier); filter: none; }
+
+/* Statusmarken */
+.ampel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+.ampel::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.ampel.gruen { color: var(--gut); background: color-mix(in srgb, var(--gut) 12%, transparent); }
+.ampel.gelb { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.ampel.offen { color: var(--tinte-2); background: color-mix(in srgb, var(--tinte-2) 12%, transparent); }
+
+.hinweis {
+  border-left: 3px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--tinte);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 13.5px;
+}
+.hinweis.gut { border-left-color: var(--gut); background: color-mix(in srgb, var(--gut) 8%, transparent); }
+
+/* Tabellen (Positionen, Ablage) */
+.tabelle-rolle { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tinte-2);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--linie);
+}
+td { padding: 7px 8px; border-bottom: 1px solid var(--linie); vertical-align: top; }
+td input, td select {
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 7px;
+  color: var(--tinte);
+  font: 500 14px/1.3 "Instrument Sans", system-ui, sans-serif;
+  padding: 7px 9px;
+  width: 100%;
+  min-width: 70px;
+}
+td input:focus-visible, td select:focus-visible { outline: 2px solid var(--akzent); outline-offset: -1px; }
+td.zahl input { text-align: right; font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.betrag { font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+.entfernen {
+  all: unset;
+  cursor: pointer;
+  color: var(--tinte-2);
+  font-size: 17px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: 6px;
+}
+.entfernen:hover { color: var(--warn); }
+.entfernen:focus-visible { outline: 2px solid var(--akzent); }
+
+/* Summenblock */
+.summen { margin-left: auto; max-width: 330px; display: flex; flex-direction: column; gap: 4px; }
+.summen .posten { display: flex; justify-content: space-between; gap: 18px; color: var(--tinte-2); }
+.summen .posten.gesamt {
+  color: var(--tinte);
+  font-weight: 700;
+  border-top: 1px solid var(--linie);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+
+a.verweis { color: var(--akzent-tinte); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}

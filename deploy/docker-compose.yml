@@ -1,0 +1,49 @@
+# Rechnungsblatt als Portainer-Stack.
+#
+# Voraussetzungen im Zielsystem:
+#   - Traefik läuft und hängt im externen Docker-Netz "edge"
+#   - Stack-Umgebungsvariable RECHNUNGSBLATT_DOMAIN ist gesetzt
+#     (z. B. rechnungsblatt.example.de)
+#
+# ACHTUNG: Die App hat noch KEIN Login (Einzelmandant, MVP). Öffentlich
+# erreichbar nur hinter einem Schutz — unten liegt ein BasicAuth-Middleware-
+# Beispiel, einkommentieren und Hash setzen.
+
+services:
+  rechnungsblatt:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: rechnungsblatt
+    restart: unless-stopped
+    networks:
+      - edge
+    volumes:
+      - daten:/daten
+    environment:
+      # Plausible: Skript wird nur eingebunden, wenn beide Werte gesetzt sind.
+      # Hinweis: Läuft die Seite über HTTPS, muss auch Plausible über HTTPS
+      # erreichbar sein (Mixed Content) — dann hier die HTTPS-Adresse eintragen.
+      PLAUSIBLE_URL: ${PLAUSIBLE_URL:-http://192.168.178.129:8001}
+      PLAUSIBLE_DOMAIN: ${RECHNUNGSBLATT_DOMAIN:-}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: edge
+      traefik.http.routers.rechnungsblatt.rule: Host(`${RECHNUNGSBLATT_DOMAIN}`)
+      traefik.http.routers.rechnungsblatt.entrypoints: websecure
+      traefik.http.routers.rechnungsblatt.tls: "true"
+      # Zertifikats-Resolver bei Bedarf aktivieren (Name wie in der
+      # Traefik-Konfiguration, z. B. letsencrypt):
+      # traefik.http.routers.rechnungsblatt.tls.certresolver: letsencrypt
+      traefik.http.services.rechnungsblatt.loadbalancer.server.port: "8000"
+      # --- Zugriffsschutz (dringend empfohlen, solange kein Login existiert) ---
+      # Hash erzeugen: htpasswd -nB benutzer   ($ im Compose als $$ schreiben)
+      # traefik.http.middlewares.rechnungsblatt-auth.basicauth.users: "benutzer:$$2y$$05$$..."
+      # traefik.http.routers.rechnungsblatt.middlewares: rechnungsblatt-auth
+
+volumes:
+  daten:
+
+networks:
+  edge:
+    external: true

@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rechnungsblatt — Neue Rechnung</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .beleg-gitter { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
+  #bezugFelder[hidden], #zeitraumFelder[hidden], #datumFeld[hidden] { display: none; }
+  .positionen-fuss { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-top: 12px; }
+  .ergebnis-links { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Neue Rechnung</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Das Formular lässt nichts weg: Alle Pflichtangaben nach § 14 UStG werden
+        geprüft, bevor die Rechnung entsteht.
+      </p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/rechnung" aria-current="page" data-i18n="navRechnung">Neue Rechnung</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="hinweis" id="einrichtungHinweis" hidden>
+    <span data-i18n="einrichtungFehlt">Die Einrichtung ist noch unvollständig.</span>
+    <a class="verweis" href="/" data-i18n="navEinrichtung">Einrichtung</a>
+  </div>
+
+  <form id="formular">
+    <!-- Beleg -->
+    <section class="karte">
+      <h2 data-i18n="belegTitel">Beleg</h2>
+      <p class="beschreibung"></p>
+      <div class="beleg-gitter">
+        <div class="feld" data-feld="rechnung.typ">
+          <label for="typ" data-i18n="typ">Belegart</label>
+          <select id="typ">
+            <option value="RECHNUNG" data-i18n="typRechnung">Rechnung</option>
+            <option value="GUTSCHRIFT" data-i18n="typGutschrift">Gutschrift</option>
+            <option value="KORREKTUR" data-i18n="typKorrektur">Rechnungskorrektur</option>
+          </select>
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="rechnung.nummer">
+          <label for="nummer" data-i18n="nummer">Nummer</label>
+          <input id="nummer" autocomplete="off">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="rechnung.rechnungsdatum">
+          <label for="rechnungsdatum" data-i18n="rechnungsdatum">Rechnungsdatum</label>
+          <input id="rechnungsdatum" type="date">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="rechnung.faelligkeit">
+          <label for="faelligkeit" data-i18n="faelligkeit">Zahlbar bis</label>
+          <input id="faelligkeit" type="date">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="rechnung.leistungsdatum">
+          <label for="leistungsart" data-i18n="leistung">Leistung</label>
+          <select id="leistungsart">
+            <option value="datum" data-i18n="leistungDatum">an einem Tag</option>
+            <option value="zeitraum" data-i18n="leistungZeitraum">im Zeitraum</option>
+          </select>
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" id="datumFeld" data-feld="rechnung.leistungsdatum2">
+          <label for="leistungsdatum" data-i18n="leistungsdatum">Leistungsdatum</label>
+          <input id="leistungsdatum" type="date">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" id="zeitraumFelder" data-feld="rechnung.leistungszeitraum" hidden>
+          <label data-i18n="zeitraum">Leistungszeitraum</label>
+          <div class="zeile" style="flex-wrap:nowrap;">
+            <input id="zeitraumVon" type="date" aria-label="von">
+            <span>–</span>
+            <input id="zeitraumBis" type="date" aria-label="bis">
+          </div>
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" id="bezugFelder" data-feld="rechnung.bezugs_nummer" hidden>
+          <label for="bezugsNummer" data-i18n="bezug">Zu Rechnung Nr.</label>
+          <div class="zeile" style="flex-wrap:nowrap;">
+            <input id="bezugsNummer" data-i18n-platzhalter="bezugPlatzhalter" placeholder="RE-2026-0001">
+            <input id="bezugsDatum" type="date" aria-label="Datum der Ursprungsrechnung">
+          </div>
+          <span class="fehler"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Empfänger -->
+    <section class="karte" style="margin-top:20px;">
+      <div class="zeile" style="justify-content:space-between;">
+        <h2 data-i18n="empfaengerTitel">Empfänger</h2>
+        <select id="merkliste" style="max-width:260px;background:var(--grund);border:1px solid var(--linie);border-radius:8px;color:var(--tinte);font:500 14px 'Instrument Sans',system-ui,sans-serif;padding:8px 10px;">
+          <option value="" data-i18n="merkliste">Aus Merkliste übernehmen …</option>
+        </select>
+      </div>
+      <p class="beschreibung"></p>
+      <div class="felder">
+        <div class="feld breit" data-feld="empfaenger.name">
+          <label for="eName" data-i18n="eName">Name / Firma</label>
+          <input id="eName">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld breit" data-feld="empfaenger.anschrift">
+          <label for="eStrasse" data-i18n="strasse">Straße und Hausnummer</label>
+          <input id="eStrasse">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="empfaenger.plz">
+          <label for="ePlz" data-i18n="plz">PLZ</label>
+          <input id="ePlz">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="empfaenger.ort">
+          <label for="eOrt" data-i18n="ort">Ort</label>
+          <input id="eOrt">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="empfaenger.ust_idnr">
+          <label for="eUstIdnr" data-i18n="eUstIdnr">USt-IdNr. (bei Reverse Charge / EU)</label>
+          <input id="eUstIdnr">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="empfaenger.email">
+          <label for="eEmail" data-i18n="eEmail">E-Mail (für XRechnung)</label>
+          <input id="eEmail" type="email">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="empfaenger.leitweg_id">
+          <label for="eLeitweg" data-i18n="eLeitweg">Leitweg-ID (für XRechnung)</label>
+          <input id="eLeitweg" placeholder="04011000-1234512345-06">
+          <span class="fehler"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Positionen -->
+    <section class="karte" style="margin-top:20px;">
+      <h2 data-i18n="positionenTitel">Positionen</h2>
+      <p class="beschreibung"></p>
+      <div class="feld" data-feld="rechnung.positionen" style="gap:0;">
+        <span class="fehler" style="margin-bottom:8px;"></span>
+      </div>
+      <div class="tabelle-rolle">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:38%;" data-i18n="spBezeichnung">Leistung</th>
+              <th style="width:11%;" data-i18n="spMenge">Menge</th>
+              <th style="width:13%;" data-i18n="spEinheit">Einheit</th>
+              <th style="width:14%;" data-i18n="spEinzelpreis">Einzelpreis €</th>
+              <th style="width:16%;" data-i18n="spSteuer">Steuer</th>
+              <th class="betrag" data-i18n="spBetrag">Betrag</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="positionen"></tbody>
+        </table>
+      </div>
+      <div class="positionen-fuss">
+        <button type="button" class="knopf leise" id="positionHinzu" data-i18n="positionHinzu">+ Position</button>
+        <div class="zeile" style="margin-left:auto;">
+          <div class="feld" data-feld="rechnung.rabatt" style="max-width:140px;">
+            <label for="rabatt" data-i18n="rabatt">Rabatt €</label>
+            <input id="rabatt" inputmode="decimal" placeholder="0,00">
+            <span class="fehler"></span>
+          </div>
+          <div class="feld" style="max-width:180px;">
+            <label for="rabattGrund" data-i18n="rabattGrund">Rabattgrund</label>
+            <input id="rabattGrund" placeholder="Rabatt">
+          </div>
+        </div>
+      </div>
+      <div class="summen" style="margin-top:14px;">
+        <div class="posten"><span data-i18n="netto">Netto</span><span class="betrag" id="sNetto">0,00 €</span></div>
+        <div class="posten" id="sRabattZeile" hidden><span data-i18n="rabatt">Rabatt €</span><span class="betrag" id="sRabatt">0,00 €</span></div>
+        <div class="posten"><span data-i18n="ust">Umsatzsteuer</span><span class="betrag" id="sSteuer">0,00 €</span></div>
+        <div class="posten gesamt"><span data-i18n="gesamt">Gesamt</span><span class="betrag" id="sBrutto">0,00 €</span></div>
+      </div>
+    </section>
+
+    <!-- Freitext + Aktionen -->
+    <section class="karte" style="margin-top:20px;">
+      <div class="felder">
+        <div class="feld breit" data-feld="rechnung.freitext">
+          <label for="freitext" data-i18n="freitext">Freitext (erscheint auf der Rechnung)</label>
+          <textarea id="freitext" rows="2"></textarea>
+          <span class="fehler"></span>
+        </div>
+      </div>
+      <div id="restBefunde" style="margin-top:12px;"></div>
+      <div class="zeile" style="margin-top:14px;">
+        <button type="submit" class="knopf" id="erzeugen" data-i18n="erzeugen">Rechnung erzeugen (PDF)</button>
+        <button type="button" class="knopf leise" id="xrechnung" data-i18n="xrechnung">XRechnung (XML)</button>
+        <span class="beschreibung" id="aktionMeldung" style="margin:0;"></span>
+      </div>
+      <div class="ergebnis-links" id="ergebnis" style="margin-top:12px;"></div>
+    </section>
+  </form>
+
+  <!-- Ablage -->
+  <section class="karte">
+    <h2 data-i18n="ablageTitel">Ablage</h2>
+    <p class="beschreibung" data-i18n="ablageText">Alle erzeugten Belege. Ein Klick auf die Nummer übernimmt den Beleg als Vorlage.</p>
+    <div class="tabelle-rolle">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="nummer">Nummer</th>
+            <th data-i18n="typ">Belegart</th>
+            <th data-i18n="rechnungsdatum">Rechnungsdatum</th>
+            <th data-i18n="empfaengerTitel">Empfänger</th>
+            <th>PDF</th>
+            <th>XML</th>
+          </tr>
+        </thead>
+        <tbody id="ablage"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  var texte = {
+    de: {
+      titel: "Neue Rechnung",
+      untertitel: "Das Formular lässt nichts weg: Alle Pflichtangaben nach § 14 UStG werden geprüft, bevor die Rechnung entsteht.",
+      einrichtungFehlt: "Die Einrichtung ist noch unvollständig.",
+      belegTitel: "Beleg",
+      typ: "Belegart", typRechnung: "Rechnung", typGutschrift: "Gutschrift", typKorrektur: "Rechnungskorrektur",
+      nummer: "Nummer", rechnungsdatum: "Rechnungsdatum", faelligkeit: "Zahlbar bis",
+      leistung: "Leistung", leistungDatum: "an einem Tag", leistungZeitraum: "im Zeitraum",
+      leistungsdatum: "Leistungsdatum", zeitraum: "Leistungszeitraum",
+      bezug: "Zu Rechnung Nr.", bezugPlatzhalter: "RE-2026-0001",
+      empfaengerTitel: "Empfänger", merkliste: "Aus Merkliste übernehmen …",
+      eName: "Name / Firma", strasse: "Straße und Hausnummer", plz: "PLZ", ort: "Ort",
+      eUstIdnr: "USt-IdNr. (bei Reverse Charge / EU)", eEmail: "E-Mail (für XRechnung)", eLeitweg: "Leitweg-ID (für XRechnung)",
+      positionenTitel: "Positionen",
+      spBezeichnung: "Leistung", spMenge: "Menge", spEinheit: "Einheit", spEinzelpreis: "Einzelpreis €", spSteuer: "Steuer", spBetrag: "Betrag",
+      positionHinzu: "+ Position", rabatt: "Rabatt €", rabattGrund: "Rabattgrund",
+      netto: "Netto", ust: "Umsatzsteuer", gesamt: "Gesamt",
+      freitext: "Freitext (erscheint auf der Rechnung)",
+      erzeugen: "Rechnung erzeugen (PDF)", xrechnung: "XRechnung (XML)",
+      erzeugt: "Erzeugt ✓", pdfOeffnen: "PDF öffnen", xmlLaden: "XML herunterladen",
+      ablageTitel: "Ablage", ablageText: "Alle erzeugten Belege. Ein Klick auf die Nummer übernimmt den Beleg als Vorlage.",
+      einheiten: { C62: "Stück", HUR: "Stunde", DAY: "Tag", MTR: "m", MTK: "m²", KGM: "kg", LTR: "Liter" },
+      steuern: {
+        UST_19: "19 %", UST_7: "7 %", UST_0: "0 %",
+        KLEINUNTERNEHMER: "§ 19 UStG", REVERSE_CHARGE: "Reverse Charge",
+        IG_LIEFERUNG: "innergem. Lieferung", AUSFUHR: "Ausfuhr"
+      }
+    },
+    en: {
+      titel: "New invoice",
+      untertitel: "The form leaves nothing out: every mandatory detail under § 14 UStG is checked before the invoice is created.",
+      einrichtungFehlt: "Setup is not complete yet.",
+      belegTitel: "Document",
+      typ: "Type", typRechnung: "Invoice", typGutschrift: "Credit note", typKorrektur: "Corrected invoice",
+      nummer: "Number", rechnungsdatum: "Invoice date", faelligkeit: "Due date",
+      leistung: "Delivery", leistungDatum: "on one day", leistungZeitraum: "over a period",
+      leistungsdatum: "Delivery date", zeitraum: "Delivery period",
+      bezug: "References invoice no.", bezugPlatzhalter: "RE-2026-0001",
+      empfaengerTitel: "Recipient", merkliste: "Fill from saved customers …",
+      eName: "Name / company", strasse: "Street and number", plz: "Postcode", ort: "City",
+      eUstIdnr: "VAT ID (reverse charge / EU)", eEmail: "E-mail (for XRechnung)", eLeitweg: "Leitweg-ID (for XRechnung)",
+      positionenTitel: "Line items",
+      spBezeichnung: "Service", spMenge: "Qty", spEinheit: "Unit", spEinzelpreis: "Unit price €", spSteuer: "Tax", spBetrag: "Amount",
+      positionHinzu: "+ Line item", rabatt: "Discount €", rabattGrund: "Discount reason",
+      netto: "Net", ust: "VAT", gesamt: "Total",
+      freitext: "Free text (appears on the invoice)",
+      erzeugen: "Create invoice (PDF)", xrechnung: "XRechnung (XML)",
+      erzeugt: "Created ✓", pdfOeffnen: "Open PDF", xmlLaden: "Download XML",
+      ablageTitel: "Archive", ablageText: "All created documents. Click a number to reuse it as a template.",
+      einheiten: { C62: "piece", HUR: "hour", DAY: "day", MTR: "m", MTK: "m²", KGM: "kg", LTR: "litre" },
+      steuern: {
+        UST_19: "19 %", UST_7: "7 %", UST_0: "0 %",
+        KLEINUNTERNEHMER: "§ 19 UStG", REVERSE_CHARGE: "reverse charge",
+        IG_LIEFERUNG: "intra-EU supply", AUSFUHR: "export"
+      }
+    }
+  };
+
+  var STEUERSAETZE = { UST_19: 19, UST_7: 7, UST_0: 0, KLEINUNTERNEHMER: 0, REVERSE_CHARGE: 0, IG_LIEFERUNG: 0, AUSFUHR: 0 };
+  var el = function (id) { return document.getElementById(id); };
+
+  function zahl(text) {
+    var wert = parseFloat(String(text || "").replace(",", "."));
+    return isNaN(wert) ? 0 : wert;
+  }
+  function euro(wert) {
+    return wert.toLocaleString(RB.sprache() === "de" ? "de-DE" : "en-GB",
+      { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+  }
+
+  // ---------- Positionen ----------
+  function auswahl(optionen, klasse) {
+    var teile = [];
+    for (var schluessel in optionen) {
+      teile.push('<option value="' + schluessel + '">' + optionen[schluessel] + "</option>");
+    }
+    return '<select class="' + klasse + '">' + teile.join("") + "</select>";
+  }
+
+  function neueZeile(vorgabe) {
+    var zeile = document.createElement("tr");
+    var w = texte[RB.sprache()];
+    zeile.innerHTML =
+      '<td><input class="p-bezeichnung"></td>' +
+      '<td class="zahl"><input class="p-menge" inputmode="decimal" value="1"></td>' +
+      "<td>" + auswahl(w.einheiten, "p-einheit") + "</td>" +
+      '<td class="zahl"><input class="p-preis" inputmode="decimal" placeholder="0,00"></td>' +
+      "<td>" + auswahl(w.steuern, "p-steuer") + "</td>" +
+      '<td class="betrag p-betrag">0,00 €</td>' +
+      '<td><button type="button" class="entfernen" aria-label="Position entfernen">×</button></td>';
+    if (vorgabe) {
+      zeile.querySelector(".p-bezeichnung").value = vorgabe.bezeichnung || "";
+      zeile.querySelector(".p-menge").value = String(vorgabe.menge || "1").replace(".", ",");
+      zeile.querySelector(".p-einheit").value = vorgabe.einheit || "C62";
+      zeile.querySelector(".p-preis").value = String(vorgabe.einzelpreis || "").replace(".", ",");
+      zeile.querySelector(".p-steuer").value = vorgabe.steuer || "UST_19";
+    }
+    el("positionen").appendChild(zeile);
+    rechne();
+  }
+
+  el("positionHinzu").addEventListener("click", function () { neueZeile(); });
+  el("positionen").addEventListener("click", function (ereignis) {
+    var knopf = ereignis.target.closest(".entfernen");
+    if (!knopf) return;
+    knopf.closest("tr").remove();
+    rechne();
+  });
+  el("positionen").addEventListener("input", rechne);
+  el("positionen").addEventListener("change", rechne);
+  el("rabatt").addEventListener("input", rechne);
+
+  function positionenDaten() {
+    var zeilen = el("positionen").querySelectorAll("tr");
+    var liste = [];
+    for (var i = 0; i < zeilen.length; i++) {
+      var zeile = zeilen[i];
+      liste.push({
+        bezeichnung: zeile.querySelector(".p-bezeichnung").value.trim(),
+        menge: zeile.querySelector(".p-menge").value.trim().replace(",", "."),
+        einheit: zeile.querySelector(".p-einheit").value,
+        einzelpreis: zeile.querySelector(".p-preis").value.trim().replace(",", "."),
+        steuer: zeile.querySelector(".p-steuer").value
+      });
+    }
+    return liste;
+  }
+
+  // Anzeige-Summen (verbindlich rechnet der Server mit Decimal)
+  function rechne() {
+    var zeilen = el("positionen").querySelectorAll("tr");
+    var koerbe = {};
+    var netto = 0;
+    for (var i = 0; i < zeilen.length; i++) {
+      var zeile = zeilen[i];
+      var betrag = Math.round(zahl(zeile.querySelector(".p-menge").value) *
+                              zahl(zeile.querySelector(".p-preis").value) * 100) / 100;
+      zeile.querySelector(".p-betrag").textContent = euro(betrag);
+      netto += betrag;
+      var satz = STEUERSAETZE[zeile.querySelector(".p-steuer").value] || 0;
+      koerbe[satz] = (koerbe[satz] || 0) + betrag;
+    }
+    var rabatt = Math.min(zahl(el("rabatt").value), netto);
+    var basisGesamt = netto - rabatt;
+    var steuer = 0;
+    for (var s in koerbe) {
+      var anteil = netto > 0 ? koerbe[s] / netto : 0;
+      steuer += Math.round((koerbe[s] - rabatt * anteil) * Number(s)) / 100;
+    }
+    steuer = Math.round(steuer * 100) / 100;
+    el("sNetto").textContent = euro(netto);
+    el("sRabattZeile").hidden = rabatt <= 0;
+    el("sRabatt").textContent = "− " + euro(rabatt);
+    el("sSteuer").textContent = euro(steuer);
+    el("sBrutto").textContent = euro(basisGesamt + steuer);
+  }
+
+  // ---------- Sichtbarkeiten ----------
+  el("leistungsart").addEventListener("change", function () {
+    var zeitraum = this.value === "zeitraum";
+    el("datumFeld").hidden = zeitraum;
+    el("zeitraumFelder").hidden = !zeitraum;
+  });
+  el("typ").addEventListener("change", function () {
+    el("bezugFelder").hidden = this.value === "RECHNUNG";
+  });
+
+  // ---------- Daten einsammeln ----------
+  function formulardaten() {
+    var zeitraum = el("leistungsart").value === "zeitraum";
+    return {
+      typ: el("typ").value,
+      nummer: el("nummer").value.trim(),
+      rechnungsdatum: el("rechnungsdatum").value,
+      faelligkeit: el("faelligkeit").value || null,
+      leistungsdatum: zeitraum ? null : (el("leistungsdatum").value || null),
+      leistungszeitraum: zeitraum
+        ? { von: el("zeitraumVon").value, bis: el("zeitraumBis").value }
+        : null,
+      bezugs_nummer: el("bezugsNummer").value.trim() || null,
+      bezugs_datum: el("bezugsDatum").value || null,
+      rabatt_betrag: el("rabatt").value.trim() ? el("rabatt").value.trim().replace(",", ".") : null,
+      rabatt_grund: el("rabattGrund").value.trim() || null,
+      freitext: el("freitext").value.trim() || null,
+      empfaenger: {
+        name: el("eName").value.trim(),
+        anschrift: {
+          strasse: el("eStrasse").value.trim(),
+          plz: el("ePlz").value.trim(),
+          ort: el("eOrt").value.trim(),
+          land: "DE"
+        },
+        ust_idnr: el("eUstIdnr").value.trim() || null,
+        email: el("eEmail").value.trim() || null,
+        leitweg_id: el("eLeitweg").value.trim() || null
+      },
+      positionen: positionenDaten()
+    };
+  }
+
+  function zeigeFehler(antwort) {
+    var uebrig = [];
+    if (antwort.daten && antwort.daten.befunde) {
+      uebrig = RB.zeigeBefunde(antwort.daten.befunde, el("formular"));
+    } else if (antwort.daten && (antwort.daten.grund || (antwort.daten.detail && antwort.daten.detail.grund))) {
+      uebrig = [antwort.daten.grund || antwort.daten.detail.grund];
+    } else {
+      uebrig = [RB.t("fehlerAllgemein")];
+    }
+    el("restBefunde").innerHTML = uebrig.length
+      ? '<div class="hinweis">' + uebrig.map(function (t) { return "• " + t; }).join("<br>") + "</div>"
+      : "";
+  }
+
+  // ---------- Erzeugen ----------
+  el("formular").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    el("aktionMeldung").textContent = RB.t("laedt");
+    var antwort = await RB.api("/api/rechnung", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formulardaten())
+    });
+    if (!antwort.ok) { el("aktionMeldung").textContent = ""; zeigeFehler(antwort); return; }
+    el("restBefunde").innerHTML = "";
+    RB.zeigeBefunde([], el("formular"));
+    el("aktionMeldung").textContent = RB.t("erzeugt");
+    el("ergebnis").innerHTML =
+      '<a class="knopf" target="_blank" rel="noopener" href="' + antwort.daten.pdf + '">' + RB.t("pdfOeffnen") + "</a>" +
+      '<a class="knopf leise" href="' + antwort.daten.xml + '">' + RB.t("xmlLaden") + "</a>";
+    ladeAblage();
+    ladeNummer();
+  });
+
+  el("xrechnung").addEventListener("click", async function () {
+    el("aktionMeldung").textContent = RB.t("laedt");
+    var antwort = await fetch("/api/rechnung/xrechnung", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formulardaten())
+    });
+    if (!antwort.ok) {
+      var daten = null;
+      try { daten = await antwort.json(); } catch (fehler) { /* keine JSON-Antwort */ }
+      el("aktionMeldung").textContent = "";
+      zeigeFehler({ daten: daten });
+      return;
+    }
+    el("aktionMeldung").textContent = RB.t("erzeugt");
+    var blob = await antwort.blob();
+    var url = URL.createObjectURL(blob);
+    var verweis = document.createElement("a");
+    verweis.href = url;
+    verweis.download = "xrechnung-" + (el("nummer").value.trim() || "rechnung") + ".xml";
+    verweis.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // ---------- Ablage + Merkliste ----------
+  async function ladeAblage() {
+    var antwort = await RB.api("/api/ablage");
+    if (!antwort.ok) return;
+    var belege = antwort.daten;
+    var zeilen = [];
+    var merk = ['<option value="">' + RB.t("merkliste") + "</option>"];
+    var gesehen = {};
+    for (var i = 0; i < belege.length; i++) {
+      var beleg = belege[i];
+      zeilen.push(
+        "<tr>" +
+        '<td><a class="verweis" href="#" data-vorlage="' + beleg.nummer + '">' + beleg.nummer + "</a></td>" +
+        "<td>" + RB.t("typ" + beleg.typ.charAt(0) + beleg.typ.slice(1).toLowerCase()) + "</td>" +
+        "<td>" + (beleg.rechnungsdatum || "") + "</td>" +
+        "<td>" + (beleg.empfaenger || "") + "</td>" +
+        '<td><a class="verweis" target="_blank" rel="noopener" href="' + beleg.pdf + '">PDF</a></td>' +
+        '<td><a class="verweis" href="' + beleg.xml + '">XML</a></td>' +
+        "</tr>"
+      );
+      if (beleg.empfaenger && !gesehen[beleg.empfaenger]) {
+        gesehen[beleg.empfaenger] = true;
+        merk.push('<option value="' + beleg.nummer + '">' + beleg.empfaenger + "</option>");
+      }
+    }
+    el("ablage").innerHTML = zeilen.join("");
+    el("merkliste").innerHTML = merk.join("");
+  }
+
+  async function uebernehmeVorlage(nummer, nurEmpfaenger) {
+    var antwort = await RB.api("/api/ablage/" + encodeURIComponent(nummer) + "/daten");
+    if (!antwort.ok) return;
+    var daten = antwort.daten;
+    var empfaenger = daten.empfaenger || {};
+    var anschrift = empfaenger.anschrift || {};
+    el("eName").value = empfaenger.name || "";
+    el("eStrasse").value = anschrift.strasse || "";
+    el("ePlz").value = anschrift.plz || "";
+    el("eOrt").value = anschrift.ort || "";
+    el("eUstIdnr").value = empfaenger.ust_idnr || "";
+    el("eEmail").value = empfaenger.email || "";
+    el("eLeitweg").value = empfaenger.leitweg_id || "";
+    if (nurEmpfaenger) return;
+    el("positionen").innerHTML = "";
+    var positionen = daten.positionen || [];
+    for (var i = 0; i < positionen.length; i++) neueZeile(positionen[i]);
+    el("rabatt").value = daten.rabatt_betrag ? String(daten.rabatt_betrag).replace(".", ",") : "";
+    el("rabattGrund").value = daten.rabatt_grund || "";
+    el("freitext").value = daten.freitext || "";
+    window.scrollTo({ top: 0 });
+  }
+
+  el("ablage").addEventListener("click", function (ereignis) {
+    var verweis = ereignis.target.closest("a[data-vorlage]");
+    if (!verweis) return;
+    ereignis.preventDefault();
+    uebernehmeVorlage(verweis.getAttribute("data-vorlage"), false);
+  });
+  el("merkliste").addEventListener("change", function () {
+    if (this.value) uebernehmeVorlage(this.value, true);
+    this.value = "";
+  });
+
+  // ---------- Start ----------
+  async function ladeNummer() {
+    var antwort = await RB.api("/api/nummer/vorschlag");
+    if (antwort.ok && !el("nummer").value) el("nummer").value = antwort.daten.nummer;
+  }
+  async function pruefeEinrichtung() {
+    var antwort = await RB.api("/api/status");
+    if (antwort.ok) el("einrichtungHinweis").hidden = antwort.daten.bereit;
+  }
+
+  RB.beiSprachwechsel(function () {
+    // Auswahllisten neu beschriften, Werte erhalten
+    var zeilen = el("positionen").querySelectorAll("tr");
+    var w = texte[RB.sprache()];
+    for (var i = 0; i < zeilen.length; i++) {
+      ["einheit", "steuer"].forEach(function (art) {
+        var feld = zeilen[i].querySelector(".p-" + art);
+        var wert = feld.value;
+        feld.outerHTML = auswahl(art === "einheit" ? w.einheiten : w.steuern, "p-" + art);
+        zeilen[i].querySelector(".p-" + art).value = wert;
+      });
+    }
+    rechne();
+    ladeAblage();
+  });
+
+  RB.starte(texte);
+  el("rechnungsdatum").value = new Date().toISOString().slice(0, 10);
+  neueZeile();
+  ladeNummer();
+  pruefeEinrichtung();
+  ladeAblage();
+})();
+</script>
+</body>
+</html>

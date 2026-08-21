@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rechnungsblatt — Einrichtung</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .editor-rahmen {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius);
+    height: 880px;
+    background: transparent;
+  }
+  @media (max-width: 780px) { .editor-rahmen { height: 1180px; } }
+  .upload-zone {
+    border: 2px dashed var(--linie);
+    border-radius: var(--radius);
+    padding: 26px 20px;
+    text-align: center;
+    color: var(--tinte-2);
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .upload-zone:hover, .upload-zone.aktiv {
+    border-color: var(--akzent);
+    background: var(--akzent-schleier);
+    color: var(--akzent-tinte);
+  }
+  .upload-zone strong { color: var(--tinte); display: block; margin-bottom: 3px; }
+  .schritt-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Einrichtung</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Dreimal einrichten, dann nur noch Rechnungen schreiben: Briefpapier
+        hochladen, Schreibzone festlegen, Stammdaten hinterlegen.
+      </p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/" aria-current="page" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Schritt 1: Briefpapier -->
+  <section class="karte">
+    <div class="schritt-kopf">
+      <h2 data-i18n="briefpapierTitel">1 · Briefpapier</h2>
+      <span class="ampel offen" id="briefpapierAmpel" data-i18n="ampelOffen">noch nicht eingerichtet</span>
+    </div>
+    <p class="beschreibung" data-i18n="briefpapierText">
+      Laden Sie Ihren Briefbogen als PDF hoch (eine Seite). Wir vereinheitlichen
+      Farben und Schriften automatisch, damit daraus eine gültige E-Rechnung
+      werden kann — Ihr Original bleibt unangetastet und wird nicht gespeichert.
+    </p>
+    <label class="upload-zone" id="uploadZone" for="uploadEingabe">
+      <strong data-i18n="uploadTitel">PDF hier ablegen oder klicken</strong>
+      <span data-i18n="uploadHinweis">Eine Seite, bis 20 MB</span>
+      <input id="uploadEingabe" type="file" accept="application/pdf" hidden>
+    </label>
+    <div id="briefpapierMeldung" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- Schritt 2: Schreibzone -->
+  <section class="karte" id="zonenKarte" hidden>
+    <div class="schritt-kopf">
+      <h2 data-i18n="zoneTitel">2 · Schreibzone</h2>
+      <span class="ampel offen" id="zonenAmpel" data-i18n="ampelOffen">noch nicht eingerichtet</span>
+    </div>
+    <p class="beschreibung" data-i18n="zoneText">
+      Zwei Linien, mehr nicht: Wo endet Ihr Briefkopf, wo beginnt Ihre Fußzeile?
+      Dazwischen wird die Rechnung gedruckt.
+    </p>
+    <iframe class="editor-rahmen" id="zonenEditor" title="Schreibzonen-Editor"></iframe>
+  </section>
+
+  <!-- Schritt 3: Stammdaten -->
+  <section class="karte">
+    <div class="schritt-kopf">
+      <h2 data-i18n="stammdatenTitel">3 · Stammdaten</h2>
+      <span class="ampel offen" id="stammdatenAmpel" data-i18n="ampelOffen">noch nicht eingerichtet</span>
+    </div>
+    <p class="beschreibung" data-i18n="stammdatenText">
+      Einmal erfassen — erscheint auf jeder Rechnung und im E-Rechnungs-Datensatz.
+    </p>
+    <form id="stammdatenFormular">
+      <div class="felder">
+        <div class="feld breit" data-feld="stammdaten.firmierung">
+          <label for="firmierung" data-i18n="firmierung">Firmierung</label>
+          <input id="firmierung" name="firmierung" autocomplete="organization">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld breit" data-feld="stammdaten.anschrift">
+          <label for="strasse" data-i18n="strasse">Straße und Hausnummer</label>
+          <input id="strasse" name="strasse" autocomplete="street-address">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.plz">
+          <label for="plz" data-i18n="plz">PLZ</label>
+          <input id="plz" name="plz" autocomplete="postal-code">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.ort">
+          <label for="ort" data-i18n="ort">Ort</label>
+          <input id="ort" name="ort" autocomplete="address-level2">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.steuernummer">
+          <label for="steuernummer" data-i18n="steuernummer">Steuernummer</label>
+          <input id="steuernummer" name="steuernummer">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.ust_idnr">
+          <label for="ust_idnr" data-i18n="ustIdnr">USt-IdNr.</label>
+          <input id="ust_idnr" name="ust_idnr" placeholder="DE123456789">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.iban">
+          <label for="iban">IBAN</label>
+          <input id="iban" name="iban" placeholder="DE00 0000 0000 0000 0000 00">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.bic">
+          <label for="bic">BIC</label>
+          <input id="bic" name="bic">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.zahlungsziel_tage">
+          <label for="zahlungsziel" data-i18n="zahlungsziel">Zahlungsziel (Tage)</label>
+          <input id="zahlungsziel" name="zahlungsziel_tage" type="number" min="0" value="14">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.kontakt">
+          <label for="kontakt_name" data-i18n="kontaktName">Ansprechpartner</label>
+          <input id="kontakt_name" name="kontakt_name" autocomplete="name">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.kontakt_email">
+          <label for="kontakt_email" data-i18n="kontaktEmail">E-Mail</label>
+          <input id="kontakt_email" name="kontakt_email" type="email" autocomplete="email">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.kontakt_telefon">
+          <label for="kontakt_telefon" data-i18n="kontaktTelefon">Telefon</label>
+          <input id="kontakt_telefon" name="kontakt_telefon" type="tel" autocomplete="tel">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld breit">
+          <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
+            <input id="kleinunternehmer" name="kleinunternehmer" type="checkbox" style="width:auto;">
+            <span data-i18n="kleinunternehmer">Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)</span>
+          </label>
+        </div>
+      </div>
+      <div class="zeile" style="margin-top:16px;">
+        <button type="submit" class="knopf" id="stammdatenKnopf" data-i18n="speichern">Speichern</button>
+        <span id="stammdatenMeldung" class="beschreibung" style="margin:0;"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="hinweis gut" id="bereitHinweis" hidden>
+    <span data-i18n="bereit">Alles eingerichtet — Sie können jetzt Rechnungen schreiben:</span>
+    <a class="verweis" href="/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+  </section>
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  var texte = {
+    de: {
+      titel: "Einrichtung",
+      untertitel: "Dreimal einrichten, dann nur noch Rechnungen schreiben: Briefpapier hochladen, Schreibzone festlegen, Stammdaten hinterlegen.",
+      briefpapierTitel: "1 · Briefpapier",
+      briefpapierText: "Laden Sie Ihren Briefbogen als PDF hoch (eine Seite). Wir vereinheitlichen Farben und Schriften automatisch, damit daraus eine gültige E-Rechnung werden kann — Ihr Original bleibt unangetastet und wird nicht gespeichert.",
+      uploadTitel: "PDF hier ablegen oder klicken",
+      uploadHinweis: "Eine Seite, bis 20 MB",
+      ampelOffen: "noch nicht eingerichtet",
+      ampelGruen: "eingerichtet",
+      ampelSchriften: "Schriften ersetzt — bitte prüfen",
+      normalisiert: "Ihr Briefbogen ist vorbereitet.",
+      schriftenErsetzt: "Wir mussten Schriften ersetzen, bitte prüfen Sie die Vorschau unten.",
+      zoneTitel: "2 · Schreibzone",
+      zoneText: "Zwei Linien, mehr nicht: Wo endet Ihr Briefkopf, wo beginnt Ihre Fußzeile? Dazwischen wird die Rechnung gedruckt.",
+      zoneGespeichert: "Schreibzone gespeichert.",
+      stammdatenTitel: "3 · Stammdaten",
+      stammdatenText: "Einmal erfassen — erscheint auf jeder Rechnung und im E-Rechnungs-Datensatz.",
+      firmierung: "Firmierung",
+      strasse: "Straße und Hausnummer",
+      plz: "PLZ",
+      ort: "Ort",
+      steuernummer: "Steuernummer",
+      ustIdnr: "USt-IdNr.",
+      zahlungsziel: "Zahlungsziel (Tage)",
+      kontaktName: "Ansprechpartner",
+      kontaktEmail: "E-Mail",
+      kontaktTelefon: "Telefon",
+      kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      bereit: "Alles eingerichtet — Sie können jetzt Rechnungen schreiben:"
+    },
+    en: {
+      titel: "Setup",
+      untertitel: "Set up three things once, then just write invoices: upload your letterhead, set the writing zone, enter your master data.",
+      briefpapierTitel: "1 · Letterhead",
+      briefpapierText: "Upload your letterhead as a PDF (one page). We unify colours and fonts automatically so it can carry a valid e-invoice — your original stays untouched and is not stored.",
+      uploadTitel: "Drop a PDF here or click",
+      uploadHinweis: "One page, up to 20 MB",
+      ampelOffen: "not set up yet",
+      ampelGruen: "ready",
+      ampelSchriften: "fonts replaced — please check",
+      normalisiert: "Your letterhead is prepared.",
+      schriftenErsetzt: "We had to replace fonts — please check the preview below.",
+      zoneTitel: "2 · Writing zone",
+      zoneText: "Two lines, nothing more: where does your header end, where does your footer begin? The invoice is printed in between.",
+      zoneGespeichert: "Writing zone saved.",
+      stammdatenTitel: "3 · Master data",
+      stammdatenText: "Enter once — appears on every invoice and in the e-invoice data set.",
+      firmierung: "Company name",
+      strasse: "Street and number",
+      plz: "Postcode",
+      ort: "City",
+      steuernummer: "Tax number",
+      ustIdnr: "VAT ID",
+      zahlungsziel: "Payment term (days)",
+      kontaktName: "Contact person",
+      kontaktEmail: "E-mail",
+      kontaktTelefon: "Phone",
+      kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      bereit: "All set — you can write invoices now:"
+    }
+  };
+
+  var el = function (id) { return document.getElementById(id); };
+
+  function setzeAmpel(knoten, zustand, textSchluessel) {
+    knoten.className = "ampel " + zustand;
+    knoten.setAttribute("data-i18n", textSchluessel);
+    knoten.textContent = RB.t(textSchluessel);
+  }
+
+  function zeigeEditor(zone) {
+    el("zonenKarte").hidden = false;
+    var kopf = zone ? zone.kopf_ende_mm : 45;
+    var fuss = zone ? zone.fuss_beginn_mm : 25;
+    el("zonenEditor").src =
+      "/zonen-editor/?bild=" + encodeURIComponent("/api/briefpapier/vorschau.png?" + Date.now()) +
+      "&kopf=" + kopf + "&fuss=" + fuss;
+  }
+
+  function fuelleStammdaten(daten) {
+    if (!daten) return;
+    var anschrift = daten.anschrift || {};
+    el("firmierung").value = daten.firmierung || "";
+    el("strasse").value = anschrift.strasse || "";
+    el("plz").value = anschrift.plz || "";
+    el("ort").value = anschrift.ort || "";
+    el("steuernummer").value = daten.steuernummer || "";
+    el("ust_idnr").value = daten.ust_idnr || "";
+    el("iban").value = daten.iban || "";
+    el("bic").value = daten.bic || "";
+    el("zahlungsziel").value = daten.zahlungsziel_tage || 14;
+    el("kontakt_name").value = daten.kontakt_name || "";
+    el("kontakt_email").value = daten.kontakt_email || "";
+    el("kontakt_telefon").value = daten.kontakt_telefon || "";
+    el("kleinunternehmer").checked = !!daten.kleinunternehmer;
+  }
+
+  async function ladeStatus() {
+    var status = await RB.api("/api/status");
+    if (!status.ok) return;
+    var s = status.daten;
+    if (s.briefpapier) {
+      var schriften = s.briefpapier.schriften_ersetzt;
+      setzeAmpel(el("briefpapierAmpel"), schriften ? "gelb" : "gruen",
+                 schriften ? "ampelSchriften" : "ampelGruen");
+      zeigeEditor(s.schreibzone);
+    }
+    if (s.schreibzone) setzeAmpel(el("zonenAmpel"), "gruen", "ampelGruen");
+    if (s.stammdaten) {
+      setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
+      fuelleStammdaten(s.stammdaten);
+    }
+    el("bereitHinweis").hidden = !s.bereit;
+  }
+
+  // ---------- Upload ----------
+  var zone = el("uploadZone");
+  var eingabe = el("uploadEingabe");
+  zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("aktiv"); });
+  zone.addEventListener("dragleave", function () { zone.classList.remove("aktiv"); });
+  zone.addEventListener("drop", function (e) {
+    e.preventDefault(); zone.classList.remove("aktiv");
+    if (e.dataTransfer.files.length) ladeHoch(e.dataTransfer.files[0]);
+  });
+  eingabe.addEventListener("change", function () {
+    if (eingabe.files.length) ladeHoch(eingabe.files[0]);
+  });
+
+  async function ladeHoch(datei) {
+    var meldung = el("briefpapierMeldung");
+    meldung.innerHTML = '<span class="beschreibung">' + RB.t("laedt") + "</span>";
+    var formular = new FormData();
+    formular.append("datei", datei);
+    var antwort = await RB.api("/api/briefpapier", { method: "POST", body: formular });
+    if (!antwort.ok) {
+      var grund = antwort.daten && antwort.daten.detail && antwort.daten.detail.grund;
+      meldung.innerHTML = '<div class="hinweis">' + (grund || RB.t("fehlerAllgemein")) + "</div>";
+      return;
+    }
+    var schriften = antwort.daten.schriften_ersetzt;
+    setzeAmpel(el("briefpapierAmpel"), schriften ? "gelb" : "gruen",
+               schriften ? "ampelSchriften" : "ampelGruen");
+    meldung.innerHTML = schriften
+      ? '<div class="hinweis">' + RB.t("schriftenErsetzt") + "</div>"
+      : '<div class="hinweis gut">' + RB.t("normalisiert") + "</div>";
+    zeigeEditor(null);
+    ladeStatus();
+  }
+
+  // ---------- Schreibzone (Nachricht aus dem Editor-Iframe) ----------
+  window.addEventListener("message", async function (ereignis) {
+    var daten = ereignis.data;
+    if (!daten || daten.typ !== "schreibzone") return;
+    var antwort = await RB.api("/api/schreibzone", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kopf_ende_mm: daten.kopf_ende_mm, fuss_beginn_mm: daten.fuss_beginn_mm })
+    });
+    if (antwort.ok) {
+      setzeAmpel(el("zonenAmpel"), "gruen", "ampelGruen");
+      ladeStatus();
+    }
+  });
+
+  // ---------- Stammdaten ----------
+  el("stammdatenFormular").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    var daten = {
+      firmierung: el("firmierung").value.trim(),
+      anschrift: {
+        strasse: el("strasse").value.trim(),
+        plz: el("plz").value.trim(),
+        ort: el("ort").value.trim(),
+        land: "DE"
+      },
+      steuernummer: el("steuernummer").value.trim(),
+      ust_idnr: el("ust_idnr").value.trim(),
+      iban: el("iban").value.trim(),
+      bic: el("bic").value.trim(),
+      zahlungsziel_tage: Number(el("zahlungsziel").value) || 14,
+      kontakt_name: el("kontakt_name").value.trim(),
+      kontakt_email: el("kontakt_email").value.trim(),
+      kontakt_telefon: el("kontakt_telefon").value.trim(),
+      kleinunternehmer: el("kleinunternehmer").checked
+    };
+    var antwort = await RB.api("/api/stammdaten", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(daten)
+    });
+    var meldung = el("stammdatenMeldung");
+    if (antwort.ok) {
+      meldung.textContent = RB.t("gespeichert");
+      setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
+      ladeStatus();
+    } else {
+      meldung.textContent = RB.t("fehlerAllgemein");
+    }
+  });
+
+  RB.starte(texte);
+  ladeStatus();
+})();
+</script>
+</body>
+</html>

@@ -13,7 +13,9 @@ Konverter-Markt (siehe `docs/uebergabe.md`, §9).
 ```
 kern/       rechnungsblatt-kern (Python): Datenmodell, §14-Prüfung, CII-XML,
             Normalisierung, Blatt-Rendering, PDF/A-3B-Zusammenbau
-web/        Web-Schicht (noch nicht begonnen — erst der Kern, dann die UI)
+web/        rechnungsblatt-web (FastAPI): Einrichtung, Schreibzonen-Editor,
+            Rechnungsformular, Ablage — mehrsprachig DE/EN
+deploy/     Dockerfile + Portainer-Stack (Traefik im Netz "edge", Plausible)
 scripts/    Referenzfälle erzeugen und gegen den Validator prüfen
 validator/  Mustang-Validator-Wrapper für die CI
 prototyp/   der unveränderte, validierte Prototyp aus dem Vorgespräch
@@ -83,7 +85,10 @@ Prototyp-Befund).
 - [x] CII-XML (EN 16931), XRechnung-3.0-Profil
 - [x] Normalisierung + Zusammenbau portiert (aus `prototyp/`)
 - [x] Validator in der CI mit Referenzfällen
+- [x] Web-Schicht, erster Stand (FastAPI: Einrichtung mit Upload/Ampel/
+      Zwei-Regler-Schreibzone, Rechnungsformular mit Befund-Anzeige,
+      Ablage, Merkliste, Nummernkreis; DE/EN, eigenes Design)
+- [x] Deployment: Dockerfile + Portainer-Stack (Traefik „edge", Plausible)
 - [ ] Artifex-Lizenzfrage klären (blockiert Produktivbetrieb, nicht die Entwicklung)
-- [ ] Web-Schicht (siehe `web/README.md`: eigenständiges modernes Design,
-      mehrsprachig DE/EN, Zwei-Regler-Schreibzone)
+- [ ] Zugriffsschutz/Konto (bis dahin: BasicAuth vor Traefik, siehe deploy/)
 - [ ] Zehn echte Testrechnungen mit echten Briefbögen
