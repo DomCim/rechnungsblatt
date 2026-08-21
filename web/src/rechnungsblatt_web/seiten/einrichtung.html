@@ -71,8 +71,12 @@
     <label class="upload-zone" id="uploadZone" for="uploadEingabe">
       <strong data-i18n="uploadTitel">PDF hier ablegen oder klicken</strong>
       <span data-i18n="uploadHinweis">Eine Seite, bis 20 MB</span>
-      <input id="uploadEingabe" type="file" accept="application/pdf" hidden>
+      <input id="uploadEingabe" type="file" accept=".pdf,application/pdf" hidden>
     </label>
+    <p class="beschreibung" style="margin:10px 0 0;" data-i18n="wordTipp">
+      Ihr Briefbogen liegt nur als Word-Datei vor? In Word einmal
+      „Datei → Speichern unter → Dateityp: PDF“ wählen — dann die PDF hochladen.
+    </p>
     <div id="briefpapierMeldung" style="margin-top:12px;"></div>
   </section>
 
@@ -192,6 +196,9 @@
       briefpapierText: "Laden Sie Ihren Briefbogen als PDF hoch (eine Seite). Wir vereinheitlichen Farben und Schriften automatisch, damit daraus eine gültige E-Rechnung werden kann — Ihr Original bleibt unangetastet und wird nicht gespeichert.",
       uploadTitel: "PDF hier ablegen oder klicken",
       uploadHinweis: "Eine Seite, bis 20 MB",
+      wordTipp: "Ihr Briefbogen liegt nur als Word-Datei vor? In Word einmal „Datei → Speichern unter → Dateityp: PDF“ wählen — dann die PDF hochladen.",
+      wordAbgelehnt: "Das ist eine Word-Datei — daraus können wir keine rechtssichere E-Rechnung bauen, aus einer PDF schon. So geht’s: In Word „Datei → Speichern unter“ öffnen, als Dateityp „PDF“ wählen (oder „Datei → Exportieren → PDF/XPS-Dokument erstellen“), speichern — und die neue PDF-Datei hier hochladen. In LibreOffice: „Datei → Als PDF exportieren“.",
+      keinPdf: "Diese Datei ist kein PDF. Bitte den Briefbogen als PDF speichern (in Word: „Datei → Speichern unter → Dateityp: PDF“) und die PDF hochladen.",
       ampelOffen: "noch nicht eingerichtet",
       ampelGruen: "eingerichtet",
       ampelSchriften: "Schriften ersetzt — bitte prüfen",
@@ -222,6 +229,9 @@
       briefpapierText: "Upload your letterhead as a PDF (one page). We unify colours and fonts automatically so it can carry a valid e-invoice — your original stays untouched and is not stored.",
       uploadTitel: "Drop a PDF here or click",
       uploadHinweis: "One page, up to 20 MB",
+      wordTipp: "Only have your letterhead as a Word file? In Word, choose “File → Save As → file type: PDF” once — then upload the PDF.",
+      wordAbgelehnt: "That’s a Word file — we can’t build a legally valid e-invoice from it, but we can from a PDF. Here’s how: in Word open “File → Save As”, pick “PDF” as the file type (or “File → Export → Create PDF/XPS”), save — and upload the new PDF here. In LibreOffice: “File → Export as PDF”.",
+      keinPdf: "This file is not a PDF. Please save your letterhead as a PDF (in Word: “File → Save As → file type: PDF”) and upload the PDF.",
       ampelOffen: "not set up yet",
       ampelGruen: "ready",
       ampelSchriften: "fonts replaced — please check",
@@ -311,17 +321,48 @@
   });
   eingabe.addEventListener("change", function () {
     if (eingabe.files.length) ladeHoch(eingabe.files[0]);
+    eingabe.value = "";  // dieselbe Datei darf erneut gewählt werden
+  });
+
+  function istWordDatei(datei) {
+    var name = (datei.name || "").toLowerCase();
+    return /\.(docx?|odt|rtf)$/.test(name) ||
+      (datei.type || "").indexOf("officedocument.wordprocessingml") >= 0 ||
+      datei.type === "application/msword";
+  }
+
+  function istPdf(datei) {
+    var name = (datei.name || "").toLowerCase();
+    return datei.type === "application/pdf" || name.slice(-4) === ".pdf";
+  }
+
+  var letzterHinweis = null;  // i18n-Schlüssel der stehenden Meldung
+
+  function zeigeHinweis(schluessel) {
+    letzterHinweis = schluessel;
+    el("briefpapierMeldung").innerHTML =
+      '<div class="hinweis">' + RB.t(schluessel) + "</div>";
+  }
+  RB.beiSprachwechsel(function () {
+    if (letzterHinweis) zeigeHinweis(letzterHinweis);
   });
 
   async function ladeHoch(datei) {
     var meldung = el("briefpapierMeldung");
+    letzterHinweis = null;
+    // Falsches Format schon vor dem Upload freundlich erklären (lokalisiert)
+    if (istWordDatei(datei)) { zeigeHinweis("wordAbgelehnt"); return; }
+    if (!istPdf(datei)) { zeigeHinweis("keinPdf"); return; }
     meldung.innerHTML = '<span class="beschreibung">' + RB.t("laedt") + "</span>";
     var formular = new FormData();
     formular.append("datei", datei);
     var antwort = await RB.api("/api/briefpapier", { method: "POST", body: formular });
     if (!antwort.ok) {
-      var grund = antwort.daten && antwort.daten.detail && antwort.daten.detail.grund;
-      meldung.innerHTML = '<div class="hinweis">' + (grund || RB.t("fehlerAllgemein")) + "</div>";
+      var detail = (antwort.daten && antwort.daten.detail) || {};
+      if (detail.code === "word_datei") { zeigeHinweis("wordAbgelehnt"); return; }
+      if (detail.code === "kein_pdf") { zeigeHinweis("keinPdf"); return; }
+      meldung.innerHTML =
+        '<div class="hinweis">' + (detail.grund || RB.t("fehlerAllgemein")) + "</div>";
       return;
     }
     var schriften = antwort.daten.schriften_ersetzt;

@@ -118,11 +118,36 @@ def status() -> dict:
 
 # ---------------------------------------------------------------- Briefpapier
 
+_WORD_ENDUNGEN = (".doc", ".docx", ".odt", ".rtf")
+_PDF_ANLEITUNG = (
+    "Bitte einmal als PDF speichern und die PDF hochladen: in Word "
+    "„Datei → Speichern unter → Dateityp: PDF“ (oder „Datei → Exportieren → "
+    "PDF/XPS-Dokument erstellen“), in LibreOffice „Datei → Als PDF exportieren“."
+)
+
+
 @app.post("/api/briefpapier")
 async def briefpapier_hochladen(datei: UploadFile) -> dict:
     inhalt = await datei.read()
     if len(inhalt) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, detail={"grund": "Datei größer als 20 MB."})
+    name = (datei.filename or "").lower()
+    if name.endswith(_WORD_ENDUNGEN):
+        raise HTTPException(
+            422,
+            detail={
+                "code": "word_datei",
+                "grund": "Das ist eine Word-/Textverarbeitungs-Datei. " + _PDF_ANLEITUNG,
+            },
+        )
+    if b"%PDF-" not in inhalt[:1024]:  # PDF-Kennung darf laut Norm bis Offset 1024 liegen
+        raise HTTPException(
+            422,
+            detail={
+                "code": "kein_pdf",
+                "grund": "Die Datei ist kein PDF. " + _PDF_ANLEITUNG,
+            },
+        )
     DATEN.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=DATEN) as arbeit:
         upload = Path(arbeit) / "upload.pdf"

@@ -159,5 +159,33 @@ def test_xrechnung_download(client):
     assert "X1" in {befund["code"] for befund in antwort.json()["befunde"]}
 
 
+def test_word_upload_bekommt_pdf_anleitung(client):
+    antwort = client.post(
+        "/api/briefpapier",
+        files={
+            "datei": (
+                "briefbogen.docx",
+                b"PK\x03\x04egal",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            )
+        },
+    )
+    assert antwort.status_code == 422
+    detail = antwort.json()["detail"]
+    assert detail["code"] == "word_datei"
+    assert "Speichern unter" in detail["grund"]
+
+
+def test_nicht_pdf_upload_bekommt_pdf_anleitung(client):
+    antwort = client.post(
+        "/api/briefpapier",
+        files={"datei": ("bild.png", b"\x89PNG\r\n\x1a\n...", "image/png")},
+    )
+    assert antwort.status_code == 422
+    detail = antwort.json()["detail"]
+    assert detail["code"] == "kein_pdf"
+    assert "PDF" in detail["grund"]
+
+
 def test_ablage_pfadausbruch_wird_abgewiesen(client):
     assert client.get("/api/ablage/..%2F..%2Fstammdaten/pdf").status_code in (404, 422)
