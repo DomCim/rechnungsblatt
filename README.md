@@ -54,11 +54,14 @@ python scripts/erzeuge_referenzfaelle.py referenzfaelle
 python scripts/pruefe_referenzfaelle.py referenzfaelle --jar validator.jar --klasse .
 ```
 
-Die CI (`.github/workflows/ci.yml`) fährt beides: die Kern-Tests und die
+Der CI-Workflow (`.github/workflows/ci.yml`) fährt beides — Kern-Tests und
 vollständige Validierung aller Referenzfälle mit dem Mustang-Validator
-(PDF/A-3B via veraPDF + EN-16931-/XRechnung-Schematron). Stand der
-Referenzfälle: **alle gültig** — `isCompliant="true"`, 124 passedRules,
-0 failedRules, XML `status valid` (identisch mit dem Prototyp-Befund).
+(PDF/A-3B via veraPDF + EN-16931-/XRechnung-Schematron) — ist aber bewusst
+**nur manuell startbar** (Actions → CI → „Run workflow"), um keine
+Actions-Minuten zu verbrauchen. Getestet und validiert wird lokal vor jedem
+Push. Stand der Referenzfälle: **alle gültig** — `isCompliant="true"`,
+124 passedRules, 0 failedRules, XML `status valid` (identisch mit dem
+Prototyp-Befund).
 
 ## Offene Risiken (vor Produktivbetrieb klären)
 

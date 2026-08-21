@@ -1,9 +1,10 @@
 name: CI
 
+# Bewusst NUR manuell startbar (Actions-Minuten kosten Geld; getestet wird
+# lokal — Kern-Tests und Mustang-Validierung laufen vor jedem Push).
+# Bei Bedarf: GitHub → Actions → CI → "Run workflow".
 on:
-  push:
-    branches: ["**"]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   kern-tests:
