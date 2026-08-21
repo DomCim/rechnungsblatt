@@ -14,7 +14,18 @@ from pathlib import Path
 
 from .blatt import Schriften, rendere_blatt
 from .cii import erzeuge_cii_xml
-from .modell import Profil, Rechnung, Schreibzone, Stammdaten
+from .modell import (
+    Anschrift,
+    Belegtyp,
+    Blattgestaltung,
+    Empfaenger,
+    Position,
+    Profil,
+    Rechnung,
+    Schreibzone,
+    Stammdaten,
+    Steuerkategorie,
+)
 from .pruefung import erzwinge_paragraph14
 from .summen import Summen, berechne_summen
 from .zusammenbau import baue_pdfa3
@@ -35,6 +46,7 @@ def erzeuge_rechnung(
     zeitpunkt: _dt.datetime,
     schriften: Schriften | None = None,
     icc: bytes | None = None,
+    gestaltung: Blattgestaltung | None = None,
 ) -> ErzeugteRechnung:
     """Erzeugt die ZUGFeRD-Rechnung (PDF/A-3B) auf dem normalisierten Briefpapier.
 
@@ -44,7 +56,7 @@ def erzeuge_rechnung(
     erzwinge_paragraph14(rechnung, stammdaten, Profil.EN16931)
     summen = berechne_summen(rechnung)
     xml = erzeuge_cii_xml(rechnung, stammdaten, summen, Profil.EN16931)
-    blatt = rendere_blatt(rechnung, stammdaten, summen, zone, schriften)
+    blatt = rendere_blatt(rechnung, stammdaten, summen, zone, schriften, gestaltung)
     pdf = baue_pdfa3(
         briefpapier_norm,
         blatt,
@@ -54,6 +66,83 @@ def erzeuge_rechnung(
         icc=icc,
     )
     return ErzeugteRechnung(pdf=pdf, xml=xml, summen=summen)
+
+
+def erzeuge_gestaltungsvorschau(
+    zone: Schreibzone,
+    gestaltung: Blattgestaltung,
+    stammdaten: Stammdaten | None = None,
+    briefpapier_norm: bytes | str | Path | None = None,
+) -> bytes:
+    """Rendert eine Musterrechnung mit der gewählten Gestaltung als PDF.
+
+    Nur für die Vorschau im Gestaltungs-Schritt — keine PDF/A-Merkmale, kein
+    XML. Liegt ein normalisiertes Briefpapier vor, wird es unterlegt, damit
+    die Vorschau das echte Zusammenspiel zeigt.
+    """
+    import datetime as dt
+    from decimal import Decimal
+
+    stammdaten = stammdaten or Stammdaten(
+        firmierung="Muster & Partner GmbH",
+        anschrift=Anschrift(strasse="Bahnhofstr. 12", plz="95119", ort="Naila"),
+        steuernummer="223/456/78901",
+        ust_idnr="DE123456789",
+        iban="DE14 7805 0000 0001 2345 67",
+        bic="BYLADEM1HOF",
+    )
+    kategorie = (
+        Steuerkategorie.KLEINUNTERNEHMER
+        if stammdaten.kleinunternehmer
+        else Steuerkategorie.UST_19
+    )
+    heute = dt.date.today()
+    muster = Rechnung(
+        nummer="RE-2026-0042",
+        rechnungsdatum=heute,
+        leistungsdatum=heute,
+        faelligkeit=heute + dt.timedelta(days=stammdaten.zahlungsziel_tage),
+        empfaenger=Empfaenger(
+            name="Beispielkunde GmbH",
+            anschrift=Anschrift(strasse="Industriestr. 5", plz="95028", ort="Hof"),
+        ),
+        freitext="Vielen Dank für Ihren Auftrag.",
+        positionen=(
+            Position(
+                bezeichnung="Montagearbeiten",
+                menge=Decimal("8"),
+                einheit="HUR",
+                einzelpreis=Decimal("25.00"),
+                steuer=kategorie,
+            ),
+            Position(
+                bezeichnung="Anfahrtspauschale",
+                menge=Decimal("1"),
+                einheit="C62",
+                einzelpreis=Decimal("35.00"),
+                steuer=kategorie,
+            ),
+        ),
+    )
+    summen = berechne_summen(muster)
+    blatt = rendere_blatt(muster, stammdaten, summen, zone, gestaltung=gestaltung)
+    if briefpapier_norm is None:
+        return blatt
+
+    import io
+
+    import pikepdf
+
+    quelle = (
+        io.BytesIO(briefpapier_norm)
+        if isinstance(briefpapier_norm, bytes)
+        else str(briefpapier_norm)
+    )
+    with pikepdf.open(quelle) as pdf, pikepdf.open(io.BytesIO(blatt)) as overlay:
+        pdf.pages[0].add_overlay(overlay.pages[0])
+        ausgabe = io.BytesIO()
+        pdf.save(ausgabe)
+        return ausgabe.getvalue()
 
 
 def erzeuge_xrechnung(rechnung: Rechnung, stammdaten: Stammdaten) -> bytes:

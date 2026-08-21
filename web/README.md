@@ -5,7 +5,12 @@ FastAPI-App (`src/rechnungsblatt_web/`) über der schmalen Kern-Schnittstelle
 
 - **Einrichtung** (`/`): Briefpapier-Upload → Normalisierung → Ampel
   (inkl. Schriftersetzungs-Warnung), Schreibzone (eingebetteter
-  [`zonen-editor/`](zonen-editor/)), Stammdaten.
+  [`zonen-editor/`](zonen-editor/)), Stammdaten, **Gestaltung** (kuratierte
+  Schriften, Schriftgrad, drei geprüfte Layoutvarianten, Belegdaten-Schalter)
+  mit Live-Vorschau einer Musterrechnung auf dem echten Briefpapier.
+  **Bewusst keine freie Positionierung** — Produktentscheidung: wenige
+  verständliche Optionen statt eines Layout-Editors (Übergabe §7); jede
+  angebotene Kombination ist gegen den Validator geprüft.
 - **Neue Rechnung** (`/rechnung`): Formular mit Pflichtfeld-Erzwingung
   (Befund-Codes vom Kern, feldgenau angezeigt), Positionen, Rabatt,
   Gutschrift/Korrektur mit Bezug, Nummernkreis, Merkliste + Duplikat als

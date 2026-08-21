@@ -144,6 +144,39 @@ class Rechnung:
     faelligkeit: _dt.date | None = None
 
 
+class Layoutvariante(enum.Enum):
+    """Vorgefertigte, getestete Blattlayouts — bewusst keine freie
+    Positionierung (Übergabe §7: wenige verständliche Entscheidungen
+    statt eines Editors)."""
+
+    KLASSISCH = "klassisch"  # Belegdaten als Block rechts, klare Linien
+    KOMPAKT = "kompakt"  # Belegdaten als Zeile, enge Abstände — viele Positionen
+    MODERN = "modern"  # großer Titel, graue Linien, mehr Weißraum
+
+
+class Schriftgrad(enum.Enum):
+    """Grundschriftgröße des Blatts in Punkt."""
+
+    KOMPAKT = 9.0
+    NORMAL = 10.0
+    GROSS = 11.0
+
+
+@dataclass(frozen=True)
+class Blattgestaltung:
+    """Gestaltung des Blatts: Schrift, Grad, Layoutvariante, Schalter.
+
+    ``schrift`` ist ein Schlüssel aus dem kuratierten Katalog
+    (:data:`rechnungsblatt_kern.blatt.SCHRIFTEN_KATALOG`) — nur mitgelieferte,
+    einbettbare Schriften, damit die PDF/A-Garantie erhalten bleibt.
+    """
+
+    schrift: str = "liberation-sans"
+    schriftgrad: Schriftgrad = Schriftgrad.NORMAL
+    layout: Layoutvariante = Layoutvariante.KLASSISCH
+    belegdaten_als_zeile: bool = False  # KOMPAKT erzwingt die Zeile ohnehin
+
+
 @dataclass(frozen=True)
 class Schreibzone:
     """Bewusst nur zwei Werte: wo endet der Kopf, wo beginnt der Fuß.

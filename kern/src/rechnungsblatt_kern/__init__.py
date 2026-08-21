@@ -6,24 +6,36 @@ Briefpapier-Normalisierung, Blatt-Rendering und PDF/A-3B-Zusammenbau
 über :mod:`rechnungsblatt_kern.api` an.
 """
 
-from .api import ErzeugteRechnung, erzeuge_rechnung, erzeuge_xrechnung
+from .api import (
+    ErzeugteRechnung,
+    erzeuge_gestaltungsvorschau,
+    erzeuge_rechnung,
+    erzeuge_xrechnung,
+)
 from .blatt import (
+    SCHRIFTEN_KATALOG,
     BlattUeberlauf,
+    Schriftart,
     Schriften,
     SchriftNichtGefunden,
     format_betrag,
+    registriere_schriftart,
     registriere_schriften,
     rendere_blatt,
+    verfuegbare_schriften,
 )
 from .cii import erzeuge_cii_xml
 from .modell import (
     Anschrift,
     Belegtyp,
+    Blattgestaltung,
     Empfaenger,
+    Layoutvariante,
     Position,
     Profil,
     Rechnung,
     Schreibzone,
+    Schriftgrad,
     Stammdaten,
     Steuerkategorie,
     Zeitraum,
@@ -49,9 +61,14 @@ __all__ = [
     "Anschrift",
     "Befund",
     "Belegtyp",
+    "Blattgestaltung",
     "BlattUeberlauf",
     "Empfaenger",
     "ErzeugteRechnung",
+    "Layoutvariante",
+    "SCHRIFTEN_KATALOG",
+    "Schriftart",
+    "Schriftgrad",
     "IccProfilNichtGefunden",
     "NormalisierungAbgelehnt",
     "NormalisierungFehlgeschlagen",
@@ -72,6 +89,7 @@ __all__ = [
     "baue_pdfa3",
     "berechne_summen",
     "erzeuge_cii_xml",
+    "erzeuge_gestaltungsvorschau",
     "erzeuge_rechnung",
     "erzeuge_vorschau_png",
     "erzeuge_xrechnung",
@@ -81,8 +99,10 @@ __all__ = [
     "normalisiere_briefpapier",
     "pruefe_paragraph14",
     "pruefe_upload",
+    "registriere_schriftart",
     "registriere_schriften",
     "rendere_blatt",
     "runden",
+    "verfuegbare_schriften",
     "zeilensumme",
 ]

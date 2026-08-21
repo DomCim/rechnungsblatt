@@ -31,6 +31,45 @@
   }
   .upload-zone strong { color: var(--tinte); display: block; margin-bottom: 3px; }
   .schritt-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .wahl-karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .wahl-karten label {
+    position: relative;  /* Bezugsrahmen für das versteckte Radio-Input */
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    /* Erbschaft des Feld-Etiketts (Versalien, Sperrung) zurücknehmen */
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 500;
+    color: var(--tinte);
+    font-size: 13px;
+  }
+  .wahl-karten input { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .wahl-karten label:hover { border-color: var(--akzent); }
+  .wahl-karten input { position: absolute; opacity: 0; }
+  .wahl-karten label:has(input:checked) {
+    border-color: var(--akzent);
+    background: var(--akzent-schleier);
+  }
+  .wahl-karten label:has(input:focus-visible) { outline: 2px solid var(--akzent); }
+  .wahl-karten strong { font-size: 14px; }
+  .wahl-karten span { color: var(--tinte-2); font-size: 12.5px; line-height: 1.35; }
+  .gestaltung-gitter { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 20px; align-items: start; }
+  @media (max-width: 820px) { .gestaltung-gitter { grid-template-columns: 1fr; } }
+  .vorschau-blatt {
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    background: #fff;
+    width: 100%;
+    aspect-ratio: 210 / 297;
+    object-fit: contain;
+    box-shadow: var(--schatten);
+  }
+  .vorschau-blatt.laedt { opacity: 0.45; }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -178,6 +217,59 @@
     </form>
   </section>
 
+  <!-- Schritt 4: Gestaltung -->
+  <section class="karte">
+    <div class="schritt-kopf">
+      <h2 data-i18n="gestaltungTitel">4 · Gestaltung</h2>
+      <span class="ampel offen" id="gestaltungAmpel" data-i18n="ampelStandard">Standard</span>
+    </div>
+    <p class="beschreibung" data-i18n="gestaltungText">
+      Schrift, Größe und eines von drei geprüften Layouts — jede Kombination
+      bleibt eine gültige E-Rechnung. Die Vorschau zeigt eine Musterrechnung
+      auf Ihrem Briefpapier.
+    </p>
+    <div class="gestaltung-gitter">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="feld">
+          <label for="gSchrift" data-i18n="schrift">Schrift</label>
+          <select id="gSchrift"></select>
+        </div>
+        <div class="feld">
+          <label data-i18n="schriftgrad">Schriftgröße</label>
+          <div class="wahl-karten" id="gGrad">
+            <label><input type="radio" name="gGrad" value="kompakt"><strong data-i18n="gradKompakt">Kompakt</strong><span>9 pt</span></label>
+            <label><input type="radio" name="gGrad" value="normal" checked><strong data-i18n="gradNormal">Normal</strong><span>10 pt</span></label>
+            <label><input type="radio" name="gGrad" value="gross"><strong data-i18n="gradGross">Groß</strong><span>11 pt</span></label>
+          </div>
+        </div>
+        <div class="feld">
+          <label data-i18n="layout">Layout</label>
+          <div class="wahl-karten" id="gLayout">
+            <label><input type="radio" name="gLayout" value="klassisch" checked><strong data-i18n="layoutKlassisch">Klassisch</strong><span data-i18n="layoutKlassischText">Belegdaten rechts, klare Linien</span></label>
+            <label><input type="radio" name="gLayout" value="kompakt"><strong data-i18n="layoutKompakt">Kompakt</strong><span data-i18n="layoutKompaktText">Enge Abstände — viele Positionen</span></label>
+            <label><input type="radio" name="gLayout" value="modern"><strong data-i18n="layoutModern">Modern</strong><span data-i18n="layoutModernText">Großer Titel, mehr Weißraum</span></label>
+          </div>
+        </div>
+        <div class="feld" id="gZeileFeld">
+          <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
+            <input id="gZeile" type="checkbox" style="width:auto;">
+            <span data-i18n="belegdatenZeile">Belegdaten als Zeile unter dem Titel (statt Block rechts)</span>
+          </label>
+        </div>
+        <div class="zeile">
+          <button type="button" class="knopf" id="gSpeichern" data-i18n="speichern">Speichern</button>
+          <span id="gMeldung" class="beschreibung" style="margin:0;"></span>
+        </div>
+      </div>
+      <div>
+        <img class="vorschau-blatt" id="gVorschau" alt="" src="">
+        <p class="beschreibung" style="margin-top:8px;" data-i18n="vorschauHinweis">
+          Musterrechnung — Ihre echten Daten erscheinen beim Erzeugen.
+        </p>
+      </div>
+    </div>
+  </section>
+
   <section class="hinweis gut" id="bereitHinweis" hidden>
     <span data-i18n="bereit">Alles eingerichtet — Sie können jetzt Rechnungen schreiben:</span>
     <a class="verweis" href="/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
@@ -220,6 +312,19 @@
       kontaktEmail: "E-Mail",
       kontaktTelefon: "Telefon",
       kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      gestaltungTitel: "4 · Gestaltung",
+      gestaltungText: "Schrift, Größe und eines von drei geprüften Layouts — jede Kombination bleibt eine gültige E-Rechnung. Die Vorschau zeigt eine Musterrechnung auf Ihrem Briefpapier.",
+      schrift: "Schrift",
+      schriftgrad: "Schriftgröße",
+      gradKompakt: "Kompakt", gradNormal: "Normal", gradGross: "Groß",
+      layout: "Layout",
+      layoutKlassisch: "Klassisch", layoutKlassischText: "Belegdaten rechts, klare Linien",
+      layoutKompakt: "Kompakt", layoutKompaktText: "Enge Abstände — viele Positionen",
+      layoutModern: "Modern", layoutModernText: "Großer Titel, mehr Weißraum",
+      belegdatenZeile: "Belegdaten als Zeile unter dem Titel (statt Block rechts)",
+      vorschauHinweis: "Musterrechnung — Ihre echten Daten erscheinen beim Erzeugen.",
+      ampelStandard: "Standard",
+      ampelAngepasst: "angepasst",
       bereit: "Alles eingerichtet — Sie können jetzt Rechnungen schreiben:"
     },
     en: {
@@ -253,6 +358,19 @@
       kontaktEmail: "E-mail",
       kontaktTelefon: "Phone",
       kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      gestaltungTitel: "4 · Design",
+      gestaltungText: "Font, size and one of three verified layouts — every combination stays a valid e-invoice. The preview shows a sample invoice on your letterhead.",
+      schrift: "Font",
+      schriftgrad: "Font size",
+      gradKompakt: "Compact", gradNormal: "Normal", gradGross: "Large",
+      layout: "Layout",
+      layoutKlassisch: "Classic", layoutKlassischText: "Details on the right, clear rules",
+      layoutKompakt: "Compact", layoutKompaktText: "Tight spacing — many line items",
+      layoutModern: "Modern", layoutModernText: "Large title, more whitespace",
+      belegdatenZeile: "Invoice details as a line below the title (instead of a block on the right)",
+      vorschauHinweis: "Sample invoice — your real data appears when you create one.",
+      ampelStandard: "default",
+      ampelAngepasst: "customised",
       bereit: "All set — you can write invoices now:"
     }
   };
@@ -426,8 +544,89 @@
     }
   });
 
+  // ---------- Gestaltung ----------
+  function gLese() {
+    return {
+      schrift: el("gSchrift").value || "liberation-sans",
+      schriftgrad: (document.querySelector('input[name="gGrad"]:checked') || {}).value || "normal",
+      layout: (document.querySelector('input[name="gLayout"]:checked') || {}).value || "klassisch",
+      belegdaten_als_zeile: el("gZeile").checked
+    };
+  }
+
+  function gSetze(daten) {
+    if (!daten) return;
+    if (daten.schrift) el("gSchrift").value = daten.schrift;
+    var grad = document.querySelector('input[name="gGrad"][value="' + (daten.schriftgrad || "normal") + '"]');
+    if (grad) grad.checked = true;
+    var layout = document.querySelector('input[name="gLayout"][value="' + (daten.layout || "klassisch") + '"]');
+    if (layout) layout.checked = true;
+    el("gZeile").checked = !!daten.belegdaten_als_zeile;
+  }
+
+  var gZeitgeber = null;
+  function gAktualisiere() {
+    // "Kompakt" erzwingt die Belegdaten-Zeile ohnehin — Schalter dann aus
+    var kompakt = gLese().layout === "kompakt";
+    el("gZeile").disabled = kompakt;
+    el("gZeileFeld").style.opacity = kompakt ? "0.45" : "1";
+    clearTimeout(gZeitgeber);
+    gZeitgeber = setTimeout(gVorschauLaden, 250);
+  }
+
+  function gVorschauLaden() {
+    var daten = gLese();
+    var bild = el("gVorschau");
+    bild.classList.add("laedt");
+    var quelle = "/api/gestaltung/vorschau.png?schrift=" + encodeURIComponent(daten.schrift) +
+      "&schriftgrad=" + daten.schriftgrad + "&layout=" + daten.layout +
+      "&zeile=" + daten.belegdaten_als_zeile + "&t=" + Date.now();
+    var lader = new Image();
+    lader.onload = function () { bild.src = quelle; bild.classList.remove("laedt"); };
+    lader.onerror = function () { bild.classList.remove("laedt"); };
+    lader.src = quelle;
+  }
+
+  async function gLadeSchriften(ausgewaehlt) {
+    var antwort = await RB.api("/api/gestaltung/schriften");
+    if (!antwort.ok) return;
+    el("gSchrift").innerHTML = antwort.daten.map(function (schrift) {
+      return '<option value="' + schrift.schluessel + '">' + schrift.name + "</option>";
+    }).join("");
+    if (ausgewaehlt) el("gSchrift").value = ausgewaehlt;
+  }
+
+  ["change", "input"].forEach(function (art) {
+    el("gSchrift").addEventListener(art, gAktualisiere);
+    el("gGrad").addEventListener(art, gAktualisiere);
+    el("gLayout").addEventListener(art, gAktualisiere);
+    el("gZeile").addEventListener(art, gAktualisiere);
+  });
+
+  el("gSpeichern").addEventListener("click", async function () {
+    var antwort = await RB.api("/api/gestaltung", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(gLese())
+    });
+    el("gMeldung").textContent = antwort.ok ? RB.t("gespeichert") : RB.t("fehlerAllgemein");
+    if (antwort.ok) setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+  });
+
+  async function gStart() {
+    var status = await RB.api("/api/status");
+    var gespeichert = status.ok ? status.daten.gestaltung : null;
+    await gLadeSchriften(gespeichert && gespeichert.schrift);
+    if (gespeichert) {
+      gSetze(gespeichert);
+      setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+    }
+    gAktualisiere();
+  }
+
   RB.starte(texte);
   ladeStatus();
+  gStart();
 })();
 </script>
 </body>

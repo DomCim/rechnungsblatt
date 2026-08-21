@@ -19,10 +19,13 @@ from pathlib import Path
 from rechnungsblatt_kern import (
     Anschrift,
     Belegtyp,
+    Blattgestaltung,
     Empfaenger,
+    Layoutvariante,
     Position,
     Rechnung,
     Schreibzone,
+    Schriftgrad,
     Stammdaten,
     Steuerkategorie,
     Zeitraum,
@@ -176,13 +179,23 @@ def main() -> None:
         )
         boegen[modus] = norm
 
+    modern = Blattgestaltung(
+        schrift="carlito",
+        schriftgrad=Schriftgrad.GROSS,
+        layout=Layoutvariante.MODERN,
+    )
     faelle = [
-        ("rechnung_standard", _standard_rechnung(), STAMMDATEN, boegen["gut"]),
-        ("rechnung_kleinunternehmer", _kleinunternehmer_rechnung(), KLEINUNTERNEHMERIN, boegen["boese"]),
-        ("gutschrift", _gutschrift(), STAMMDATEN, boegen["gut"]),
+        ("rechnung_standard", _standard_rechnung(), STAMMDATEN, boegen["gut"], None),
+        ("rechnung_kleinunternehmer", _kleinunternehmer_rechnung(), KLEINUNTERNEHMERIN, boegen["boese"], None),
+        ("gutschrift", _gutschrift(), STAMMDATEN, boegen["gut"], None),
+        # Gestaltungs-Referenz: andere Schrift, anderes Layout — muss genauso
+        # PDF/A-3B-konform sein wie der Standard
+        ("rechnung_gestaltet", _standard_rechnung(), STAMMDATEN, boegen["gut"], modern),
     ]
-    for name, rechnung, stammdaten, bogen in faelle:
-        ergebnis = erzeuge_rechnung(rechnung, stammdaten, bogen, ZONE, zeitpunkt=ZEITPUNKT)
+    for name, rechnung, stammdaten, bogen, gestaltung in faelle:
+        ergebnis = erzeuge_rechnung(
+            rechnung, stammdaten, bogen, ZONE, zeitpunkt=ZEITPUNKT, gestaltung=gestaltung
+        )
         (ausgabe / f"{name}.pdf").write_bytes(ergebnis.pdf)
         (ausgabe / f"{name}.xml").write_bytes(ergebnis.xml)
         print(f"erzeugt: {name}.pdf ({ergebnis.summen.brutto} EUR brutto)")

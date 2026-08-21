@@ -24,21 +24,26 @@ from fastapi.staticfiles import StaticFiles
 from rechnungsblatt_kern import (
     Anschrift,
     Belegtyp,
+    Blattgestaltung,
     BlattUeberlauf,
     Empfaenger,
+    Layoutvariante,
     NormalisierungAbgelehnt,
     NormalisierungFehlgeschlagen,
     Position,
     Rechnung,
     Schreibzone,
+    Schriftgrad,
     Stammdaten,
     Steuerkategorie,
     UngueltigeRechnung,
     Zeitraum,
+    erzeuge_gestaltungsvorschau,
     erzeuge_rechnung,
     erzeuge_vorschau_png,
     erzeuge_xrechnung,
     normalisiere_briefpapier,
+    verfuegbare_schriften,
 )
 
 DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
@@ -112,6 +117,7 @@ def status() -> dict:
         "briefpapier": briefpapier,
         "schreibzone": zone,
         "stammdaten": _lese_json(DATEN / "stammdaten.json"),
+        "gestaltung": _lese_json(DATEN / "gestaltung.json"),
         "bereit": bool(briefpapier and zone and _lese_json(DATEN / "stammdaten.json")),
     }
 
@@ -193,6 +199,97 @@ def schreibzone_setzen(zone: dict) -> dict:
     }
     _schreibe_json(DATEN / "schreibzone.json", daten)
     return daten
+
+
+# ---------------------------------------------------------------- Gestaltung
+
+def _gestaltung_aus_json(daten: dict) -> Blattgestaltung:
+    schrift = daten.get("schrift", "liberation-sans")
+    if schrift not in {s.schluessel for s in verfuegbare_schriften()}:
+        raise HTTPException(422, detail={"grund": f"Unbekannte Schrift: {schrift!r}."})
+    try:
+        schriftgrad = Schriftgrad[str(daten.get("schriftgrad", "normal")).upper()]
+        layout = Layoutvariante(str(daten.get("layout", "klassisch")).lower())
+    except (KeyError, ValueError) as fehler:
+        raise HTTPException(
+            422, detail={"grund": f"Ungültige Gestaltung: {fehler}"}
+        ) from fehler
+    return Blattgestaltung(
+        schrift=schrift,
+        schriftgrad=schriftgrad,
+        layout=layout,
+        belegdaten_als_zeile=bool(daten.get("belegdaten_als_zeile", False)),
+    )
+
+
+def _gestaltung_laden() -> Blattgestaltung:
+    daten = _lese_json(DATEN / "gestaltung.json")
+    if daten is None:
+        return Blattgestaltung()
+    return _gestaltung_aus_json(daten)
+
+
+@app.get("/api/gestaltung/schriften")
+def gestaltung_schriften() -> list[dict]:
+    return [
+        {"schluessel": schrift.schluessel, "name": schrift.name}
+        for schrift in verfuegbare_schriften()
+    ]
+
+
+@app.put("/api/gestaltung")
+def gestaltung_setzen(daten: dict) -> dict:
+    _gestaltung_aus_json(daten)  # validieren, bevor gespeichert wird
+    gespeichert = {
+        "schrift": daten.get("schrift", "liberation-sans"),
+        "schriftgrad": str(daten.get("schriftgrad", "normal")).lower(),
+        "layout": str(daten.get("layout", "klassisch")).lower(),
+        "belegdaten_als_zeile": bool(daten.get("belegdaten_als_zeile", False)),
+    }
+    _schreibe_json(DATEN / "gestaltung.json", gespeichert)
+    return gespeichert
+
+
+@app.get("/api/gestaltung/vorschau.png")
+def gestaltung_vorschau(
+    schrift: str | None = None,
+    schriftgrad: str | None = None,
+    layout: str | None = None,
+    zeile: bool = False,
+) -> Response:
+    """Musterrechnung mit der (ggf. noch ungespeicherten) Gestaltung als PNG."""
+    if schrift or schriftgrad or layout:
+        gestaltung = _gestaltung_aus_json(
+            {
+                "schrift": schrift or "liberation-sans",
+                "schriftgrad": schriftgrad or "normal",
+                "layout": layout or "klassisch",
+                "belegdaten_als_zeile": zeile,
+            }
+        )
+    else:
+        gestaltung = _gestaltung_laden()
+    zone_json = _lese_json(DATEN / "schreibzone.json")
+    zone = (
+        Schreibzone(
+            kopf_ende_mm=zone_json["kopf_ende_mm"],
+            fuss_beginn_mm=zone_json["fuss_beginn_mm"],
+        )
+        if zone_json
+        else Schreibzone()
+    )
+    stammdaten_json = _lese_json(DATEN / "stammdaten.json")
+    stammdaten = _stammdaten_aus_json(stammdaten_json) if stammdaten_json else None
+    briefpapier = _briefpapier_pfad() if _briefpapier_pfad().exists() else None
+
+    pdf = erzeuge_gestaltungsvorschau(zone, gestaltung, stammdaten, briefpapier)
+    DATEN.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=DATEN) as arbeit:
+        pdf_pfad = Path(arbeit) / "vorschau.pdf"
+        pdf_pfad.write_bytes(pdf)
+        png_pfad = Path(arbeit) / "vorschau.png"
+        erzeuge_vorschau_png(pdf_pfad, png_pfad, dpi=110)
+        return Response(png_pfad.read_bytes(), media_type="image/png")
 
 
 # ---------------------------------------------------------------- Stammdaten
@@ -378,6 +475,7 @@ def rechnung_erzeugen(daten: dict) -> JSONResponse:
             _briefpapier_pfad(),
             zone,
             zeitpunkt=dt.datetime.now(dt.timezone.utc).astimezone(),
+            gestaltung=_gestaltung_laden(),
         )
     except UngueltigeRechnung as fehler:
         return JSONResponse(

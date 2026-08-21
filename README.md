@@ -89,6 +89,10 @@ Prototyp-Befund).
       Zwei-Regler-Schreibzone, Rechnungsformular mit Befund-Anzeige,
       Ablage, Merkliste, Nummernkreis; DE/EN, eigenes Design)
 - [x] Deployment: Dockerfile + Portainer-Stack (Traefik „edge", Plausible)
+- [x] Gestaltung: kuratierte Schriften (Liberation, Carlito, Caladea,
+      DejaVu), Schriftgrad, drei geprüfte Layoutvarianten mit
+      Musterrechnungs-Vorschau — bewusst keine freie Positionierung
+      (Produktentscheidung, siehe web/README.md)
 - [ ] Artifex-Lizenzfrage klären (blockiert Produktivbetrieb, nicht die Entwicklung)
 - [ ] Zugriffsschutz/Konto (bis dahin: BasicAuth vor Traefik, siehe deploy/)
 - [ ] Zehn echte Testrechnungen mit echten Briefbögen

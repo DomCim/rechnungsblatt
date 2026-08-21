@@ -187,5 +187,42 @@ def test_nicht_pdf_upload_bekommt_pdf_anleitung(client):
     assert "PDF" in detail["grund"]
 
 
+def test_gestaltung_speichern_und_status(client):
+    schriften = client.get("/api/gestaltung/schriften").json()
+    assert {"liberation-sans", "carlito"} <= {s["schluessel"] for s in schriften}
+
+    antwort = client.put(
+        "/api/gestaltung",
+        json={"schrift": "carlito", "schriftgrad": "gross", "layout": "modern"},
+    )
+    assert antwort.status_code == 200
+    assert client.get("/api/status").json()["gestaltung"]["schrift"] == "carlito"
+
+    kaputt = client.put("/api/gestaltung", json={"schrift": "comic-sans"})
+    assert kaputt.status_code == 422
+
+
+@benoetigt_gs
+def test_gestaltungsvorschau_png(client):
+    antwort = client.get(
+        "/api/gestaltung/vorschau.png?schrift=caladea&schriftgrad=kompakt&layout=kompakt"
+    )
+    assert antwort.status_code == 200
+    assert antwort.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+@benoetigt_gs
+def test_rechnung_nutzt_gespeicherte_gestaltung(client):
+    _richte_ein(client)
+    client.put(
+        "/api/gestaltung",
+        json={"schrift": "caladea", "schriftgrad": "normal", "layout": "modern"},
+    )
+    antwort = client.post("/api/rechnung", json=RECHNUNG)
+    assert antwort.status_code == 200, antwort.text
+    pdf = client.get(antwort.json()["pdf"]).content
+    assert b"Caladea" in pdf  # eingebettete Schrift taucht im PDF auf
+
+
 def test_ablage_pfadausbruch_wird_abgewiesen(client):
     assert client.get("/api/ablage/..%2F..%2Fstammdaten/pdf").status_code in (404, 422)
