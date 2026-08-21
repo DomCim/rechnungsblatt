@@ -1,4 +1,9 @@
-# Web-Schicht (noch nicht begonnen)
+# Web-Schicht
+
+**Erster Baustein vorhanden:** der Schreibzonen-Editor unter
+[`zonen-editor/`](zonen-editor/) — zwei Regler, DE/EN, framework-frei,
+zum Einbetten in den späteren Stack. Der Rest der Web-Schicht ist noch
+nicht begonnen.
 
 Die Web-Schicht kommt **nach** dem Kern (Übergabe, §11 Schritt 6). Stack ist
 frei wählbar (Next.js oder FastAPI); sie spricht den Kern über die schmale

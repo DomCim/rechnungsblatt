@@ -42,6 +42,7 @@ from .pruefung import (
     pruefe_paragraph14,
 )
 from .summen import Steuerkorb, Summen, berechne_summen, runden, zeilensumme
+from .vorschau import VorschauFehlgeschlagen, erzeuge_vorschau_png
 from .zusammenbau import IccProfilNichtGefunden, baue_pdfa3, lade_srgb_icc
 
 __all__ = [
@@ -66,11 +67,13 @@ __all__ = [
     "Steuerkorb",
     "Summen",
     "UngueltigeRechnung",
+    "VorschauFehlgeschlagen",
     "Zeitraum",
     "baue_pdfa3",
     "berechne_summen",
     "erzeuge_cii_xml",
     "erzeuge_rechnung",
+    "erzeuge_vorschau_png",
     "erzeuge_xrechnung",
     "erzwinge_paragraph14",
     "format_betrag",
