@@ -1,0 +1,29 @@
+# Lokaler Test mit Docker Desktop — ohne Traefik, ohne Plausible.
+#
+#   docker compose -f deploy/docker-compose.local.yml up --build
+#   → http://localhost:8000
+#
+# Daten (Briefpapier, Einrichtung, Ablage) liegen im Volume
+# "rechnungsblatt-daten-lokal" und überleben Neustarts.
+# Alles zurücksetzen:
+#   docker compose -f deploy/docker-compose.local.yml down -v
+
+services:
+  rechnungsblatt:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: rechnungsblatt-lokal
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - daten:/daten
+    # Plausible lokal testen? Beide Zeilen einkommentieren:
+    # environment:
+    #   PLAUSIBLE_URL: http://192.168.178.129:8001
+    #   PLAUSIBLE_DOMAIN: localhost
+
+volumes:
+  daten:
+    name: rechnungsblatt-daten-lokal
