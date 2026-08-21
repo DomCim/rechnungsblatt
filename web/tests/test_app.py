@@ -244,6 +244,21 @@ def test_kundenstamm_wird_gepflegt(client):
     assert kunden[0]["email"] == "neu@beispielkunde.example"
 
 
+@benoetigt_gs
+def test_girocode_schalter(client):
+    _richte_ein(client)
+    mit = client.post("/api/rechnung", json=RECHNUNG)
+    assert mit.status_code == 200
+    pdf_mit = client.get(mit.json()["pdf"]).content
+
+    client.put("/api/stammdaten", json=dict(STAMMDATEN, girocode=False))
+    ohne = client.post("/api/rechnung", json=dict(RECHNUNG, nummer="RE-2026-0002"))
+    assert ohne.status_code == 200
+    pdf_ohne = client.get(ohne.json()["pdf"]).content
+    # Der QR-Code (hunderte Vektor-Rechtecke) macht das PDF messbar größer
+    assert len(pdf_mit) > len(pdf_ohne) + 1000
+
+
 def test_gestaltung_speichern_und_status(client):
     schriften = client.get("/api/gestaltung/schriften").json()
     assert {"liberation-sans", "carlito"} <= {s["schluessel"] for s in schriften}

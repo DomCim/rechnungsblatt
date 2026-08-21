@@ -228,6 +228,7 @@ def rendere_blatt(
     zone: Schreibzone,
     schriften: Schriften | None = None,
     gestaltung: Blattgestaltung | None = None,
+    girocode: bool = True,
 ) -> bytes:
     """Rendert das einseitige Overlay-PDF und liefert es als Bytes."""
     gestaltung = gestaltung or Blattgestaltung()
@@ -435,6 +436,43 @@ def rendere_blatt(
             c.drawString(_RAND_LINKS, y, zeile)
             y -= hub
         y -= 1.5 * mm * masse.faktor
+
+    # GiroCode: nur wenn der Empfänger tatsächlich etwas überweisen soll
+    from .modell import Belegtyp
+
+    if (
+        girocode
+        and rechnung.typ is not Belegtyp.GUTSCHRIFT
+        and summen.brutto > 0
+        and stammdaten.iban.strip()
+    ):
+        from .girocode import erzeuge_epc_daten, zeichne_girocode
+
+        qr_mm = 26.0
+        y -= 3 * mm
+        _pruefe_platz(y - qr_mm * mm, unten)
+        daten = erzeuge_epc_daten(
+            name=stammdaten.firmierung,
+            iban=stammdaten.iban,
+            betrag=summen.brutto,
+            bic=stammdaten.bic,
+            verwendungszweck=rechnung.verwendungszweck or rechnung.nummer,
+        )
+        zeichne_girocode(c, daten, _RAND_LINKS + 1 * mm, y - qr_mm * mm, qr_mm)
+        c.setFillColorRGB(0, 0, 0)
+        c.setFont(schriften.fett, basis - 1)
+        text_x = _RAND_LINKS + (qr_mm + 7) * mm
+        c.drawString(text_x, y - 5 * mm, "Bezahlen per Banking-App: GiroCode scannen")
+        c.setFont(schriften.normal, basis - 2)
+        for versatz, zeile in enumerate(
+            _umbrechen(
+                "Empfänger, IBAN, Betrag und Verwendungszweck werden automatisch übernommen.",
+                schriften.normal,
+                basis - 2,
+                rechts - text_x,
+            )
+        ):
+            c.drawString(text_x, y - (10 + versatz * 4.2) * mm, zeile)
 
     c.showPage()
     c.save()

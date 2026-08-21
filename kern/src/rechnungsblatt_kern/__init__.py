@@ -25,6 +25,7 @@ from .blatt import (
     verfuegbare_schriften,
 )
 from .cii import erzeuge_cii_xml
+from .girocode import erzeuge_epc_daten
 from .modell import (
     Anschrift,
     Belegtyp,
@@ -89,6 +90,7 @@ __all__ = [
     "baue_pdfa3",
     "berechne_summen",
     "erzeuge_cii_xml",
+    "erzeuge_epc_daten",
     "erzeuge_gestaltungsvorschau",
     "erzeuge_rechnung",
     "erzeuge_vorschau_png",

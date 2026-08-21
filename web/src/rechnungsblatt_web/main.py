@@ -282,7 +282,9 @@ def gestaltung_vorschau(
     stammdaten = _stammdaten_aus_json(stammdaten_json) if stammdaten_json else None
     briefpapier = _briefpapier_pfad() if _briefpapier_pfad().exists() else None
 
-    pdf = erzeuge_gestaltungsvorschau(zone, gestaltung, stammdaten, briefpapier)
+    pdf = erzeuge_gestaltungsvorschau(
+        zone, gestaltung, stammdaten, briefpapier, girocode=_girocode_aktiv()
+    )
     DATEN.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=DATEN) as arbeit:
         pdf_pfad = Path(arbeit) / "vorschau.pdf"
@@ -414,6 +416,11 @@ def _nummernkreis_fortschreiben(nummer: str) -> None:
     stand["jahr"] = jahr
     stand["laufend"] = max(stand["laufend"], int(gruppen["lfd"]))
     _schreibe_json(DATEN / "nummernkreis.json", stand)
+
+
+def _girocode_aktiv() -> bool:
+    daten = _lese_json(DATEN / "stammdaten.json") or {}
+    return bool(daten.get("girocode", True))
 
 
 # ---------------------------------------------------------------- Verwendungszweck
@@ -588,6 +595,7 @@ def rechnung_erzeugen(daten: dict) -> JSONResponse:
             zone,
             zeitpunkt=dt.datetime.now(dt.timezone.utc).astimezone(),
             gestaltung=_gestaltung_laden(),
+            girocode=_girocode_aktiv(),
         )
     except UngueltigeRechnung as fehler:
         return JSONResponse(

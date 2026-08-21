@@ -20,9 +20,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             ghostscript fonts-liberation fonts-dejavu-core \
-            fonts-crosextra-carlito fonts-crosextra-caladea
+            fonts-crosextra-carlito fonts-crosextra-caladea libzbar0
       - name: Kern und Web installieren
-        run: pip install -e "./kern[test]" -e "./web[test]"
+        run: pip install -e "./kern[test]" -e "./web[test]" pyzbar pillow
       - name: Tests
         run: python -m pytest kern/tests web/tests -v
 

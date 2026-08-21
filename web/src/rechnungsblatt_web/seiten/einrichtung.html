@@ -227,6 +227,12 @@
             <span data-i18n="kleinunternehmer">Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)</span>
           </label>
         </div>
+        <div class="feld breit">
+          <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
+            <input id="girocode" name="girocode" type="checkbox" checked style="width:auto;">
+            <span data-i18n="girocode">GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)</span>
+          </label>
+        </div>
       </div>
       <div class="zeile" style="margin-top:16px;">
         <button type="submit" class="knopf" id="stammdatenKnopf" data-i18n="speichern">Speichern</button>
@@ -330,6 +336,7 @@
       kontaktEmail: "E-Mail",
       kontaktTelefon: "Telefon",
       kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      girocode: "GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)",
       nummernMuster: "Rechnungsnummern-Muster",
       nummernMusterHilfe: "{JJJJ}/{JJ} = Jahr, {NNNN} = fortlaufender Zähler (Stellenzahl = Anzahl N). Beispiel: RE-{JJJJ}-{NNNN} → RE-2026-0001",
       zweckMuster: "Verwendungszweck-Vorlage",
@@ -380,6 +387,7 @@
       kontaktEmail: "E-mail",
       kontaktTelefon: "Phone",
       kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      girocode: "Print GiroCode on invoices (QR code — customer scans and pays with prefilled details)",
       nummernMuster: "Invoice number pattern",
       nummernMusterHilfe: "{JJJJ}/{JJ} = year, {NNNN} = sequential counter (digits = number of Ns). Example: RE-{JJJJ}-{NNNN} → RE-2026-0001",
       zweckMuster: "Payment reference template",
@@ -434,6 +442,7 @@
     el("kontakt_email").value = daten.kontakt_email || "";
     el("kontakt_telefon").value = daten.kontakt_telefon || "";
     el("kleinunternehmer").checked = !!daten.kleinunternehmer;
+    el("girocode").checked = daten.girocode !== false;
     if (daten.nummern_muster !== undefined) el("nummern_muster").value = daten.nummern_muster;
     if (daten.verwendungszweck_muster !== undefined) el("verwendungszweck_muster").value = daten.verwendungszweck_muster;
   }
@@ -556,6 +565,7 @@
       kontakt_email: el("kontakt_email").value.trim(),
       kontakt_telefon: el("kontakt_telefon").value.trim(),
       kleinunternehmer: el("kleinunternehmer").checked,
+      girocode: el("girocode").checked,
       nummern_muster: el("nummern_muster").value.trim(),
       verwendungszweck_muster: el("verwendungszweck_muster").value.trim()
     };

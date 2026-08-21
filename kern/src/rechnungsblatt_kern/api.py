@@ -47,6 +47,7 @@ def erzeuge_rechnung(
     schriften: Schriften | None = None,
     icc: bytes | None = None,
     gestaltung: Blattgestaltung | None = None,
+    girocode: bool = True,
 ) -> ErzeugteRechnung:
     """Erzeugt die ZUGFeRD-Rechnung (PDF/A-3B) auf dem normalisierten Briefpapier.
 
@@ -56,7 +57,9 @@ def erzeuge_rechnung(
     erzwinge_paragraph14(rechnung, stammdaten, Profil.EN16931)
     summen = berechne_summen(rechnung)
     xml = erzeuge_cii_xml(rechnung, stammdaten, summen, Profil.EN16931)
-    blatt = rendere_blatt(rechnung, stammdaten, summen, zone, schriften, gestaltung)
+    blatt = rendere_blatt(
+        rechnung, stammdaten, summen, zone, schriften, gestaltung, girocode=girocode
+    )
     pdf = baue_pdfa3(
         briefpapier_norm,
         blatt,
@@ -73,6 +76,7 @@ def erzeuge_gestaltungsvorschau(
     gestaltung: Blattgestaltung,
     stammdaten: Stammdaten | None = None,
     briefpapier_norm: bytes | str | Path | None = None,
+    girocode: bool = True,
 ) -> bytes:
     """Rendert eine Musterrechnung mit der gewählten Gestaltung als PDF.
 
@@ -98,6 +102,7 @@ def erzeuge_gestaltungsvorschau(
     )
     heute = dt.date.today()
     muster = Rechnung(
+        verwendungszweck="RE-2026-0042",
         nummer="RE-2026-0042",
         rechnungsdatum=heute,
         leistungsdatum=heute,
@@ -125,7 +130,9 @@ def erzeuge_gestaltungsvorschau(
         ),
     )
     summen = berechne_summen(muster)
-    blatt = rendere_blatt(muster, stammdaten, summen, zone, gestaltung=gestaltung)
+    blatt = rendere_blatt(
+        muster, stammdaten, summen, zone, gestaltung=gestaltung, girocode=girocode
+    )
     if briefpapier_norm is None:
         return blatt
 
