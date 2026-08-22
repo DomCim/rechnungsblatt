@@ -1,24 +1,42 @@
-"""FastAPI-App: Einrichtung (Briefpapier → Zone → Stammdaten) und Rechnungen.
+"""FastAPI-App: öffentliche Seite, Konten und der Arbeitsbereich je Mandant.
 
 Die App ist eine schmale Schicht: jede fachliche Entscheidung (Prüfung,
-Rechnen, Rendern, Zusammenbau) trifft der Kern. Hier gibt es nur Ablage,
-Übersetzung von Formulardaten in das Kern-Modell und die Auslieferung der
-Seiten.
+Rechnen, Rendern, Zusammenbau) trifft der Kern, alles rund um Konto, Rolle
+und Kontingent die Kontenschicht. Hier gibt es nur Ablage, Übersetzung von
+Formulardaten in das Kern-Modell und die Auslieferung der Seiten.
+
+Aufbau der Pfade:
+
+    /                    öffentliche Seite (erklärt das Modell, zeigt Tarife)
+    /anmelden            Anmeldung und Registrierung
+    /app/…               Arbeitsbereich, nur mit freigegebenem Konto
+    /app/verwaltung      Adminbereich
+    /api/…               JSON-Schnittstelle, mandantengebunden
+
+Die Nutzdaten liegen je Konto getrennt unter DATEN/nutzer/<id>/ — ein
+Mandant sieht nie das Verzeichnis eines anderen.
 """
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import datetime as dt
 import json
+import logging
 import os
 import re
 import tempfile
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, UploadFile
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+)
 from fastapi.staticfiles import StaticFiles
 
 from rechnungsblatt_kern import (
@@ -46,6 +64,9 @@ from rechnungsblatt_kern import (
     verfuegbare_schriften,
 )
 
+from . import konten
+from .konten import KontingentErschoepft, KontoFehler, Nutzer
+
 DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
 _WEB_WURZEL = Path(__file__).resolve().parents[2]  # …/web
 SEITEN = Path(__file__).resolve().parent / "seiten"
@@ -55,8 +76,94 @@ PLAUSIBLE_URL = os.environ.get("PLAUSIBLE_URL", "").rstrip("/")
 PLAUSIBLE_DOMAIN = os.environ.get("PLAUSIBLE_DOMAIN", "")
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+SITZUNG_COOKIE = "rb_sitzung"
 
-app = FastAPI(title="Rechnungsblatt", docs_url=None, redoc_url=None)
+protokoll = logging.getLogger("rechnungsblatt")
+
+
+@contextlib.asynccontextmanager
+async def _lebenszyklus(app: FastAPI):
+    """Schema anlegen und den Admin aus der Umgebung einrichten."""
+    konten.richte_schema_ein()
+    ergebnis = konten.lege_admin_an()
+    if ergebnis is not None:
+        person, erzeugtes_passwort = ergebnis
+        if erzeugtes_passwort:
+            protokoll.warning(
+                "Admin %s angelegt. Einmaliges Passwort: %s — bitte nach der "
+                "ersten Anmeldung ändern.",
+                person.email,
+                erzeugtes_passwort,
+            )
+        else:
+            protokoll.info("Admin %s steht bereit.", person.email)
+    yield
+    konten.schliesse_pool()
+
+
+app = FastAPI(
+    title="Rechnungsblatt", docs_url=None, redoc_url=None, lifespan=_lebenszyklus
+)
+
+
+# ---------------------------------------------------------------- Anmeldung
+
+def _angemeldeter(anfrage: Request) -> Nutzer | None:
+    return konten.nutzer_zu_sitzung(anfrage.cookies.get(SITZUNG_COOKIE))
+
+
+def angemeldet(anfrage: Request) -> Nutzer:
+    """Abhängigkeit für JSON-Endpunkte: 401, wenn keine gültige Sitzung."""
+    person = _angemeldeter(anfrage)
+    if person is None:
+        raise HTTPException(401, detail={"grund": "Bitte zuerst anmelden."})
+    return person
+
+
+def freigegeben(person: Nutzer = Depends(angemeldet)) -> Nutzer:
+    """Wie `angemeldet`, verlangt aber ein freigeschaltetes Konto."""
+    if person.status == konten.STATUS_WARTET:
+        raise HTTPException(
+            403,
+            detail={
+                "code": "wartet_auf_freigabe",
+                "grund": "Ihr Konto wartet noch auf die Freigabe.",
+            },
+        )
+    if person.status == konten.STATUS_GESPERRT:
+        raise HTTPException(
+            403, detail={"code": "gesperrt", "grund": "Ihr Konto ist gesperrt."}
+        )
+    return person
+
+
+def verwalter(person: Nutzer = Depends(angemeldet)) -> Nutzer:
+    if not person.ist_admin:
+        raise HTTPException(403, detail={"grund": "Dieser Bereich ist Admins vorbehalten."})
+    return person
+
+
+def _wurzel(person: Nutzer) -> Path:
+    """Datenverzeichnis eines Mandanten."""
+    return DATEN / "nutzer" / str(person.id)
+
+
+def mandant(person: Nutzer = Depends(freigegeben)) -> Path:
+    wurzel = _wurzel(person)
+    wurzel.mkdir(parents=True, exist_ok=True)
+    return wurzel
+
+
+def _setze_sitzungscookie(antwort: Response, schluessel: str, anfrage: Request) -> None:
+    antwort.set_cookie(
+        SITZUNG_COOKIE,
+        schluessel,
+        max_age=konten.SITZUNG_TAGE * 24 * 3600,
+        httponly=True,
+        samesite="lax",
+        secure=anfrage.url.scheme == "https",
+        path="/",
+    )
 
 
 # ---------------------------------------------------------------- Seiten
@@ -73,17 +180,304 @@ def _seite(name: str) -> HTMLResponse:
 
 
 @app.get("/", response_class=HTMLResponse)
-def einrichtung() -> HTMLResponse:
-    return _seite("einrichtung.html")
+def startseite() -> HTMLResponse:
+    return _seite("start.html")
 
 
-@app.get("/rechnung", response_class=HTMLResponse)
-def rechnungsformular() -> HTMLResponse:
-    return _seite("rechnung.html")
+@app.get("/anmelden", response_class=HTMLResponse)
+def anmeldeseite() -> HTMLResponse:
+    return _seite("anmelden.html")
+
+
+def _seite_mit_konto(anfrage: Request, name: str) -> Response:
+    """Liefert eine Arbeitsseite oder schickt zur Anmeldung bzw. zum Wartehinweis."""
+    person = _angemeldeter(anfrage)
+    if person is None:
+        return RedirectResponse("/anmelden", status_code=303)
+    if not person.ist_frei:
+        return _seite("warten.html")
+    return _seite(name)
+
+
+@app.get("/app")
+def arbeitsbereich(anfrage: Request) -> Response:
+    """Landung nach der Anmeldung: Formular, sobald die Einrichtung steht."""
+    person = _angemeldeter(anfrage)
+    if person is None:
+        return RedirectResponse("/anmelden", status_code=303)
+    if not person.ist_frei:
+        return _seite("warten.html")
+    ziel = "/app/rechnung" if _ist_bereit(_wurzel(person)) else "/app/einrichtung"
+    return RedirectResponse(ziel, status_code=303)
+
+
+@app.get("/app/einrichtung", response_class=HTMLResponse)
+def einrichtungsseite(anfrage: Request) -> Response:
+    return _seite_mit_konto(anfrage, "einrichtung.html")
+
+
+@app.get("/app/rechnung", response_class=HTMLResponse)
+def rechnungsformular(anfrage: Request) -> Response:
+    return _seite_mit_konto(anfrage, "rechnung.html")
+
+
+@app.get("/app/ablage", response_class=HTMLResponse)
+def ablageseite(anfrage: Request) -> Response:
+    return _seite_mit_konto(anfrage, "ablage.html")
+
+
+@app.get("/app/konto", response_class=HTMLResponse)
+def kontoseite(anfrage: Request) -> Response:
+    person = _angemeldeter(anfrage)
+    if person is None:
+        return RedirectResponse("/anmelden", status_code=303)
+    return _seite("konto.html")
+
+
+@app.get("/app/verwaltung", response_class=HTMLResponse)
+def verwaltungsseite(anfrage: Request) -> Response:
+    person = _angemeldeter(anfrage)
+    if person is None:
+        return RedirectResponse("/anmelden", status_code=303)
+    if not person.ist_admin:
+        return RedirectResponse("/app", status_code=303)
+    return _seite("verwaltung.html")
 
 
 app.mount("/zonen-editor", StaticFiles(directory=str(ZONEN_EDITOR), html=True), name="editor")
 app.mount("/seiten", StaticFiles(directory=str(SEITEN)), name="seiten")
+
+
+# ---------------------------------------------------------------- Konten-API
+
+def _nutzer_json(person: Nutzer) -> dict:
+    kontingent = konten.kontingent(person)
+    return {
+        "id": person.id,
+        "email": person.email,
+        "rolle": person.rolle,
+        "status": person.status,
+        "passwort_wechseln": person.passwort_wechseln,
+        "tarif": {
+            "schluessel": kontingent.tarif.schluessel,
+            "name": kontingent.tarif.name,
+            "inklusiv_rechnungen": kontingent.inklusiv,
+            "preis_je_rechnung_cent": kontingent.tarif.preis_je_rechnung_cent,
+            "monatsbeitrag_cent": kontingent.tarif.monatsbeitrag_cent,
+        },
+        "verbraucht_monat": kontingent.verbraucht,
+        "frei_uebrig": kontingent.frei_uebrig,
+        "guthaben_cent": person.guthaben_cent,
+        "naechste_kostet_cent": kontingent.naechste_kostet_cent,
+        "darf_erzeugen": kontingent.darf_erzeugen,
+    }
+
+
+def _tarif_json(tarif: konten.Tarif) -> dict:
+    return {
+        "schluessel": tarif.schluessel,
+        "name": tarif.name,
+        "beschreibung": tarif.beschreibung,
+        "monatsbeitrag_cent": tarif.monatsbeitrag_cent,
+        "inklusiv_rechnungen": tarif.inklusiv_rechnungen,
+        "preis_je_rechnung_cent": tarif.preis_je_rechnung_cent,
+        "reihenfolge": tarif.reihenfolge,
+        "sichtbar": tarif.sichtbar,
+    }
+
+
+@app.get("/api/gesundheit")
+def gesundheit() -> dict:
+    """Für den Healthcheck: erreichbar ohne Konto, prüft aber die Datenbank."""
+    try:
+        with konten.verbindung() as verbindung:
+            verbindung.execute("SELECT 1")
+    except Exception as fehler:  # psycopg wirft je nach Ursache Verschiedenes
+        raise HTTPException(
+            503, detail={"grund": f"Datenbank nicht erreichbar: {fehler}"}
+        ) from fehler
+    return {"zustand": "gut"}
+
+
+@app.get("/api/tarife")
+def oeffentliche_tarife() -> list[dict]:
+    """Die öffentliche Seite rendert ihre Preistafel hieraus."""
+    return [_tarif_json(tarif) for tarif in konten.tarife(nur_sichtbare=True)]
+
+
+@app.post("/api/registrieren")
+def registrieren(daten: dict) -> JSONResponse:
+    try:
+        person = konten.registriere(daten.get("email", ""), daten.get("passwort", ""))
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return JSONResponse(
+        {"status": person.status, "email": person.email}, status_code=201
+    )
+
+
+@app.post("/api/anmelden")
+def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
+    try:
+        person = konten.pruefe_anmeldung(
+            daten.get("email", ""), daten.get("passwort", "")
+        )
+    except KontoFehler as fehler:
+        raise HTTPException(401, detail={"grund": str(fehler)}) from fehler
+    if person.status == konten.STATUS_GESPERRT:
+        raise HTTPException(403, detail={"grund": "Ihr Konto ist gesperrt."})
+    schluessel = konten.starte_sitzung(person.id)
+    antwort = JSONResponse(_nutzer_json(person))
+    _setze_sitzungscookie(antwort, schluessel, anfrage)
+    return antwort
+
+
+@app.post("/api/abmelden")
+def abmelden(anfrage: Request) -> JSONResponse:
+    konten.beende_sitzung(anfrage.cookies.get(SITZUNG_COOKIE))
+    antwort = JSONResponse({"abgemeldet": True})
+    antwort.delete_cookie(SITZUNG_COOKIE, path="/")
+    return antwort
+
+
+@app.get("/api/ich")
+def ich(person: Nutzer = Depends(angemeldet)) -> dict:
+    return _nutzer_json(person)
+
+
+@app.post("/api/ich/passwort")
+def passwort_wechseln(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
+    try:
+        konten.wechsle_passwort(
+            person.id, daten.get("alt", ""), daten.get("neu", "")
+        )
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {"gewechselt": True}
+
+
+@app.get("/api/ich/verbrauch")
+def eigener_verbrauch(person: Nutzer = Depends(angemeldet)) -> list[dict]:
+    return [
+        {
+            "nummer": zeile["nummer"],
+            "kosten_cent": zeile["kosten_cent"],
+            "zeitpunkt": zeile["zeitpunkt"].isoformat(timespec="seconds"),
+        }
+        for zeile in konten.verbrauch_liste(person.id)
+    ]
+
+
+# ---------------------------------------------------------------- Verwaltung
+
+@app.get("/api/verwaltung/nutzer")
+def verwaltung_nutzer(_: Nutzer = Depends(verwalter)) -> list[dict]:
+    return [
+        {
+            "id": person.id,
+            "email": person.email,
+            "rolle": person.rolle,
+            "status": person.status,
+            "tarif": person.tarif,
+            "guthaben_cent": person.guthaben_cent,
+            "angelegt": person.angelegt.isoformat(timespec="seconds"),
+            "zuletzt_angemeldet": (
+                person.zuletzt_angemeldet.isoformat(timespec="seconds")
+                if person.zuletzt_angemeldet
+                else None
+            ),
+            "verbraucht_monat": konten.verbrauch_monat(person.id),
+        }
+        for person in konten.nutzer_liste()
+    ]
+
+
+def _verwaltung_aendern(aufruf) -> dict:
+    try:
+        person = aufruf()
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {
+        "id": person.id,
+        "email": person.email,
+        "rolle": person.rolle,
+        "status": person.status,
+        "tarif": person.tarif,
+        "guthaben_cent": person.guthaben_cent,
+    }
+
+
+@app.post("/api/verwaltung/nutzer/{nutzer_id}/status")
+def verwaltung_status(
+    nutzer_id: int, daten: dict, _: Nutzer = Depends(verwalter)
+) -> dict:
+    return _verwaltung_aendern(
+        lambda: konten.setze_status(nutzer_id, daten.get("status", ""))
+    )
+
+
+@app.post("/api/verwaltung/nutzer/{nutzer_id}/rolle")
+def verwaltung_rolle(
+    nutzer_id: int, daten: dict, _: Nutzer = Depends(verwalter)
+) -> dict:
+    return _verwaltung_aendern(
+        lambda: konten.setze_rolle(nutzer_id, daten.get("rolle", ""))
+    )
+
+
+@app.post("/api/verwaltung/nutzer/{nutzer_id}/tarif")
+def verwaltung_tarif(
+    nutzer_id: int, daten: dict, _: Nutzer = Depends(verwalter)
+) -> dict:
+    return _verwaltung_aendern(
+        lambda: konten.setze_tarif(nutzer_id, daten.get("tarif", ""))
+    )
+
+
+@app.post("/api/verwaltung/nutzer/{nutzer_id}/guthaben")
+def verwaltung_guthaben(
+    nutzer_id: int, daten: dict, _: Nutzer = Depends(verwalter)
+) -> dict:
+    try:
+        cent = int(daten.get("cent", 0))
+    except (TypeError, ValueError) as fehler:
+        raise HTTPException(422, detail={"grund": "Betrag muss ganzzahlig sein."}) from fehler
+    return _verwaltung_aendern(lambda: konten.buche_guthaben(nutzer_id, cent))
+
+
+@app.delete("/api/verwaltung/nutzer/{nutzer_id}")
+def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
+    try:
+        konten.loesche_nutzer(nutzer_id)
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {"geloescht": nutzer_id}
+
+
+@app.get("/api/verwaltung/tarife")
+def verwaltung_tarife(_: Nutzer = Depends(verwalter)) -> list[dict]:
+    return [_tarif_json(tarif) for tarif in konten.tarife()]
+
+
+@app.put("/api/verwaltung/tarife/{schluessel}")
+def verwaltung_tarif_speichern(
+    schluessel: str, daten: dict, _: Nutzer = Depends(verwalter)
+) -> dict:
+    inklusiv = daten.get("inklusiv_rechnungen")
+    try:
+        neu = konten.Tarif(
+            schluessel=schluessel,
+            name=str(daten.get("name", "")).strip() or schluessel,
+            beschreibung=str(daten.get("beschreibung", "")),
+            monatsbeitrag_cent=int(daten.get("monatsbeitrag_cent", 0)),
+            inklusiv_rechnungen=None if inklusiv in (None, "") else int(inklusiv),
+            preis_je_rechnung_cent=int(daten.get("preis_je_rechnung_cent", 0)),
+            reihenfolge=int(daten.get("reihenfolge", 0)),
+            sichtbar=bool(daten.get("sichtbar", True)),
+        )
+    except (TypeError, ValueError) as fehler:
+        raise HTTPException(422, detail={"grund": f"Ungültiger Tarif: {fehler}"}) from fehler
+    return _tarif_json(konten.speichere_tarif(neu))
 
 
 # ---------------------------------------------------------------- Ablage
@@ -99,26 +493,37 @@ def _schreibe_json(pfad: Path, daten: dict) -> None:
     pfad.write_text(json.dumps(daten, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def _briefpapier_pfad() -> Path:
-    return DATEN / "briefpapier_norm.pdf"
+def _briefpapier_pfad(wurzel: Path) -> Path:
+    return wurzel / "briefpapier_norm.pdf"
 
 
-def _vorschau_pfad() -> Path:
-    return DATEN / "briefpapier_vorschau.png"
+def _vorschau_pfad(wurzel: Path) -> Path:
+    return wurzel / "briefpapier_vorschau.png"
+
+
+def _ist_bereit(wurzel: Path) -> bool:
+    return bool(
+        _lese_json(wurzel / "briefpapier.json")
+        and _lese_json(wurzel / "schreibzone.json")
+        and _lese_json(wurzel / "stammdaten.json")
+    )
 
 
 # ---------------------------------------------------------------- Status
 
 @app.get("/api/status")
-def status() -> dict:
-    zone = _lese_json(DATEN / "schreibzone.json")
-    briefpapier = _lese_json(DATEN / "briefpapier.json")
+def status(
+    person: Nutzer = Depends(freigegeben), wurzel: Path = Depends(mandant)
+) -> dict:
+    zone = _lese_json(wurzel / "schreibzone.json")
+    briefpapier = _lese_json(wurzel / "briefpapier.json")
     return {
         "briefpapier": briefpapier,
         "schreibzone": zone,
-        "stammdaten": _lese_json(DATEN / "stammdaten.json"),
-        "gestaltung": _lese_json(DATEN / "gestaltung.json"),
-        "bereit": bool(briefpapier and zone and _lese_json(DATEN / "stammdaten.json")),
+        "stammdaten": _lese_json(wurzel / "stammdaten.json"),
+        "gestaltung": _lese_json(wurzel / "gestaltung.json"),
+        "bereit": bool(briefpapier and zone and _lese_json(wurzel / "stammdaten.json")),
+        "konto": _nutzer_json(person),
     }
 
 
@@ -133,7 +538,9 @@ _PDF_ANLEITUNG = (
 
 
 @app.post("/api/briefpapier")
-async def briefpapier_hochladen(datei: UploadFile) -> dict:
+async def briefpapier_hochladen(
+    datei: UploadFile, wurzel: Path = Depends(mandant)
+) -> dict:
     inhalt = await datei.read()
     if len(inhalt) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, detail={"grund": "Datei größer als 20 MB."})
@@ -154,38 +561,38 @@ async def briefpapier_hochladen(datei: UploadFile) -> dict:
                 "grund": "Die Datei ist kein PDF. " + _PDF_ANLEITUNG,
             },
         )
-    DATEN.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=DATEN) as arbeit:
+    wurzel.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=wurzel) as arbeit:
         upload = Path(arbeit) / "upload.pdf"
         upload.write_bytes(inhalt)
         try:
-            ergebnis = normalisiere_briefpapier(upload, _briefpapier_pfad())
+            ergebnis = normalisiere_briefpapier(upload, _briefpapier_pfad(wurzel))
         except NormalisierungAbgelehnt as fehler:
             raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
         except NormalisierungFehlgeschlagen as fehler:
             raise HTTPException(500, detail={"grund": str(fehler)}) from fehler
     # Original bewusst verwerfen — gespeichert wird nur die normalisierte Fassung.
-    erzeuge_vorschau_png(_briefpapier_pfad(), _vorschau_pfad(), dpi=150)
+    erzeuge_vorschau_png(_briefpapier_pfad(wurzel), _vorschau_pfad(wurzel), dpi=150)
     meta = {
         "dateiname": datei.filename,
         "schriften_ersetzt": ergebnis.schriften_ersetzt,
         "hochgeladen": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
     }
-    _schreibe_json(DATEN / "briefpapier.json", meta)
+    _schreibe_json(wurzel / "briefpapier.json", meta)
     return meta
 
 
 @app.get("/api/briefpapier/vorschau.png")
-def briefpapier_vorschau() -> FileResponse:
-    if not _vorschau_pfad().exists():
+def briefpapier_vorschau(wurzel: Path = Depends(mandant)) -> FileResponse:
+    if not _vorschau_pfad(wurzel).exists():
         raise HTTPException(404, detail={"grund": "Kein Briefpapier eingerichtet."})
-    return FileResponse(_vorschau_pfad(), media_type="image/png")
+    return FileResponse(_vorschau_pfad(wurzel), media_type="image/png")
 
 
 # ---------------------------------------------------------------- Schreibzone
 
 @app.put("/api/schreibzone")
-def schreibzone_setzen(zone: dict) -> dict:
+def schreibzone_setzen(zone: dict, wurzel: Path = Depends(mandant)) -> dict:
     try:
         geprueft = Schreibzone(
             kopf_ende_mm=float(zone["kopf_ende_mm"]),
@@ -197,7 +604,7 @@ def schreibzone_setzen(zone: dict) -> dict:
         "kopf_ende_mm": geprueft.kopf_ende_mm,
         "fuss_beginn_mm": geprueft.fuss_beginn_mm,
     }
-    _schreibe_json(DATEN / "schreibzone.json", daten)
+    _schreibe_json(wurzel / "schreibzone.json", daten)
     return daten
 
 
@@ -222,15 +629,15 @@ def _gestaltung_aus_json(daten: dict) -> Blattgestaltung:
     )
 
 
-def _gestaltung_laden() -> Blattgestaltung:
-    daten = _lese_json(DATEN / "gestaltung.json")
+def _gestaltung_laden(wurzel: Path) -> Blattgestaltung:
+    daten = _lese_json(wurzel / "gestaltung.json")
     if daten is None:
         return Blattgestaltung()
     return _gestaltung_aus_json(daten)
 
 
 @app.get("/api/gestaltung/schriften")
-def gestaltung_schriften() -> list[dict]:
+def gestaltung_schriften(_: Nutzer = Depends(freigegeben)) -> list[dict]:
     return [
         {"schluessel": schrift.schluessel, "name": schrift.name}
         for schrift in verfuegbare_schriften()
@@ -238,7 +645,7 @@ def gestaltung_schriften() -> list[dict]:
 
 
 @app.put("/api/gestaltung")
-def gestaltung_setzen(daten: dict) -> dict:
+def gestaltung_setzen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
     _gestaltung_aus_json(daten)  # validieren, bevor gespeichert wird
     gespeichert = {
         "schrift": daten.get("schrift", "liberation-sans"),
@@ -246,7 +653,7 @@ def gestaltung_setzen(daten: dict) -> dict:
         "layout": str(daten.get("layout", "klassisch")).lower(),
         "belegdaten_als_zeile": bool(daten.get("belegdaten_als_zeile", False)),
     }
-    _schreibe_json(DATEN / "gestaltung.json", gespeichert)
+    _schreibe_json(wurzel / "gestaltung.json", gespeichert)
     return gespeichert
 
 
@@ -256,6 +663,7 @@ def gestaltung_vorschau(
     schriftgrad: str | None = None,
     layout: str | None = None,
     zeile: bool = False,
+    wurzel: Path = Depends(mandant),
 ) -> Response:
     """Musterrechnung mit der (ggf. noch ungespeicherten) Gestaltung als PNG."""
     if schrift or schriftgrad or layout:
@@ -268,8 +676,8 @@ def gestaltung_vorschau(
             }
         )
     else:
-        gestaltung = _gestaltung_laden()
-    zone_json = _lese_json(DATEN / "schreibzone.json")
+        gestaltung = _gestaltung_laden(wurzel)
+    zone_json = _lese_json(wurzel / "schreibzone.json")
     zone = (
         Schreibzone(
             kopf_ende_mm=zone_json["kopf_ende_mm"],
@@ -278,15 +686,17 @@ def gestaltung_vorschau(
         if zone_json
         else Schreibzone()
     )
-    stammdaten_json = _lese_json(DATEN / "stammdaten.json")
+    stammdaten_json = _lese_json(wurzel / "stammdaten.json")
     stammdaten = _stammdaten_aus_json(stammdaten_json) if stammdaten_json else None
-    briefpapier = _briefpapier_pfad() if _briefpapier_pfad().exists() else None
+    briefpapier = (
+        _briefpapier_pfad(wurzel) if _briefpapier_pfad(wurzel).exists() else None
+    )
 
     pdf = erzeuge_gestaltungsvorschau(
-        zone, gestaltung, stammdaten, briefpapier, girocode=_girocode_aktiv()
+        zone, gestaltung, stammdaten, briefpapier, girocode=_girocode_aktiv(wurzel)
     )
-    DATEN.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=DATEN) as arbeit:
+    wurzel.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=wurzel) as arbeit:
         pdf_pfad = Path(arbeit) / "vorschau.pdf"
         pdf_pfad.write_bytes(pdf)
         png_pfad = Path(arbeit) / "vorschau.png"
@@ -297,7 +707,7 @@ def gestaltung_vorschau(
 # ---------------------------------------------------------------- Stammdaten
 
 @app.put("/api/stammdaten")
-def stammdaten_setzen(daten: dict) -> dict:
+def stammdaten_setzen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
     try:
         _stammdaten_aus_json(daten)  # Strukturprüfung; §14 blockiert erst je Rechnung
     except (KeyError, TypeError) as fehler:
@@ -309,7 +719,7 @@ def stammdaten_setzen(daten: dict) -> dict:
             raise HTTPException(
                 422, detail={"code": "nummern_muster", "grund": str(fehler)}
             ) from fehler
-    _schreibe_json(DATEN / "stammdaten.json", daten)
+    _schreibe_json(wurzel / "stammdaten.json", daten)
     return daten
 
 
@@ -344,8 +754,8 @@ STANDARD_NUMMERN_MUSTER = "RE-{JJJJ}-{NNNN}"
 STANDARD_VERWENDUNGSZWECK = "{NUMMER}"
 
 
-def _nummern_muster() -> str:
-    daten = _lese_json(DATEN / "stammdaten.json") or {}
+def _nummern_muster(wurzel: Path) -> str:
+    daten = _lese_json(wurzel / "stammdaten.json") or {}
     return daten.get("nummern_muster") or STANDARD_NUMMERN_MUSTER
 
 
@@ -384,24 +794,24 @@ def _formatiere_nummer(muster: str, jahr: int, laufend: int) -> str:
     )
 
 
-def _nummern_stand(jahr: int, jahr_zaehlt: bool) -> dict:
-    stand = _lese_json(DATEN / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
+def _nummern_stand(wurzel: Path, jahr: int, jahr_zaehlt: bool) -> dict:
+    stand = _lese_json(wurzel / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
     if jahr_zaehlt and stand["jahr"] != jahr:
         stand = {"jahr": jahr, "laufend": 0}  # Jahreswechsel: Zähler beginnt neu
     return stand
 
 
 @app.get("/api/nummer/vorschlag")
-def nummern_vorschlag() -> dict:
-    muster = _nummern_muster()
+def nummern_vorschlag(wurzel: Path = Depends(mandant)) -> dict:
+    muster = _nummern_muster(wurzel)
     _, _, hat_jahr = _muster_zerlegen(muster)
     jahr = dt.date.today().year
-    stand = _nummern_stand(jahr, hat_jahr)
+    stand = _nummern_stand(wurzel, jahr, hat_jahr)
     return {"nummer": _formatiere_nummer(muster, jahr, stand["laufend"] + 1)}
 
 
-def _nummernkreis_fortschreiben(nummer: str) -> None:
-    muster = _nummern_muster()
+def _nummernkreis_fortschreiben(wurzel: Path, nummer: str) -> None:
+    muster = _nummern_muster(wurzel)
     ausdruck, _, hat_jahr = _muster_zerlegen(muster)
     treffer = ausdruck.match(nummer)
     if not treffer:
@@ -412,24 +822,24 @@ def _nummernkreis_fortschreiben(nummer: str) -> None:
         return
     if gruppen.get("jahr2") and int(gruppen["jahr2"]) != jahr % 100:
         return
-    stand = _nummern_stand(jahr, hat_jahr)
+    stand = _nummern_stand(wurzel, jahr, hat_jahr)
     stand["jahr"] = jahr
     stand["laufend"] = max(stand["laufend"], int(gruppen["lfd"]))
-    _schreibe_json(DATEN / "nummernkreis.json", stand)
+    _schreibe_json(wurzel / "nummernkreis.json", stand)
 
 
-def _girocode_aktiv() -> bool:
-    daten = _lese_json(DATEN / "stammdaten.json") or {}
+def _girocode_aktiv(wurzel: Path) -> bool:
+    daten = _lese_json(wurzel / "stammdaten.json") or {}
     return bool(daten.get("girocode", True))
 
 
 # ---------------------------------------------------------------- Verwendungszweck
 
-def _verwendungszweck(rechnung: Rechnung, angegeben: str | None) -> str | None:
+def _verwendungszweck(wurzel: Path, rechnung: Rechnung, angegeben: str | None) -> str | None:
     """Verwendungszweck: explizit angegeben oder aus dem Muster erzeugt."""
     if angegeben and angegeben.strip():
         return angegeben.strip()
-    daten = _lese_json(DATEN / "stammdaten.json") or {}
+    daten = _lese_json(wurzel / "stammdaten.json") or {}
     muster = daten.get("verwendungszweck_muster", STANDARD_VERWENDUNGSZWECK)
     if not muster:
         return None
@@ -444,13 +854,13 @@ def _verwendungszweck(rechnung: Rechnung, angegeben: str | None) -> str | None:
 # ---------------------------------------------------------------- Kundenstamm
 
 @app.get("/api/kunden")
-def kunden_liste() -> list[dict]:
-    return _lese_json(DATEN / "kunden.json") or []
+def kunden_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
+    return _lese_json(wurzel / "kunden.json") or []
 
 
-def _kunde_merken(rechnung: Rechnung) -> None:
+def _kunde_merken(wurzel: Path, rechnung: Rechnung) -> None:
     """Merkliste: Empfänger jeder erzeugten Rechnung wird gepflegt (Upsert)."""
-    kunden = _lese_json(DATEN / "kunden.json") or []
+    kunden = _lese_json(wurzel / "kunden.json") or []
     eintrag = {
         "name": rechnung.empfaenger.name,
         "anschrift": {
@@ -467,7 +877,7 @@ def _kunde_merken(rechnung: Rechnung) -> None:
     schluessel = rechnung.empfaenger.name.casefold()
     kunden = [k for k in kunden if k.get("name", "").casefold() != schluessel]
     kunden.insert(0, eintrag)
-    _schreibe_json(DATEN / "kunden.json", kunden)
+    _schreibe_json(wurzel / "kunden.json", kunden)
 
 
 # ---------------------------------------------------------------- Rechnung
@@ -556,15 +966,15 @@ def _rechnung_aus_json(daten: dict) -> Rechnung:
     )
 
 
-def _voraussetzungen() -> tuple[Stammdaten, Schreibzone]:
-    stammdaten_json = _lese_json(DATEN / "stammdaten.json")
-    zone_json = _lese_json(DATEN / "schreibzone.json")
+def _voraussetzungen(wurzel: Path) -> tuple[Stammdaten, Schreibzone]:
+    stammdaten_json = _lese_json(wurzel / "stammdaten.json")
+    zone_json = _lese_json(wurzel / "schreibzone.json")
     fehlend = []
     if stammdaten_json is None:
         fehlend.append("Stammdaten")
     if zone_json is None:
         fehlend.append("Schreibzone")
-    if not _briefpapier_pfad().exists():
+    if not _briefpapier_pfad(wurzel).exists():
         fehlend.append("Briefpapier")
     if fehlend:
         raise HTTPException(
@@ -580,22 +990,36 @@ def _voraussetzungen() -> tuple[Stammdaten, Schreibzone]:
 
 
 @app.post("/api/rechnung")
-def rechnung_erzeugen(daten: dict) -> JSONResponse:
-    stammdaten, zone = _voraussetzungen()
+def rechnung_erzeugen(
+    daten: dict,
+    person: Nutzer = Depends(freigegeben),
+    wurzel: Path = Depends(mandant),
+) -> JSONResponse:
+    stammdaten, zone = _voraussetzungen(wurzel)
     rechnung = _rechnung_aus_json(daten)
     rechnung = dataclasses.replace(
         rechnung,
-        verwendungszweck=_verwendungszweck(rechnung, daten.get("verwendungszweck")),
+        verwendungszweck=_verwendungszweck(wurzel, rechnung, daten.get("verwendungszweck")),
     )
+    # Kontingent vorab prüfen, damit kein PDF gebaut wird, das niemand bekommt.
+    if not konten.kontingent(person).darf_erzeugen:
+        return JSONResponse(
+            status_code=402,
+            content={
+                "code": "kontingent",
+                "grund": "Die Inklusivmenge dieses Monats ist aufgebraucht und das "
+                "Guthaben reicht nicht für eine weitere Rechnung.",
+            },
+        )
     try:
         ergebnis = erzeuge_rechnung(
             rechnung,
             stammdaten,
-            _briefpapier_pfad(),
+            _briefpapier_pfad(wurzel),
             zone,
             zeitpunkt=dt.datetime.now(dt.timezone.utc).astimezone(),
-            gestaltung=_gestaltung_laden(),
-            girocode=_girocode_aktiv(),
+            gestaltung=_gestaltung_laden(wurzel),
+            girocode=_girocode_aktiv(wurzel),
         )
     except UngueltigeRechnung as fehler:
         return JSONResponse(
@@ -607,30 +1031,40 @@ def rechnung_erzeugen(daten: dict) -> JSONResponse:
     except BlattUeberlauf as fehler:
         return JSONResponse(status_code=422, content={"grund": str(fehler)})
 
-    ordner = DATEN / "ablage" / rechnung.nummer
+    try:
+        kontingent = konten.buche_rechnung(person, rechnung.nummer)
+    except KontingentErschoepft as fehler:
+        return JSONResponse(
+            status_code=402, content={"code": "kontingent", "grund": str(fehler)}
+        )
+
+    ordner = wurzel / "ablage" / rechnung.nummer
     ordner.mkdir(parents=True, exist_ok=True)
     (ordner / "rechnung.pdf").write_bytes(ergebnis.pdf)
     (ordner / "factur-x.xml").write_bytes(ergebnis.xml)
     _schreibe_json(ordner / "daten.json", daten)
-    _nummernkreis_fortschreiben(rechnung.nummer)
-    _kunde_merken(rechnung)
+    _nummernkreis_fortschreiben(wurzel, rechnung.nummer)
+    _kunde_merken(wurzel, rechnung)
     return JSONResponse(
         {
             "nummer": rechnung.nummer,
             "brutto": str(ergebnis.summen.brutto),
             "pdf": f"/api/ablage/{rechnung.nummer}/pdf",
             "xml": f"/api/ablage/{rechnung.nummer}/xml",
+            "verbraucht_monat": kontingent.verbraucht,
+            "frei_uebrig": kontingent.frei_uebrig,
+            "guthaben_cent": kontingent.guthaben_cent,
         }
     )
 
 
 @app.post("/api/rechnung/xrechnung")
-def xrechnung_erzeugen(daten: dict) -> Response:
-    stammdaten, _ = _voraussetzungen()
+def xrechnung_erzeugen(daten: dict, wurzel: Path = Depends(mandant)) -> Response:
+    stammdaten, _ = _voraussetzungen(wurzel)
     rechnung = _rechnung_aus_json(daten)
     rechnung = dataclasses.replace(
         rechnung,
-        verwendungszweck=_verwendungszweck(rechnung, daten.get("verwendungszweck")),
+        verwendungszweck=_verwendungszweck(wurzel, rechnung, daten.get("verwendungszweck")),
     )
     try:
         xml = erzeuge_xrechnung(rechnung, stammdaten)
@@ -652,20 +1086,20 @@ def xrechnung_erzeugen(daten: dict) -> Response:
 
 # ---------------------------------------------------------------- Ablage-Zugriff
 
-def _ablage_ordner(nummer: str) -> Path:
-    ordner = (DATEN / "ablage" / nummer).resolve()
-    if not ordner.is_relative_to((DATEN / "ablage").resolve()) or not ordner.is_dir():
+def _ablage_ordner(wurzel: Path, nummer: str) -> Path:
+    ordner = (wurzel / "ablage" / nummer).resolve()
+    if not ordner.is_relative_to((wurzel / "ablage").resolve()) or not ordner.is_dir():
         raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
     return ordner
 
 
 @app.get("/api/ablage")
-def ablage_liste() -> list[dict]:
-    wurzel = DATEN / "ablage"
-    if not wurzel.exists():
+def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
+    basis = wurzel / "ablage"
+    if not basis.exists():
         return []
     belege = []
-    for ordner in sorted(wurzel.iterdir(), reverse=True):
+    for ordner in sorted(basis.iterdir(), reverse=True):
         daten = _lese_json(ordner / "daten.json") or {}
         belege.append(
             {
@@ -681,9 +1115,9 @@ def ablage_liste() -> list[dict]:
 
 
 @app.get("/api/ablage/{nummer}/pdf")
-def ablage_pdf(nummer: str) -> FileResponse:
+def ablage_pdf(nummer: str, wurzel: Path = Depends(mandant)) -> FileResponse:
     return FileResponse(
-        _ablage_ordner(nummer) / "rechnung.pdf",
+        _ablage_ordner(wurzel, nummer) / "rechnung.pdf",
         media_type="application/pdf",
         filename=f"{nummer}.pdf",
         content_disposition_type="inline",
@@ -691,14 +1125,14 @@ def ablage_pdf(nummer: str) -> FileResponse:
 
 
 @app.get("/api/ablage/{nummer}/xml")
-def ablage_xml(nummer: str) -> FileResponse:
+def ablage_xml(nummer: str, wurzel: Path = Depends(mandant)) -> FileResponse:
     return FileResponse(
-        _ablage_ordner(nummer) / "factur-x.xml",
+        _ablage_ordner(wurzel, nummer) / "factur-x.xml",
         media_type="application/xml",
         filename=f"{nummer}-factur-x.xml",
     )
 
 
 @app.get("/api/ablage/{nummer}/daten")
-def ablage_daten(nummer: str) -> dict:
-    return _lese_json(_ablage_ordner(nummer) / "daten.json") or {}
+def ablage_daten(nummer: str, wurzel: Path = Depends(mandant)) -> dict:
+    return _lese_json(_ablage_ordner(wurzel, nummer) / "daten.json") or {}

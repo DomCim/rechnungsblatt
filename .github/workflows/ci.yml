@@ -8,8 +8,22 @@ on:
 
 jobs:
   kern-tests:
-    name: Kern-Tests (Logik + Pipeline)
+    name: Kern-Tests (Logik + Pipeline) und Web-Tests (Konten, Mandanten)
     runs-on: ubuntu-latest
+    services:
+      # Die Web-Tests brauchen eine echte Datenbank; ohne sie überspringt
+      # conftest.py sie stillschweigend, und der Mandantenumbau bliebe ungeprüft.
+      datenbank:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rechnungsblatt
+          POSTGRES_PASSWORD: rechnungsblatt
+          POSTGRES_DB: rechnungsblatt
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rechnungsblatt -d rechnungsblatt"
+          --health-interval 10s --health-timeout 5s --health-retries 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,6 +38,8 @@ jobs:
       - name: Kern und Web installieren
         run: pip install -e "./kern[test]" -e "./web[test]" pyzbar pillow
       - name: Tests
+        env:
+          TEST_DATENBANK_URL: postgresql://rechnungsblatt:rechnungsblatt@127.0.0.1:5432/rechnungsblatt
         run: python -m pytest kern/tests web/tests -v
 
   referenz-validierung:

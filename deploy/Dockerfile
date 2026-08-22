@@ -17,7 +17,8 @@ COPY kern/ kern/
 COPY web/ web/
 
 RUN pip install --no-cache-dir ./kern \
-    && pip install --no-cache-dir fastapi "uvicorn[standard]" python-multipart
+    && pip install --no-cache-dir fastapi "uvicorn[standard]" python-multipart \
+       "psycopg[binary,pool]>=3.1"
 
 # App läuft aus dem Quellbaum (Seiten und Zonen-Editor liegen neben dem Paket)
 ENV PYTHONPATH=/srv/web/src \
@@ -32,6 +33,6 @@ VOLUME /daten
 
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
-    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/status', timeout=4)"]
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/gesundheit', timeout=4)"]
 
 CMD ["uvicorn", "rechnungsblatt_web.main:app", "--host", "0.0.0.0", "--port", "8000"]

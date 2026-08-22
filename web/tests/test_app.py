@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from rechnungsblatt_kern.testbogen import erzeuge_testbogen
 import rechnungsblatt_web.main as main
 
+from hilfen import lege_kunden_an, melde_an
+
 benoetigt_gs = pytest.mark.skipif(
     shutil.which("gs") is None, reason="Ghostscript nicht installiert"
 )
@@ -48,10 +50,17 @@ RECHNUNG = {
 }
 
 
+PRUEFER = ("pruefer@example.de", "pruefpasswort")
+
+
 @pytest.fixture
-def client(tmp_path, monkeypatch):
+def client(tmp_path, monkeypatch, leere_konten):
+    """Angemeldeter Mandant ohne Mengenbegrenzung auf einem leeren Verzeichnis."""
     monkeypatch.setattr(main, "DATEN", tmp_path)
-    return TestClient(main.app)
+    lege_kunden_an(leere_konten, *PRUEFER)
+    klient = TestClient(main.app)
+    melde_an(klient, *PRUEFER)
+    return klient
 
 
 def _richte_ein(client):
@@ -67,9 +76,19 @@ def _richte_ein(client):
 
 
 def test_seiten_laden(client):
-    assert "Einrichtung" in client.get("/").text
-    assert "positionen" in client.get("/rechnung").text
+    assert "Einrichtung" in client.get("/app/einrichtung").text
+    assert "positionen" in client.get("/app/rechnung").text
+    assert client.get("/app/ablage").status_code == 200
     assert client.get("/zonen-editor/").status_code == 200
+
+
+def test_oeffentliche_startseite_ohne_anmeldung():
+    """Die Startseite erklärt das Modell und braucht kein Konto."""
+    klient = TestClient(main.app)
+    seite = klient.get("/")
+    assert seite.status_code == 200
+    assert "Briefpapier" in seite.text
+    assert klient.get("/anmelden").status_code == 200
 
 
 def test_status_anfangs_leer(client):

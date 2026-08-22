@@ -86,8 +86,10 @@
     </div>
     <div class="zeile">
       <nav class="reiter">
-        <a href="/" aria-current="page" data-i18n="navEinrichtung">Einrichtung</a>
-        <a href="/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/einrichtung" aria-current="page" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" data-i18n="navKonto">Konto</a>
       </nav>
       <div class="sprachen" role="group" aria-label="Sprache / Language">
         <button type="button" data-sprache="de" aria-pressed="true">DE</button>
@@ -296,7 +298,7 @@
 
   <section class="hinweis gut" id="bereitHinweis" hidden>
     <span data-i18n="bereit">Alles eingerichtet — Sie können jetzt Rechnungen schreiben:</span>
-    <a class="verweis" href="/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+    <a class="verweis" href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
   </section>
 </div>
 
@@ -674,6 +676,7 @@
   }
 
   RB.starte(texte);
+  RB.kopfKonto();
   ladeStatus();
   gStart();
 })();

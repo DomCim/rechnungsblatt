@@ -27,8 +27,10 @@
     </div>
     <div class="zeile">
       <nav class="reiter">
-        <a href="/" data-i18n="navEinrichtung">Einrichtung</a>
-        <a href="/rechnung" aria-current="page" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" aria-current="page" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" data-i18n="navKonto">Konto</a>
       </nav>
       <div class="sprachen" role="group" aria-label="Sprache / Language">
         <button type="button" data-sprache="de" aria-pressed="true">DE</button>
@@ -39,7 +41,7 @@
 
   <div class="hinweis" id="einrichtungHinweis" hidden>
     <span data-i18n="einrichtungFehlt">Die Einrichtung ist noch unvollständig.</span>
-    <a class="verweis" href="/" data-i18n="navEinrichtung">Einrichtung</a>
+    <a class="verweis" href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
   </div>
 
   <form id="formular">
@@ -604,6 +606,7 @@
   });
 
   RB.starte(texte);
+  RB.kopfKonto();
   el("rechnungsdatum").value = new Date().toISOString().slice(0, 10);
   neueZeile();
   ladeNummer();

@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rechnungsblatt — Anmelden</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .buehne { max-width: 880px; }
+  .konten-gitter { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .konten-gitter { grid-template-columns: 1fr; } }
+  .karte form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .meldung { margin-top: 12px; }
+  .meldung:empty { display: none; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke"><a class="verweis" href="/" style="text-decoration: none;">Rechnungsblatt</a></div>
+      <h1 data-i18n="titel">Anmelden</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Melden Sie sich an, oder legen Sie ein Konto an. Neue Konten werden
+        vom Betreiber von Hand freigeschaltet.
+      </p>
+    </div>
+    <div class="sprachen" role="group" aria-label="Sprache / Language">
+      <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+      <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <div class="konten-gitter">
+
+    <section class="karte">
+      <h2 data-i18n="anmeldenTitel">Anmelden</h2>
+      <p class="beschreibung" data-i18n="anmeldenText">Mit E-Mail-Adresse und Passwort.</p>
+      <form id="anmeldeForm" novalidate>
+        <div class="feld">
+          <label for="anmeldeEmail" data-i18n="email">E-Mail</label>
+          <input id="anmeldeEmail" type="email" autocomplete="username" required>
+        </div>
+        <div class="feld">
+          <label for="anmeldePasswort" data-i18n="passwort">Passwort</label>
+          <input id="anmeldePasswort" type="password" autocomplete="current-password" required>
+        </div>
+        <button class="knopf" type="submit" data-i18n="anmeldenKnopf">Anmelden</button>
+      </form>
+      <div class="meldung" id="anmeldeMeldung" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="karte" id="registrieren">
+      <h2 data-i18n="registrierenTitel">Konto anlegen</h2>
+      <p class="beschreibung" data-i18n="registrierenText">
+        Kostenlos und ohne Zahlungsdaten. Sie können sich erst anmelden,
+        nachdem Ihr Konto freigeschaltet wurde.
+      </p>
+      <form id="registrierForm" novalidate>
+        <div class="feld">
+          <label for="regEmail" data-i18n="email">E-Mail</label>
+          <input id="regEmail" type="email" autocomplete="username" required>
+        </div>
+        <div class="feld">
+          <label for="regPasswort" data-i18n="passwortNeu">Passwort (mind. 10 Zeichen)</label>
+          <input id="regPasswort" type="password" autocomplete="new-password" required minlength="10">
+        </div>
+        <button class="knopf leise" type="submit" data-i18n="registrierenKnopf">Konto anlegen</button>
+      </form>
+      <div class="meldung" id="registrierMeldung" role="status" aria-live="polite"></div>
+    </section>
+
+  </div>
+
+  <p class="beschreibung">
+    <a class="verweis" href="/" data-i18n="zurueck">Zurück zur Übersicht</a>
+  </p>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      titel: "Anmelden",
+      untertitel: "Melden Sie sich an, oder legen Sie ein Konto an. Neue Konten werden vom Betreiber von Hand freigeschaltet.",
+      anmeldenTitel: "Anmelden",
+      anmeldenText: "Mit E-Mail-Adresse und Passwort.",
+      anmeldenKnopf: "Anmelden",
+      registrierenTitel: "Konto anlegen",
+      registrierenText: "Kostenlos und ohne Zahlungsdaten. Sie können sich erst anmelden, nachdem Ihr Konto freigeschaltet wurde.",
+      registrierenKnopf: "Konto anlegen",
+      email: "E-Mail",
+      passwort: "Passwort",
+      passwortNeu: "Passwort (mind. 10 Zeichen)",
+      zurueck: "Zurück zur Übersicht",
+      registriert: "Konto angelegt. Sobald der Betreiber es freischaltet, können Sie sich anmelden.",
+      gesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber."
+    },
+    en: {
+      titel: "Sign in",
+      untertitel: "Sign in, or create an account. New accounts are activated by the operator by hand.",
+      anmeldenTitel: "Sign in",
+      anmeldenText: "With your e-mail address and password.",
+      anmeldenKnopf: "Sign in",
+      registrierenTitel: "Create account",
+      registrierenText: "Free and without payment details. You can only sign in once your account has been activated.",
+      registrierenKnopf: "Create account",
+      email: "E-mail",
+      passwort: "Password",
+      passwortNeu: "Password (at least 10 characters)",
+      zurueck: "Back to the overview",
+      registriert: "Account created. As soon as the operator activates it you can sign in.",
+      gesperrt: "Your account is blocked. Please contact the operator."
+    }
+  };
+
+  function el(kennung) { return document.getElementById(kennung); }
+
+  function melde(ziel, text, gut) {
+    ziel.textContent = "";
+    if (!text) return;
+    var kasten = document.createElement("div");
+    kasten.className = gut ? "hinweis gut" : "hinweis";
+    kasten.textContent = text;
+    ziel.appendChild(kasten);
+  }
+
+  function grund(antwort) {
+    var einzelheit = antwort.daten && antwort.daten.detail;
+    if (einzelheit && einzelheit.grund) return einzelheit.grund;
+    return RB.t("fehlerAllgemein");
+  }
+
+  el("anmeldeForm").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    var ziel = el("anmeldeMeldung");
+    melde(ziel, RB.t("laedt"), true);
+    var antwort = await RB.api("/api/anmelden", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: el("anmeldeEmail").value,
+        passwort: el("anmeldePasswort").value
+      })
+    });
+    if (antwort.ok) {
+      window.location.href = "/app";
+      return;
+    }
+    melde(ziel, grund(antwort), false);
+  });
+
+  el("registrierForm").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    var ziel = el("registrierMeldung");
+    melde(ziel, RB.t("laedt"), true);
+    var antwort = await RB.api("/api/registrieren", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: el("regEmail").value,
+        passwort: el("regPasswort").value
+      })
+    });
+    if (antwort.ok) {
+      el("registrierForm").reset();
+      melde(ziel, RB.t("registriert"), true);
+      return;
+    }
+    melde(ziel, grund(antwort), false);
+  });
+
+  RB.starte(texte);
+  if (window.location.hash === "#registrieren") el("regEmail").focus();
+})();
+</script>
+</body>
+</html>

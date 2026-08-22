@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rechnungsblatt-web"
 version = "0.1.0"
-description = "Web-Schicht von Rechnungsblatt: Einrichtung (Briefpapier, Schreibzone, Stammdaten) und Rechnungsformular über dem Kern."
+description = "Web-Schicht von Rechnungsblatt: öffentliche Seite, Konten und Mandanten-Arbeitsbereich (Einrichtung, Rechnungsformular, Ablage) über dem Kern."
 requires-python = ">=3.11"
 dependencies = [
     "rechnungsblatt-kern",
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "python-multipart>=0.0.9",
+    "psycopg[binary,pool]>=3.1",
 ]
 
 [project.optional-dependencies]

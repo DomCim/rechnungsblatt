@@ -8,6 +8,10 @@ window.RB = (function () {
     de: {
       navEinrichtung: "Einrichtung",
       navRechnung: "Neue Rechnung",
+      navAblage: "Ablage",
+      navKonto: "Konto",
+      navVerwaltung: "Verwaltung",
+      abmelden: "Abmelden",
       speichern: "Speichern",
       gespeichert: "Gespeichert ✓",
       laedt: "Einen Moment …",
@@ -44,6 +48,10 @@ window.RB = (function () {
     en: {
       navEinrichtung: "Setup",
       navRechnung: "New invoice",
+      navAblage: "Archive",
+      navKonto: "Account",
+      navVerwaltung: "Administration",
+      abmelden: "Sign out",
       speichern: "Save",
       gespeichert: "Saved ✓",
       laedt: "One moment …",
@@ -164,10 +172,41 @@ window.RB = (function () {
     return uebrig;
   }
 
+  /* Ergänzt die Reiterleiste um Verwaltung (nur Admins) und Abmelden.
+     Liefert den angemeldeten Nutzer, damit Seiten damit weiterarbeiten können. */
+  async function kopfKonto() {
+    var leiste = document.querySelector("nav.reiter");
+    var antwort = await api("/api/ich");
+    if (!antwort.ok || !leiste) return antwort.ok ? antwort.daten : null;
+    var person = antwort.daten;
+    if (person.rolle === "admin" && !leiste.querySelector('a[href="/app/verwaltung"]')) {
+      var verweis = document.createElement("a");
+      verweis.href = "/app/verwaltung";
+      verweis.setAttribute("data-i18n", "navVerwaltung");
+      verweis.textContent = t("navVerwaltung");
+      leiste.appendChild(verweis);
+    }
+    if (!leiste.querySelector("[data-abmelden]")) {
+      var knopf = document.createElement("a");
+      knopf.href = "#";
+      knopf.setAttribute("data-abmelden", "");
+      knopf.setAttribute("data-i18n", "abmelden");
+      knopf.textContent = t("abmelden");
+      knopf.addEventListener("click", async function (ereignis) {
+        ereignis.preventDefault();
+        await api("/api/abmelden", { method: "POST" });
+        window.location.href = "/";
+      });
+      leiste.appendChild(knopf);
+    }
+    return person;
+  }
+
   return {
     t: t,
     starte: starte,
     api: api,
+    kopfKonto: kopfKonto,
     befundText: befundText,
     zeigeBefunde: zeigeBefunde,
     sprache: function () { return sprache; },

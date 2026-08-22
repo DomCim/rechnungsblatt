@@ -3,27 +3,63 @@
 #   docker compose -f deploy/docker-compose.local.yml up --build
 #   → http://localhost:8000
 #
+# Anmeldung als Admin:
+#   admin@rechnungsblatt.local / rechnungsblatt-admin
+# Das Konto ist als „Passwort wechseln“ markiert und mahnt die Änderung an.
+# Dieses Standardpasswort gilt NUR hier; der Portainer-Stack verlangt ein
+# eigenes (siehe docker-compose.yml).
+#
+# Nur die Datenbank starten, etwa für die Tests der Web-Schicht:
+#   docker compose -f deploy/docker-compose.local.yml up -d datenbank
+#
 # Daten (Briefpapier, Einrichtung, Ablage) liegen im Volume
-# "rechnungsblatt-daten-lokal" und überleben Neustarts.
-# Alles zurücksetzen:
+# "rechnungsblatt-daten-lokal", die Konten in "rechnungsblatt-db-lokal";
+# beide überleben Neustarts. Alles zurücksetzen:
 #   docker compose -f deploy/docker-compose.local.yml down -v
 
 services:
+  datenbank:
+    image: postgres:16-alpine
+    container_name: rechnungsblatt-db-lokal
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rechnungsblatt
+      POSTGRES_PASSWORD: rechnungsblatt
+      POSTGRES_DB: rechnungsblatt
+    ports:
+      # Damit `pytest web/tests` von außerhalb des Containers darauf zugreift.
+      - "5432:5432"
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rechnungsblatt -d rechnungsblatt"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   rechnungsblatt:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
     container_name: rechnungsblatt-lokal
     restart: unless-stopped
+    depends_on:
+      datenbank:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
       - daten:/daten
-    # Plausible lokal testen? Beide Zeilen einkommentieren:
-    # environment:
-    #   PLAUSIBLE_URL: http://192.168.178.129:8001
-    #   PLAUSIBLE_DOMAIN: localhost
+    environment:
+      DATENBANK_URL: postgresql://rechnungsblatt:rechnungsblatt@datenbank:5432/rechnungsblatt
+      ADMIN_EMAIL: admin@rechnungsblatt.local
+      ADMIN_PASSWORT: rechnungsblatt-admin
+      # Plausible lokal testen? Beide Zeilen einkommentieren:
+      # PLAUSIBLE_URL: http://192.168.178.129:8001
+      # PLAUSIBLE_DOMAIN: localhost
 
 volumes:
   daten:
     name: rechnungsblatt-daten-lokal
+  db:
+    name: rechnungsblatt-db-lokal

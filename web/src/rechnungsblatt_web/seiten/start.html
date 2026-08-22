@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rechnungsblatt — E-Rechnung auf Ihrem eigenen Briefpapier</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .held { padding: 26px 0 6px; }
+  .held h1 { font-size: clamp(30px, 5.4vw, 46px); max-width: 20ch; }
+  .held .untertitel { font-size: 17px; max-width: 54ch; margin-top: 12px; }
+  .held .zeile { margin-top: 20px; }
+
+  .abschnitt-kopf { max-width: 62ch; }
+  .abschnitt-kopf h2 { font-size: clamp(20px, 3vw, 26px); }
+  .abschnitt-kopf p { color: var(--tinte-2); margin-top: 6px; }
+
+  .raster { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+  .raster .karte { display: flex; flex-direction: column; gap: 7px; }
+  .raster .karte p { color: var(--tinte-2); font-size: 14px; }
+
+  .schritte { counter-reset: schritt; display: grid; gap: 12px; }
+  .schritte li {
+    counter-increment: schritt;
+    list-style: none;
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .schritte li::before {
+    content: counter(schritt);
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--akzent-schleier);
+    color: var(--akzent-tinte);
+    border: 1px solid color-mix(in srgb, var(--akzent) 30%, transparent);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .schritte strong { display: block; }
+  .schritte p { color: var(--tinte-2); font-size: 14px; margin-top: 2px; }
+
+  .gegenueber { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 700px) { .gegenueber { grid-template-columns: 1fr; } }
+  .gegenueber .karte.andere { border-style: dashed; }
+  .gegenueber ul { margin: 8px 0 0; padding-left: 18px; color: var(--tinte-2); font-size: 14px; }
+  .gegenueber li { margin-bottom: 5px; }
+
+  .tarife { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+  .tarif { display: flex; flex-direction: column; gap: 6px; }
+  .tarif .preis {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 26px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--tinte);
+  }
+  .tarif .preis .einheit { font-size: 13px; color: var(--tinte-2); font-weight: 500; }
+  .tarif .beschreibung { color: var(--tinte-2); font-size: 14px; flex: 1; }
+  .tarif .merkmal { font-size: 13.5px; color: var(--tinte-2); }
+  .tarif .merkmal strong { color: var(--tinte); }
+
+  .kein-versprechen ul { margin: 0; padding-left: 18px; color: var(--tinte-2); font-size: 14px; }
+  .kein-versprechen li { margin-bottom: 5px; }
+
+  footer.fuss {
+    border-top: 1px solid var(--linie);
+    padding-top: 16px;
+    color: var(--tinte-2);
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke">Rechnungsblatt</div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="held">
+    <h1 data-i18n="heldTitel">Die E-Rechnung, die aussieht wie Ihr Briefpapier.</h1>
+    <p class="untertitel" data-i18n="heldText">
+      Rechnungsblatt erzeugt eine rechtsgültige deutsche E-Rechnung — ZUGFeRD
+      und XRechnung, geprüft nach PDF/A-3B und EN 16931 — und legt sie auf
+      Ihren eigenen Briefbogen. Kein fremdes Layout, keine Vorlage von der
+      Stange.
+    </p>
+    <div class="zeile">
+      <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="#ablauf" data-i18n="heldMehr">Wie es funktioniert</a>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section class="karte">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="problemTitel">Warum die Word-Vorlage nicht mehr reicht</h2>
+      <p data-i18n="problemText">
+        Eine E-Rechnung ist kein hübsches PDF, sondern ein PDF mit maschinen­lesbaren
+        Daten darin — beides muss zusammenpassen und beides muss vollständig sein.
+        Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst,
+        wenn der Steuerprüfer beim Kunden steht.
+      </p>
+    </div>
+    <div class="raster" style="margin-top: 16px;">
+      <div class="karte">
+        <strong data-i18n="problem1Titel">Pflichtangaben nach § 14 UStG</strong>
+        <p data-i18n="problem1Text">
+          Jede einzelne Pflichtangabe muss stimmen. Fehlt eine, ist die Rechnung
+          formal mangelhaft — und der Vorsteuerabzug Ihres Kunden wackelt.
+        </p>
+      </div>
+      <div class="karte">
+        <strong data-i18n="problem2Titel">PDF und XML müssen übereinstimmen</strong>
+        <p data-i18n="problem2Text">
+          Zwei Darstellungen derselben Rechnung, die auseinanderlaufen können.
+          Genau daran scheitern nachträglich angereicherte PDFs.
+        </p>
+      </div>
+      <div class="karte">
+        <strong data-i18n="problem3Titel">Ihr Briefbogen bleibt außen vor</strong>
+        <p data-i18n="problem3Text">
+          Die meisten Werkzeuge geben Ihnen ihr Layout. Ihr Logo, Ihre Farben
+          und Ihre Fußzeile fallen weg — oder kosten Enterprise-Aufpreis.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ablauf -->
+  <section class="karte" id="ablauf">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="ablaufTitel">Dreimal einrichten, dann nur noch schreiben</h2>
+      <p data-i18n="ablaufText">
+        Die Einrichtung machen Sie einmal. Danach ist die Startseite nach dem
+        Anmelden das Rechnungsformular — mehr braucht es nicht.
+      </p>
+    </div>
+    <ol class="schritte" style="margin-top: 16px;">
+      <li>
+        <div>
+          <strong data-i18n="schritt1Titel">Briefpapier hochladen</strong>
+          <p data-i18n="schritt1Text">
+            Sie laden Ihren Briefbogen als PDF hoch. Wir vereinheitlichen den
+            Farbraum und betten fehlende Schriften ein — der Schritt, an dem
+            PDF/A sonst scheitert. Sie sehen sofort an einer Ampel, ob der
+            Bogen taugt.
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong data-i18n="schritt2Titel">Schreibzone festlegen</strong>
+          <p data-i18n="schritt2Text">
+            Zwei Regler: wo Ihr Briefkopf endet und wo die Fußzeile beginnt.
+            Dazwischen schreibt Rechnungsblatt. Kein Layout-Editor, keine
+            Kästchen ziehen.
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong data-i18n="schritt3Titel">Stammdaten hinterlegen</strong>
+          <p data-i18n="schritt3Text">
+            Firmierung, Anschrift, Steuernummer oder USt-IdNr., IBAN,
+            Zahlungsziel. Einmal eingetragen, stehen sie auf jeder Rechnung.
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong data-i18n="schritt4Titel">Rechnung schreiben</strong>
+          <p data-i18n="schritt4Text">
+            Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht
+            absenden, solange eine Pflichtangabe fehlt. Heraus kommt ein
+            PDF/A-3B mit eingebettetem XML, dazu auf Wunsch die XRechnung für
+            Behördenkunden.
+          </p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- Abgrenzung -->
+  <section class="karte">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="andersTitel">Was Rechnungsblatt anders macht</h2>
+      <p data-i18n="andersText">
+        Der Markt ist voll von Werkzeugen, die ein fertiges PDF hochladen
+        lassen und die Daten per KI herauslesen. Das ist bequem — und genau
+        deshalb schwach.
+      </p>
+    </div>
+    <div class="gegenueber" style="margin-top: 16px;">
+      <div class="karte andere">
+        <strong data-i18n="andereTitel">PDF hochladen, KI liest aus</strong>
+        <ul>
+          <li data-i18n="andere1">Findet nur, was schon dasteht — fehlt eine Pflichtangabe, bleibt sie weg.</li>
+          <li data-i18n="andere2">Erzeugt im Zweifel eine technisch gültige Rechnung mit inhaltlichem Mangel.</li>
+          <li data-i18n="andere3">Das Layout bleibt „in vielen Fällen“ erhalten. In vielen.</li>
+        </ul>
+      </div>
+      <div class="karte">
+        <strong data-i18n="unserTitel">Rechnungsblatt: aus Daten gebaut</strong>
+        <ul>
+          <li data-i18n="unser1">PDF und XML entstehen im selben Vorgang aus denselben Daten. Sie können nicht auseinanderlaufen.</li>
+          <li data-i18n="unser2">Die § 14-Prüfung blockiert, sie warnt nicht. Unvollständig heißt: keine Rechnung.</li>
+          <li data-i18n="unser3">Ihr Briefbogen ist die Unterlage, nicht eine Option. Für jeden, nicht erst ab Enterprise.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Preise -->
+  <section class="karte" id="preise">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="preiseTitel">Was es kostet</h2>
+      <p data-i18n="preiseText">
+        Sie fangen mit einem Probekontingent an — vollwertige Rechnungen, keine
+        Wasserzeichen, keine Zahlungsdaten. Erst danach entscheiden Sie.
+      </p>
+    </div>
+    <div class="tarife" id="tarife" style="margin-top: 16px;">
+      <p class="beschreibung" data-i18n="laedt">Einen Moment …</p>
+    </div>
+    <p class="beschreibung" style="margin-top: 14px;" data-i18n="preiseFuss">
+      Alle Preise verstehen sich zuzüglich Umsatzsteuer. Das Modell ist noch
+      nicht endgültig — solange kein Bezahlweg angebunden ist, schaltet der
+      Betreiber Kontingente von Hand frei.
+    </p>
+  </section>
+
+  <!-- Ehrlichkeit -->
+  <section class="karte kein-versprechen">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="nichtTitel">Was Rechnungsblatt ausdrücklich nicht ist</h2>
+      <p data-i18n="nichtText">
+        Damit niemand etwas erwartet, das nicht kommt:
+      </p>
+    </div>
+    <ul style="margin-top: 12px;">
+      <li data-i18n="nicht1">Keine Buchhaltung, kein Mahnwesen, keine Angebote.</li>
+      <li data-i18n="nicht2">Kein Versand aus dem Werkzeug heraus — Sie laden die Datei herunter und verschicken sie selbst.</li>
+      <li data-i18n="nicht3">Keine Eingangsrechnungen, kein Peppol-Zugang.</li>
+      <li data-i18n="nicht4">Eine Ablage ist vorhanden, aber kein zertifiziertes GoBD-Archiv. Die achtjährige Aufbewahrung bleibt Ihre Pflicht.</li>
+      <li data-i18n="nicht5">Keine Steuerberatung. Ob eine Angabe inhaltlich richtig ist, entscheiden Sie oder Ihr Berater.</li>
+    </ul>
+  </section>
+
+  <section class="karte" style="text-align: center;">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p class="beschreibung" style="margin: 8px auto 16px; max-width: 46ch;" data-i18n="schlussText">
+      Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von
+      Hand freigeschaltet — das dauert in der Regel nicht lange.
+    </p>
+    <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      navAnmelden: "Anmelden",
+      heldTitel: "Die E-Rechnung, die aussieht wie Ihr Briefpapier.",
+      heldText: "Rechnungsblatt erzeugt eine rechtsgültige deutsche E-Rechnung — ZUGFeRD und XRechnung, geprüft nach PDF/A-3B und EN 16931 — und legt sie auf Ihren eigenen Briefbogen. Kein fremdes Layout, keine Vorlage von der Stange.",
+      heldKnopf: "Konto anlegen",
+      heldMehr: "Wie es funktioniert",
+      problemTitel: "Warum die Word-Vorlage nicht mehr reicht",
+      problemText: "Eine E-Rechnung ist kein hübsches PDF, sondern ein PDF mit maschinenlesbaren Daten darin — beides muss zusammenpassen und beides muss vollständig sein. Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst, wenn der Steuerprüfer beim Kunden steht.",
+      problem1Titel: "Pflichtangaben nach § 14 UStG",
+      problem1Text: "Jede einzelne Pflichtangabe muss stimmen. Fehlt eine, ist die Rechnung formal mangelhaft — und der Vorsteuerabzug Ihres Kunden wackelt.",
+      problem2Titel: "PDF und XML müssen übereinstimmen",
+      problem2Text: "Zwei Darstellungen derselben Rechnung, die auseinanderlaufen können. Genau daran scheitern nachträglich angereicherte PDFs.",
+      problem3Titel: "Ihr Briefbogen bleibt außen vor",
+      problem3Text: "Die meisten Werkzeuge geben Ihnen ihr Layout. Ihr Logo, Ihre Farben und Ihre Fußzeile fallen weg — oder kosten Enterprise-Aufpreis.",
+      ablaufTitel: "Dreimal einrichten, dann nur noch schreiben",
+      ablaufText: "Die Einrichtung machen Sie einmal. Danach ist die Startseite nach dem Anmelden das Rechnungsformular — mehr braucht es nicht.",
+      schritt1Titel: "Briefpapier hochladen",
+      schritt1Text: "Sie laden Ihren Briefbogen als PDF hoch. Wir vereinheitlichen den Farbraum und betten fehlende Schriften ein — der Schritt, an dem PDF/A sonst scheitert. Sie sehen sofort an einer Ampel, ob der Bogen taugt.",
+      schritt2Titel: "Schreibzone festlegen",
+      schritt2Text: "Zwei Regler: wo Ihr Briefkopf endet und wo die Fußzeile beginnt. Dazwischen schreibt Rechnungsblatt. Kein Layout-Editor, keine Kästchen ziehen.",
+      schritt3Titel: "Stammdaten hinterlegen",
+      schritt3Text: "Firmierung, Anschrift, Steuernummer oder USt-IdNr., IBAN, Zahlungsziel. Einmal eingetragen, stehen sie auf jeder Rechnung.",
+      schritt4Titel: "Rechnung schreiben",
+      schritt4Text: "Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Heraus kommt ein PDF/A-3B mit eingebettetem XML, dazu auf Wunsch die XRechnung für Behördenkunden.",
+      andersTitel: "Was Rechnungsblatt anders macht",
+      andersText: "Der Markt ist voll von Werkzeugen, die ein fertiges PDF hochladen lassen und die Daten per KI herauslesen. Das ist bequem — und genau deshalb schwach.",
+      andereTitel: "PDF hochladen, KI liest aus",
+      andere1: "Findet nur, was schon dasteht — fehlt eine Pflichtangabe, bleibt sie weg.",
+      andere2: "Erzeugt im Zweifel eine technisch gültige Rechnung mit inhaltlichem Mangel.",
+      andere3: "Das Layout bleibt „in vielen Fällen“ erhalten. In vielen.",
+      unserTitel: "Rechnungsblatt: aus Daten gebaut",
+      unser1: "PDF und XML entstehen im selben Vorgang aus denselben Daten. Sie können nicht auseinanderlaufen.",
+      unser2: "Die § 14-Prüfung blockiert, sie warnt nicht. Unvollständig heißt: keine Rechnung.",
+      unser3: "Ihr Briefbogen ist die Unterlage, nicht eine Option. Für jeden, nicht erst ab Enterprise.",
+      preiseTitel: "Was es kostet",
+      preiseText: "Sie fangen mit einem Probekontingent an — vollwertige Rechnungen, keine Wasserzeichen, keine Zahlungsdaten. Erst danach entscheiden Sie.",
+      preiseFuss: "Alle Preise verstehen sich zuzüglich Umsatzsteuer. Das Modell ist noch nicht endgültig — solange kein Bezahlweg angebunden ist, schaltet der Betreiber Kontingente von Hand frei.",
+      preisMonat: "je Monat",
+      preisRechnung: "je Rechnung",
+      preisKostenlos: "kostenlos",
+      inklusivEins: "Rechnung im Monat inklusive",
+      inklusivViele: "Rechnungen im Monat inklusive",
+      inklusivKeine: "Kein Inklusivkontingent",
+      inklusivUnbegrenzt: "Ohne Mengenbegrenzung",
+      weitere: "jede weitere",
+      nichtTitel: "Was Rechnungsblatt ausdrücklich nicht ist",
+      nichtText: "Damit niemand etwas erwartet, das nicht kommt:",
+      nicht1: "Keine Buchhaltung, kein Mahnwesen, keine Angebote.",
+      nicht2: "Kein Versand aus dem Werkzeug heraus — Sie laden die Datei herunter und verschicken sie selbst.",
+      nicht3: "Keine Eingangsrechnungen, kein Peppol-Zugang.",
+      nicht4: "Eine Ablage ist vorhanden, aber kein zertifiziertes GoBD-Archiv. Die achtjährige Aufbewahrung bleibt Ihre Pflicht.",
+      nicht5: "Keine Steuerberatung. Ob eine Angabe inhaltlich richtig ist, entscheiden Sie oder Ihr Berater.",
+      schlussTitel: "Einmal einrichten, dann steht es",
+      schlussText: "Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von Hand freigeschaltet — das dauert in der Regel nicht lange.",
+      fussHinweis: "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier."
+    },
+    en: {
+      navAnmelden: "Sign in",
+      heldTitel: "The e-invoice that looks like your own letterhead.",
+      heldText: "Rechnungsblatt produces a legally valid German e-invoice — ZUGFeRD and XRechnung, validated against PDF/A-3B and EN 16931 — and places it on your own letterhead. No foreign layout, no off-the-shelf template.",
+      heldKnopf: "Create account",
+      heldMehr: "How it works",
+      problemTitel: "Why the Word template no longer does the job",
+      problemText: "An e-invoice is not a pretty PDF but a PDF with machine-readable data inside — the two must match and both must be complete. Build that by hand and you notice a missing mandatory field only once the tax auditor is at your customer’s desk.",
+      problem1Titel: "Mandatory fields under § 14 UStG",
+      problem1Text: "Every single mandatory entry has to be right. Miss one and the invoice is formally deficient — putting your customer’s input tax deduction at risk.",
+      problem2Titel: "PDF and XML have to agree",
+      problem2Text: "Two representations of one invoice that can drift apart. That is exactly where retrofitted PDFs fail.",
+      problem3Titel: "Your letterhead is left out",
+      problem3Text: "Most tools hand you their layout. Your logo, your colours and your footer fall away — or carry an enterprise surcharge.",
+      ablaufTitel: "Set up three things, then just write",
+      ablaufText: "You do the setup once. After that the landing page after signing in is the invoice form — nothing else needed.",
+      schritt1Titel: "Upload your letterhead",
+      schritt1Text: "Upload your letterhead as a PDF. We unify the colour space and embed missing fonts — the step where PDF/A otherwise fails. A traffic light tells you straight away whether the sheet works.",
+      schritt2Titel: "Set the writing zone",
+      schritt2Text: "Two sliders: where your header ends and where the footer begins. Rechnungsblatt writes in between. No layout editor, no dragging boxes.",
+      schritt3Titel: "Enter your master data",
+      schritt3Text: "Company name, address, tax number or VAT ID, IBAN, payment terms. Entered once, they appear on every invoice.",
+      schritt4Titel: "Write the invoice",
+      schritt4Text: "Recipient, line items, tax rate — the form will not let you submit while a mandatory field is missing. Out comes a PDF/A-3B with embedded XML, plus the XRechnung for public-sector customers on request.",
+      andersTitel: "What Rechnungsblatt does differently",
+      andersText: "The market is full of tools that let you upload a finished PDF and have an AI read the data out of it. That is convenient — and precisely why it is weak.",
+      andereTitel: "Upload a PDF, let AI read it",
+      andere1: "Finds only what is already there — a missing mandatory field stays missing.",
+      andere2: "In case of doubt produces a technically valid invoice with a substantive defect.",
+      andere3: "The layout is preserved “in many cases”. In many.",
+      unserTitel: "Rechnungsblatt: built from data",
+      unser1: "PDF and XML are produced in one operation from the same data. They cannot drift apart.",
+      unser2: "The § 14 check blocks, it does not warn. Incomplete means: no invoice.",
+      unser3: "Your letterhead is the substrate, not an option. For everyone, not from enterprise upwards.",
+      preiseTitel: "What it costs",
+      preiseText: "You start with a trial allowance — full invoices, no watermarks, no payment details. Only then do you decide.",
+      preiseFuss: "All prices are exclusive of VAT. The model is not final — while no payment route is connected, the operator grants allowances by hand.",
+      preisMonat: "per month",
+      preisRechnung: "per invoice",
+      preisKostenlos: "free",
+      inklusivEins: "invoice per month included",
+      inklusivViele: "invoices per month included",
+      inklusivKeine: "No included allowance",
+      inklusivUnbegrenzt: "No volume limit",
+      weitere: "each further",
+      nichtTitel: "What Rechnungsblatt explicitly is not",
+      nichtText: "So that nobody expects something that will not come:",
+      nicht1: "No bookkeeping, no dunning, no quotations.",
+      nicht2: "No sending from within the tool — you download the file and send it yourself.",
+      nicht3: "No incoming invoices, no Peppol access.",
+      nicht4: "An archive is provided, but not a certified GoBD archive. The eight-year retention obligation remains yours.",
+      nicht5: "No tax advice. Whether an entry is substantively correct is for you or your adviser to decide.",
+      schlussTitel: "Set it up once, then it stands",
+      schlussText: "Create an account, upload your letterhead, get going. New accounts are activated by hand — usually not a long wait.",
+      fussHinweis: "Rechnungsblatt — e-invoicing on your own letterhead."
+    }
+  };
+
+  function euro(cent) {
+    return (cent / 100).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE", {
+      style: "currency", currency: "EUR"
+    });
+  }
+
+  var geladene = [];
+
+  function inklusivText(tarif) {
+    if (tarif.inklusiv_rechnungen === null) return RB.t("inklusivUnbegrenzt");
+    if (tarif.inklusiv_rechnungen === 0) return RB.t("inklusivKeine");
+    if (tarif.inklusiv_rechnungen === 1) return "1 " + RB.t("inklusivEins");
+    return tarif.inklusiv_rechnungen + " " + RB.t("inklusivViele");
+  }
+
+  function zeichneTarife() {
+    var ziel = document.getElementById("tarife");
+    ziel.textContent = "";
+    if (!geladene.length) {
+      var leer = document.createElement("p");
+      leer.className = "beschreibung";
+      leer.textContent = RB.t("preiseFuss");
+      ziel.appendChild(leer);
+      return;
+    }
+    geladene.forEach(function (tarif) {
+      var karte = document.createElement("div");
+      karte.className = "karte tarif";
+
+      var name = document.createElement("strong");
+      name.textContent = tarif.name;
+      karte.appendChild(name);
+
+      var preis = document.createElement("div");
+      preis.className = "preis";
+      if (tarif.monatsbeitrag_cent > 0) {
+        preis.textContent = euro(tarif.monatsbeitrag_cent);
+        var einheit = document.createElement("span");
+        einheit.className = "einheit";
+        einheit.textContent = " " + RB.t("preisMonat");
+        preis.appendChild(einheit);
+      } else if (tarif.inklusiv_rechnungen === 0 && tarif.preis_je_rechnung_cent > 0) {
+        preis.textContent = euro(tarif.preis_je_rechnung_cent);
+        var je = document.createElement("span");
+        je.className = "einheit";
+        je.textContent = " " + RB.t("preisRechnung");
+        preis.appendChild(je);
+      } else {
+        preis.textContent = RB.t("preisKostenlos");
+      }
+      karte.appendChild(preis);
+
+      var beschreibung = document.createElement("p");
+      beschreibung.className = "beschreibung";
+      beschreibung.textContent = tarif.beschreibung;
+      karte.appendChild(beschreibung);
+
+      var merkmal = document.createElement("div");
+      merkmal.className = "merkmal";
+      var stark = document.createElement("strong");
+      stark.textContent = inklusivText(tarif);
+      merkmal.appendChild(stark);
+      karte.appendChild(merkmal);
+
+      if (tarif.preis_je_rechnung_cent > 0 && tarif.inklusiv_rechnungen !== 0) {
+        var weitere = document.createElement("div");
+        weitere.className = "merkmal";
+        weitere.textContent = RB.t("weitere") + ": " + euro(tarif.preis_je_rechnung_cent);
+        karte.appendChild(weitere);
+      }
+      ziel.appendChild(karte);
+    });
+  }
+
+  RB.starte(texte);
+  RB.beiSprachwechsel(zeichneTarife);
+
+  RB.api("/api/tarife").then(function (antwort) {
+    geladene = (antwort.ok && antwort.daten) || [];
+    zeichneTarife();
+  });
+})();
+</script>
+</body>
+</html>

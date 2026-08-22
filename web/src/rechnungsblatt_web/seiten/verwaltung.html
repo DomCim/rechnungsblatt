@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rechnungsblatt — Verwaltung</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .buehne { max-width: 1240px; }
+  td.eng { white-space: nowrap; }
+  td select, td input { min-width: 90px; }
+  .mono { font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .marke-status {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .marke-status.frei { color: var(--gut); background: color-mix(in srgb, var(--gut) 13%, transparent); }
+  .marke-status.wartet { color: var(--warn); background: color-mix(in srgb, var(--warn) 13%, transparent); }
+  .marke-status.gesperrt { color: var(--tinte-2); background: color-mix(in srgb, var(--tinte-2) 15%, transparent); }
+  .knopf.klein { padding: 6px 11px; font-size: 13px; border-radius: 8px; }
+  .meldung { margin-bottom: 12px; }
+  .meldung:empty { display: none; }
+  .tarif-zeile td input { min-width: 70px; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Verwaltung</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Konten freischalten, Tarife zuweisen, Guthaben buchen. Alles hier wirkt
+        sofort — es gibt keine Rückfrage.
+      </p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" data-i18n="navKonto">Konto</a>
+        <a href="/app/verwaltung" aria-current="page" data-i18n="navVerwaltung">Verwaltung</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="meldung" id="meldung" role="status" aria-live="polite"></div>
+
+  <section class="karte">
+    <h2 data-i18n="nutzerTitel">Konten</h2>
+    <p class="beschreibung" data-i18n="nutzerText">
+      Neue Registrierungen stehen auf „wartet“ und kommen erst nach der
+      Freigabe in den Arbeitsbereich.
+    </p>
+    <div class="tabelle-rolle">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="spEmail">E-Mail</th>
+            <th data-i18n="spStatus">Status</th>
+            <th data-i18n="spRolle">Rolle</th>
+            <th data-i18n="spTarif">Tarif</th>
+            <th data-i18n="spMonat">Monat</th>
+            <th data-i18n="spGuthaben">Guthaben</th>
+            <th data-i18n="spAktion">Aktion</th>
+          </tr>
+        </thead>
+        <tbody id="nutzerKoerper"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="tarifeTitel">Tarife</h2>
+    <p class="beschreibung" data-i18n="tarifeText">
+      Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900
+      bedeutet 9,00 €. Inklusivmenge leer lassen heißt „unbegrenzt“.
+    </p>
+    <div class="tabelle-rolle">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="spSchluessel">Schlüssel</th>
+            <th data-i18n="spName">Name</th>
+            <th data-i18n="spMonatsbeitrag">Monat (ct)</th>
+            <th data-i18n="spInklusiv">Inklusiv</th>
+            <th data-i18n="spJeRechnung">Je Rechnung (ct)</th>
+            <th data-i18n="spReihenfolge">Reihung</th>
+            <th data-i18n="spSichtbar">Sichtbar</th>
+            <th data-i18n="spAktion">Aktion</th>
+          </tr>
+        </thead>
+        <tbody id="tarifKoerper"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      titel: "Verwaltung",
+      untertitel: "Konten freischalten, Tarife zuweisen, Guthaben buchen. Alles hier wirkt sofort — es gibt keine Rückfrage.",
+      nutzerTitel: "Konten",
+      nutzerText: "Neue Registrierungen stehen auf „wartet“ und kommen erst nach der Freigabe in den Arbeitsbereich.",
+      spEmail: "E-Mail", spStatus: "Status", spRolle: "Rolle", spTarif: "Tarif",
+      spMonat: "Monat", spGuthaben: "Guthaben", spAktion: "Aktion",
+      statusFrei: "frei", statusWartet: "wartet", statusGesperrt: "gesperrt",
+      rolleKunde: "Kunde", rolleAdmin: "Admin",
+      freigeben: "Freigeben", sperren: "Sperren", entsperren: "Entsperren",
+      loeschen: "Löschen",
+      loeschenFrage: "Konto und alle zugehörigen Rechnungsdaten endgültig löschen?",
+      guthabenFrage: "Guthaben in Cent buchen (negativ zum Abziehen):",
+      tarifeTitel: "Tarife",
+      tarifeText: "Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900 bedeutet 9,00 €. Inklusivmenge leer lassen heißt „unbegrenzt“.",
+      spSchluessel: "Schlüssel", spName: "Name", spMonatsbeitrag: "Monat (ct)",
+      spInklusiv: "Inklusiv", spJeRechnung: "Je Rechnung (ct)",
+      spReihenfolge: "Reihung", spSichtbar: "Sichtbar",
+      gespeichertKurz: "Gespeichert.",
+      keine: "Noch keine Konten."
+    },
+    en: {
+      titel: "Administration",
+      untertitel: "Activate accounts, assign plans, book credit. Everything here takes effect immediately — there is no confirmation step.",
+      nutzerTitel: "Accounts",
+      nutzerText: "New registrations sit at “waiting” and only reach the workspace once activated.",
+      spEmail: "E-mail", spStatus: "Status", spRolle: "Role", spTarif: "Plan",
+      spMonat: "Month", spGuthaben: "Credit", spAktion: "Action",
+      statusFrei: "active", statusWartet: "waiting", statusGesperrt: "blocked",
+      rolleKunde: "Customer", rolleAdmin: "Admin",
+      freigeben: "Activate", sperren: "Block", entsperren: "Unblock",
+      loeschen: "Delete",
+      loeschenFrage: "Permanently delete the account and all its invoice data?",
+      guthabenFrage: "Book credit in cents (negative to deduct):",
+      tarifeTitel: "Plans",
+      tarifeText: "What stands here is what the public page shows. Amounts in cents — 900 means € 9.00. Leave the included allowance empty for “unlimited”.",
+      spSchluessel: "Key", spName: "Name", spMonatsbeitrag: "Month (ct)",
+      spInklusiv: "Included", spJeRechnung: "Per invoice (ct)",
+      spReihenfolge: "Order", spSichtbar: "Visible",
+      gespeichertKurz: "Saved.",
+      keine: "No accounts yet."
+    }
+  };
+
+  function el(kennung) { return document.getElementById(kennung); }
+
+  var nutzer = [];
+  var tarife = [];
+  var ich = null;
+
+  function melde(text, gut) {
+    var ziel = el("meldung");
+    ziel.textContent = "";
+    if (!text) return;
+    var kasten = document.createElement("div");
+    kasten.className = gut ? "hinweis gut" : "hinweis";
+    kasten.textContent = text;
+    ziel.appendChild(kasten);
+  }
+
+  function grund(antwort) {
+    var einzelheit = antwort.daten && antwort.daten.detail;
+    return (einzelheit && einzelheit.grund) || RB.t("fehlerAllgemein");
+  }
+
+  function euro(cent) {
+    return (cent / 100).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE", {
+      style: "currency", currency: "EUR"
+    });
+  }
+
+  async function sende(pfad, koerper, art) {
+    var antwort = await RB.api(pfad, {
+      method: art || "POST",
+      headers: { "Content-Type": "application/json" },
+      body: koerper ? JSON.stringify(koerper) : undefined
+    });
+    if (!antwort.ok) { melde(grund(antwort), false); return null; }
+    melde(RB.t("gespeichertKurz"), true);
+    return antwort.daten;
+  }
+
+  function knopf(beschriftung, beiKlick, leise) {
+    var element = document.createElement("button");
+    element.type = "button";
+    element.className = "knopf klein" + (leise ? " leise" : "");
+    element.textContent = beschriftung;
+    element.addEventListener("click", beiKlick);
+    return element;
+  }
+
+  function zeichneNutzer() {
+    var koerper = el("nutzerKoerper");
+    koerper.textContent = "";
+    if (!nutzer.length) {
+      var leer = koerper.insertRow();
+      var zelle = leer.insertCell();
+      zelle.colSpan = 7;
+      zelle.textContent = RB.t("keine");
+      return;
+    }
+
+    nutzer.forEach(function (person) {
+      var zeile = koerper.insertRow();
+
+      zeile.insertCell().textContent = person.email;
+
+      var status = zeile.insertCell();
+      var marke = document.createElement("span");
+      marke.className = "marke-status " + person.status;
+      marke.textContent = RB.t(
+        person.status === "frei" ? "statusFrei"
+          : person.status === "gesperrt" ? "statusGesperrt" : "statusWartet"
+      );
+      status.appendChild(marke);
+
+      var rolle = zeile.insertCell();
+      var rollenWahl = document.createElement("select");
+      [["kunde", RB.t("rolleKunde")], ["admin", RB.t("rolleAdmin")]].forEach(function (paar) {
+        var option = document.createElement("option");
+        option.value = paar[0];
+        option.textContent = paar[1];
+        if (person.rolle === paar[0]) option.selected = true;
+        rollenWahl.appendChild(option);
+      });
+      rollenWahl.addEventListener("change", async function () {
+        var ergebnis = await sende(
+          "/api/verwaltung/nutzer/" + person.id + "/rolle", { rolle: rollenWahl.value }
+        );
+        if (!ergebnis) rollenWahl.value = person.rolle; else lade();
+      });
+      rolle.appendChild(rollenWahl);
+
+      var tarif = zeile.insertCell();
+      var tarifWahl = document.createElement("select");
+      tarife.forEach(function (eintrag) {
+        var option = document.createElement("option");
+        option.value = eintrag.schluessel;
+        option.textContent = eintrag.name;
+        if (person.tarif === eintrag.schluessel) option.selected = true;
+        tarifWahl.appendChild(option);
+      });
+      tarifWahl.addEventListener("change", async function () {
+        var ergebnis = await sende(
+          "/api/verwaltung/nutzer/" + person.id + "/tarif", { tarif: tarifWahl.value }
+        );
+        if (!ergebnis) tarifWahl.value = person.tarif; else lade();
+      });
+      tarif.appendChild(tarifWahl);
+
+      var monat = zeile.insertCell();
+      monat.className = "mono";
+      monat.textContent = person.verbraucht_monat;
+
+      var guthaben = zeile.insertCell();
+      guthaben.className = "mono";
+      guthaben.textContent = euro(person.guthaben_cent);
+
+      var aktion = zeile.insertCell();
+      aktion.className = "eng";
+      var kasten = document.createElement("div");
+      kasten.className = "zeile";
+
+      if (person.status !== "frei") {
+        kasten.appendChild(knopf(RB.t(person.status === "gesperrt" ? "entsperren" : "freigeben"),
+          async function () {
+            if (await sende("/api/verwaltung/nutzer/" + person.id + "/status", { status: "frei" })) lade();
+          }));
+      }
+      if (person.status !== "gesperrt") {
+        kasten.appendChild(knopf(RB.t("sperren"), async function () {
+          if (await sende("/api/verwaltung/nutzer/" + person.id + "/status", { status: "gesperrt" })) lade();
+        }, true));
+      }
+      kasten.appendChild(knopf(RB.t("spGuthaben"), async function () {
+        var eingabe = window.prompt(RB.t("guthabenFrage"), "1000");
+        if (eingabe === null) return;
+        var cent = parseInt(eingabe, 10);
+        if (isNaN(cent)) return;
+        if (await sende("/api/verwaltung/nutzer/" + person.id + "/guthaben", { cent: cent })) lade();
+      }, true));
+      if (!ich || person.id !== ich.id) {
+        kasten.appendChild(knopf(RB.t("loeschen"), async function () {
+          if (!window.confirm(RB.t("loeschenFrage") + "\n\n" + person.email)) return;
+          if (await sende("/api/verwaltung/nutzer/" + person.id, null, "DELETE")) lade();
+        }, true));
+      }
+      aktion.appendChild(kasten);
+    });
+  }
+
+  function zeichneTarife() {
+    var koerper = el("tarifKoerper");
+    koerper.textContent = "";
+
+    tarife.forEach(function (eintrag) {
+      var zeile = koerper.insertRow();
+      zeile.className = "tarif-zeile";
+
+      var schluessel = zeile.insertCell();
+      schluessel.className = "mono";
+      schluessel.textContent = eintrag.schluessel;
+
+      function feld(wert, art) {
+        var zelle = zeile.insertCell();
+        var eingabe = document.createElement("input");
+        eingabe.type = art || "text";
+        eingabe.value = wert === null ? "" : wert;
+        zelle.appendChild(eingabe);
+        return eingabe;
+      }
+
+      var name = feld(eintrag.name);
+      var monatsbeitrag = feld(eintrag.monatsbeitrag_cent, "number");
+      var inklusiv = feld(eintrag.inklusiv_rechnungen, "number");
+      var jeRechnung = feld(eintrag.preis_je_rechnung_cent, "number");
+      var reihenfolge = feld(eintrag.reihenfolge, "number");
+
+      var sichtbarZelle = zeile.insertCell();
+      var sichtbar = document.createElement("input");
+      sichtbar.type = "checkbox";
+      sichtbar.checked = eintrag.sichtbar;
+      sichtbar.style.width = "auto";
+      sichtbarZelle.appendChild(sichtbar);
+
+      var aktion = zeile.insertCell();
+      aktion.appendChild(knopf(RB.t("speichern"), async function () {
+        var ergebnis = await sende("/api/verwaltung/tarife/" + eintrag.schluessel, {
+          name: name.value,
+          beschreibung: eintrag.beschreibung,
+          monatsbeitrag_cent: Number(monatsbeitrag.value || 0),
+          inklusiv_rechnungen: inklusiv.value === "" ? null : Number(inklusiv.value),
+          preis_je_rechnung_cent: Number(jeRechnung.value || 0),
+          reihenfolge: Number(reihenfolge.value || 0),
+          sichtbar: sichtbar.checked
+        }, "PUT");
+        if (ergebnis) lade();
+      }));
+    });
+  }
+
+  async function lade() {
+    ich = await RB.kopfKonto();
+    if (!ich) { window.location.href = "/anmelden"; return; }
+    if (ich.rolle !== "admin") { window.location.href = "/app"; return; }
+
+    var antwortTarife = await RB.api("/api/verwaltung/tarife");
+    tarife = (antwortTarife.ok && antwortTarife.daten) || [];
+    var antwortNutzer = await RB.api("/api/verwaltung/nutzer");
+    nutzer = (antwortNutzer.ok && antwortNutzer.daten) || [];
+
+    zeichneNutzer();
+    zeichneTarife();
+  }
+
+  RB.starte(texte);
+  RB.beiSprachwechsel(function () { zeichneNutzer(); zeichneTarife(); });
+  lade();
+})();
+</script>
+</body>
+</html>

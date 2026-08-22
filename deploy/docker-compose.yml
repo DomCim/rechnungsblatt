@@ -2,25 +2,61 @@
 #
 # Voraussetzungen im Zielsystem:
 #   - Traefik läuft und hängt im externen Docker-Netz "edge"
-#   - Stack-Umgebungsvariable RECHNUNGSBLATT_DOMAIN ist gesetzt
-#     (z. B. rechnungsblatt.example.de)
+#   - Stack-Umgebungsvariablen sind gesetzt:
+#       RECHNUNGSBLATT_DOMAIN   z. B. rechnungsblatt.example.de
+#       DB_PASSWORT             Passwort der Datenbank (frei wählbar, lang)
+#       ADMIN_EMAIL             Anmeldung des ersten Admins
+#       ADMIN_PASSWORT          dessen Startpasswort — nach der ersten
+#                               Anmeldung unter „Konto“ ändern
 #
-# ACHTUNG: Die App hat noch KEIN Login (Einzelmandant, MVP). Öffentlich
-# erreichbar nur hinter einem Schutz — unten liegt ein BasicAuth-Middleware-
-# Beispiel, einkommentieren und Hash setzen.
+# Die App bringt seit dem Mandantenumbau eine eigene Anmeldung mit; die
+# frühere BasicAuth-Notlösung vor Traefik ist damit hinfällig. Öffentlich
+# erreichbar ist nur noch die Startseite und die Anmeldung, alles unter
+# /app und /api verlangt ein freigeschaltetes Konto.
+#
+# Neue Registrierungen stehen auf „wartet“ und müssen im Adminbereich
+# (/app/verwaltung) freigeschaltet werden.
 
 services:
+  datenbank:
+    image: postgres:16-alpine
+    container_name: rechnungsblatt-db
+    restart: unless-stopped
+    networks:
+      - intern
+    environment:
+      POSTGRES_USER: rechnungsblatt
+      POSTGRES_DB: rechnungsblatt
+      POSTGRES_PASSWORD: ${DB_PASSWORT:?DB_PASSWORT muss im Stack gesetzt sein}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rechnungsblatt -d rechnungsblatt"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
   rechnungsblatt:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
     container_name: rechnungsblatt
     restart: unless-stopped
+    depends_on:
+      datenbank:
+        condition: service_healthy
     networks:
       - edge
+      - intern
     volumes:
       - daten:/daten
     environment:
+      DATENBANK_URL: postgresql://rechnungsblatt:${DB_PASSWORT}@datenbank:5432/rechnungsblatt
+      # Beim ersten Start wird dieses Konto als Admin angelegt und
+      # freigeschaltet. Existiert es bereits, bleibt sein Passwort
+      # unangetastet — ein Neustart dreht eine Änderung also nicht zurück.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL muss im Stack gesetzt sein}
+      ADMIN_PASSWORT: ${ADMIN_PASSWORT:?ADMIN_PASSWORT muss im Stack gesetzt sein (mind. 10 Zeichen)}
       # Plausible: Skript wird nur eingebunden, wenn beide Werte gesetzt sind.
       # Hinweis: Läuft die Seite über HTTPS, muss auch Plausible über HTTPS
       # erreichbar sein (Mixed Content) — dann hier die HTTPS-Adresse eintragen.
@@ -36,14 +72,12 @@ services:
       # Traefik-Konfiguration, z. B. letsencrypt):
       # traefik.http.routers.rechnungsblatt.tls.certresolver: letsencrypt
       traefik.http.services.rechnungsblatt.loadbalancer.server.port: "8000"
-      # --- Zugriffsschutz (dringend empfohlen, solange kein Login existiert) ---
-      # Hash erzeugen: htpasswd -nB benutzer   ($ im Compose als $$ schreiben)
-      # traefik.http.middlewares.rechnungsblatt-auth.basicauth.users: "benutzer:$$2y$$05$$..."
-      # traefik.http.routers.rechnungsblatt.middlewares: rechnungsblatt-auth
 
 volumes:
   daten:
+  db:
 
 networks:
   edge:
     external: true
+  intern:

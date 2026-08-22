@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rechnungsblatt — Konto</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .kennzahlen { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .kennzahl { border: 1px solid var(--linie); border-radius: var(--radius); padding: 12px 14px; }
+  .kennzahl .wert {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 24px;
+    font-weight: 600;
+  }
+  .kennzahl .etikett {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tinte-2);
+  }
+  .karte form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; max-width: 380px; }
+  .meldung { margin-top: 12px; }
+  .meldung:empty { display: none; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Konto</h1>
+      <p class="untertitel" id="kennung"></p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" aria-current="page" data-i18n="navKonto">Konto</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="hinweis" id="wechselHinweis" hidden data-i18n="wechselHinweis">
+    Dieses Konto benutzt noch das vergebene Startpasswort. Bitte jetzt ändern.
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="tarifTitel">Tarif und Verbrauch</h2>
+    <p class="beschreibung" id="tarifName"></p>
+    <div class="kennzahlen">
+      <div class="kennzahl">
+        <div class="etikett" data-i18n="kzVerbraucht">Diesen Monat</div>
+        <div class="wert" id="kzVerbraucht">–</div>
+      </div>
+      <div class="kennzahl">
+        <div class="etikett" data-i18n="kzUebrig">Noch inklusive</div>
+        <div class="wert" id="kzUebrig">–</div>
+      </div>
+      <div class="kennzahl">
+        <div class="etikett" data-i18n="kzGuthaben">Guthaben</div>
+        <div class="wert" id="kzGuthaben">–</div>
+      </div>
+      <div class="kennzahl">
+        <div class="etikett" data-i18n="kzNaechste">Nächste Rechnung</div>
+        <div class="wert" id="kzNaechste">–</div>
+      </div>
+    </div>
+    <p class="beschreibung" style="margin-top: 12px;" data-i18n="tarifFuss">
+      Tarifwechsel und Guthaben schaltet derzeit der Betreiber von Hand frei —
+      ein Bezahlweg ist noch nicht angebunden.
+    </p>
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="passwortTitel">Passwort ändern</h2>
+    <form id="passwortForm" novalidate>
+      <div class="feld">
+        <label for="alt" data-i18n="passwortAlt">Bisheriges Passwort</label>
+        <input id="alt" type="password" autocomplete="current-password" required>
+      </div>
+      <div class="feld">
+        <label for="neu" data-i18n="passwortNeu">Neues Passwort (mind. 10 Zeichen)</label>
+        <input id="neu" type="password" autocomplete="new-password" required minlength="10">
+      </div>
+      <button class="knopf" type="submit" data-i18n="passwortKnopf">Passwort ändern</button>
+    </form>
+    <div class="meldung" id="passwortMeldung" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="verbrauchTitel">Erzeugte Rechnungen</h2>
+    <p class="beschreibung" data-i18n="verbrauchText">
+      Die letzten Buchungen dieses Kontos.
+    </p>
+    <div class="tabelle-rolle">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="spNummer">Nummer</th>
+            <th data-i18n="spZeitpunkt">Zeitpunkt</th>
+            <th data-i18n="spKosten">Verrechnet</th>
+          </tr>
+        </thead>
+        <tbody id="verbrauchKoerper"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      titel: "Konto",
+      tarifTitel: "Tarif und Verbrauch",
+      tarifFuss: "Tarifwechsel und Guthaben schaltet derzeit der Betreiber von Hand frei — ein Bezahlweg ist noch nicht angebunden.",
+      kzVerbraucht: "Diesen Monat",
+      kzUebrig: "Noch inklusive",
+      kzGuthaben: "Guthaben",
+      kzNaechste: "Nächste Rechnung",
+      unbegrenzt: "∞",
+      kostenlos: "frei",
+      passwortTitel: "Passwort ändern",
+      passwortAlt: "Bisheriges Passwort",
+      passwortNeu: "Neues Passwort (mind. 10 Zeichen)",
+      passwortKnopf: "Passwort ändern",
+      passwortGut: "Passwort geändert.",
+      wechselHinweis: "Dieses Konto benutzt noch das vergebene Startpasswort. Bitte jetzt ändern.",
+      verbrauchTitel: "Erzeugte Rechnungen",
+      verbrauchText: "Die letzten Buchungen dieses Kontos.",
+      spNummer: "Nummer",
+      spZeitpunkt: "Zeitpunkt",
+      spKosten: "Verrechnet",
+      keine: "Noch keine Rechnung erzeugt."
+    },
+    en: {
+      titel: "Account",
+      tarifTitel: "Plan and usage",
+      tarifFuss: "Plan changes and credit are currently granted by the operator by hand — no payment route is connected yet.",
+      kzVerbraucht: "This month",
+      kzUebrig: "Still included",
+      kzGuthaben: "Credit",
+      kzNaechste: "Next invoice",
+      unbegrenzt: "∞",
+      kostenlos: "free",
+      passwortTitel: "Change password",
+      passwortAlt: "Current password",
+      passwortNeu: "New password (at least 10 characters)",
+      passwortKnopf: "Change password",
+      passwortGut: "Password changed.",
+      wechselHinweis: "This account still uses the password it was issued with. Please change it now.",
+      verbrauchTitel: "Invoices produced",
+      verbrauchText: "The most recent bookings on this account.",
+      spNummer: "Number",
+      spZeitpunkt: "Time",
+      spKosten: "Charged",
+      keine: "No invoice produced yet."
+    }
+  };
+
+  function el(kennung) { return document.getElementById(kennung); }
+
+  function euro(cent) {
+    return (cent / 100).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE", {
+      style: "currency", currency: "EUR"
+    });
+  }
+
+  function zeigeKonto(person) {
+    el("kennung").textContent = person.email;
+    el("tarifName").textContent = person.tarif.name;
+    el("kzVerbraucht").textContent = person.verbraucht_monat;
+    el("kzUebrig").textContent =
+      person.frei_uebrig === null ? RB.t("unbegrenzt") : person.frei_uebrig;
+    el("kzGuthaben").textContent = euro(person.guthaben_cent);
+    el("kzNaechste").textContent =
+      person.naechste_kostet_cent === 0 ? RB.t("kostenlos") : euro(person.naechste_kostet_cent);
+    el("wechselHinweis").hidden = !person.passwort_wechseln;
+  }
+
+  function zeigeVerbrauch(zeilen) {
+    var koerper = el("verbrauchKoerper");
+    koerper.textContent = "";
+    if (!zeilen.length) {
+      var zeile = koerper.insertRow();
+      var zelle = zeile.insertCell();
+      zelle.colSpan = 3;
+      zelle.textContent = RB.t("keine");
+      return;
+    }
+    zeilen.forEach(function (eintrag) {
+      var zeile = koerper.insertRow();
+      zeile.insertCell().textContent = eintrag.nummer;
+      zeile.insertCell().textContent =
+        new Date(eintrag.zeitpunkt).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE");
+      var kosten = zeile.insertCell();
+      kosten.className = "betrag";
+      kosten.textContent = eintrag.kosten_cent === 0 ? RB.t("kostenlos") : euro(eintrag.kosten_cent);
+    });
+  }
+
+  async function lade() {
+    var person = await RB.kopfKonto();
+    if (!person) { window.location.href = "/anmelden"; return; }
+    zeigeKonto(person);
+    var verbrauch = await RB.api("/api/ich/verbrauch");
+    zeigeVerbrauch((verbrauch.ok && verbrauch.daten) || []);
+  }
+
+  el("passwortForm").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    var ziel = el("passwortMeldung");
+    ziel.textContent = "";
+    var antwort = await RB.api("/api/ich/passwort", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ alt: el("alt").value, neu: el("neu").value })
+    });
+    var kasten = document.createElement("div");
+    if (antwort.ok) {
+      kasten.className = "hinweis gut";
+      kasten.textContent = RB.t("passwortGut");
+      el("passwortForm").reset();
+      el("wechselHinweis").hidden = true;
+    } else {
+      kasten.className = "hinweis";
+      var einzelheit = antwort.daten && antwort.daten.detail;
+      kasten.textContent = (einzelheit && einzelheit.grund) || RB.t("fehlerAllgemein");
+    }
+    ziel.appendChild(kasten);
+  });
+
+  RB.starte(texte);
+  RB.beiSprachwechsel(lade);
+  lade();
+})();
+</script>
+</body>
+</html>

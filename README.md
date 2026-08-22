@@ -1,7 +1,9 @@
 # Rechnungsblatt
 
 E-Rechnungen (ZUGFeRD/Factur-X, XRechnung) auf dem **eigenen Briefpapier** —
-für Selbstständige und Kleinbetriebe, bezahlt je Rechnung statt im Abo.
+für Selbstständige und Kleinbetriebe. Das Abrechnungsmodell ist noch offen
+(siehe „Offene Risiken" Nr. 4); die Tarife liegen deshalb als Datensatz vor,
+nicht im Code.
 
 Kein KI-Auslesen bestehender PDFs: Die Rechnung entsteht aus strukturierten
 Formulardaten, das Briefpapier ist reine Unterlage. Das Formular **erzwingt**
@@ -13,9 +15,11 @@ Konverter-Markt (siehe `docs/uebergabe.md`, §9).
 ```
 kern/       rechnungsblatt-kern (Python): Datenmodell, §14-Prüfung, CII-XML,
             Normalisierung, Blatt-Rendering, PDF/A-3B-Zusammenbau
-web/        rechnungsblatt-web (FastAPI): Einrichtung, Schreibzonen-Editor,
-            Rechnungsformular, Ablage — mehrsprachig DE/EN
-deploy/     Dockerfile + Portainer-Stack (Traefik im Netz "edge", Plausible)
+web/        rechnungsblatt-web (FastAPI): öffentliche Seite, Konten und
+            Adminbereich (PostgreSQL), je Mandant Einrichtung,
+            Schreibzonen-Editor, Rechnungsformular, Ablage — DE/EN
+deploy/     Dockerfile + Portainer-Stack (Traefik im Netz "edge",
+            PostgreSQL, Plausible)
 scripts/    Referenzfälle erzeugen und gegen den Validator prüfen
 validator/  Mustang-Validator-Wrapper für die CI
 prototyp/   der unveränderte, validierte Prototyp aus dem Vorgespräch
@@ -50,6 +54,12 @@ Details und Begründung: `docs/uebergabe.md` (§3–§5) und
 pip install -e "./kern[test]"
 python -m pytest kern/tests
 
+# Web-Schicht: braucht zusätzlich PostgreSQL, sonst überspringt sich die
+# Konten- und Mandantenprüfung stillschweigend
+pip install -e "./web[test]"
+docker compose -f deploy/docker-compose.local.yml up -d datenbank
+python -m pytest web/tests
+
 # Referenzfälle erzeugen und validieren (braucht JDK + validator.jar,
 # siehe validator/README.md):
 python scripts/erzeuge_referenzfaelle.py referenzfaelle
@@ -75,7 +85,14 @@ Prototyp-Befund).
 3. Ungetestete Bogen-Sorten (Sonderfarben, eingebettete ICC-Profile) —
    der Ablehnungsweg existiert (`NormalisierungAbgelehnt`), die Liste der
    abgelehnten Fälle wird mit echten Bögen wachsen.
-4. Preis, Haftungsrahmen (AGB, „keine Steuerberatung", keine zertifizierte
+4. **Abrechnungsmodell offen.** Der Markt liegt laut Übergabe §9 bei null
+   (easybill FREE, xrechnungs.de bis 50/Monat gratis) und Pay-per-Invoice ist
+   mit RechneX zu 3,99 € besetzt; das Konzept in §1 grenzt sich ausdrücklich
+   als „je Rechnung statt im Abo" ab. Die Tarifzeilen erlauben Monatsbeitrag,
+   Inklusivmenge und Preis je Rechnung zugleich — entschieden ist damit
+   nichts. Hängt an Nr. 1: Solange die Ghostscript-Lizenz offen ist, steht
+   jede Kalkulation auf Sand.
+5. Haftungsrahmen (AGB, „keine Steuerberatung", keine zertifizierte
    GoBD-Archivierung), Domain-/Markenprüfung vor Kauf.
 
 ## Nächste Schritte
@@ -93,6 +110,13 @@ Prototyp-Befund).
       DejaVu), Schriftgrad, drei geprüfte Layoutvarianten mit
       Musterrechnungs-Vorschau — bewusst keine freie Positionierung
       (Produktentscheidung, siehe web/README.md)
+- [x] Öffentliche Seite, die das Modell erklärt, mit Preistafel aus der
+      Datenbank
+- [x] Konten und Mandantentrennung (PostgreSQL): Registrierung mit
+      Freischaltung durch den Admin, Sitzungen, Rollen, je Konto getrennte
+      Daten unter `nutzer/<id>/`, Adminbereich für Freigabe, Tarif und
+      Guthaben; Landung nach der Anmeldung ist das Rechnungsformular
 - [ ] Artifex-Lizenzfrage klären (blockiert Produktivbetrieb, nicht die Entwicklung)
-- [ ] Zugriffsschutz/Konto (bis dahin: BasicAuth vor Traefik, siehe deploy/)
+- [ ] Abrechnungsmodell entscheiden und einen Bezahlweg anbinden — bis dahin
+      bucht der Admin Tarif und Guthaben von Hand
 - [ ] Zehn echte Testrechnungen mit echten Briefbögen
