@@ -48,18 +48,29 @@ feature-branch  ──PR──>  develop  ──PR──>  main
 
 ## Bauen und Veröffentlichen
 
-Der Workflow `.github/workflows/ci.yml` ist **bewusst nur manuell startbar**
-(Actions → CI → „Run workflow"), um keine Actions-Minuten zu verbrauchen.
-Er fährt zwei Jobs: Kern- und Web-Tests (mit Postgres-Dienst) sowie die
-vollständige Validierung der Referenzfälle.
+Zwei Workflows mit klarer Aufgabenteilung:
 
-**Der Workflow baut derzeit kein Image und veröffentlicht nichts.** Gebaut
-wird beim Deploy: Der Portainer-Stack zieht den Branch und baut aus
-`deploy/Dockerfile` selbst (`build: context: ..`). „Veröffentlichen" heißt
-also: nach `main` mergen, dann in Portainer den Stack neu ausrollen.
+| Workflow | Auslöser | Tut |
+|---|---|---|
+| `ci.yml` | **nur manuell** (Actions → CI → „Run workflow") | Kern- und Web-Tests mit Postgres-Dienst, Referenzfälle gegen den Mustang-Validator |
+| `veroeffentlichen.yml` | Push auf `main`, zusätzlich manuell | Baut `deploy/Dockerfile` und schiebt das Image nach `ghcr.io/domcim/rechnungsblatt` |
 
-Vor dem Ausrollen den Workflow einmal von Hand auf `main` starten — das ist
-die letzte Prüfung, bevor der Stand auf den Server geht.
+`ci.yml` bleibt manuell, um Actions-Minuten zu sparen; getestet wird lokal
+vor jedem Push.
+
+**Der Ablauf eines Release**
+
+1. Release-PR `develop` → `main` stellen.
+2. `ci.yml` von Hand auf dem PR-Stand starten — die letzte Prüfung, bevor
+   etwas auf den Server geht.
+3. Mergen. Der Push auf `main` löst `veroeffentlichen.yml` aus; das Image
+   erscheint als `latest`, als Datum und als `sha-<commit>`.
+4. **Ausgerollt ist damit noch nichts.** In Portainer den Stack neu
+   deployen — er zieht das Image (`pull_policy: always`).
+
+`RECHNUNGSBLATT_VERSION` im Stack setzen, um auf einen bestimmten Stand
+festzunageln statt `latest` zu folgen; das ist zugleich der Rückweg, wenn
+ein Release schiefgeht.
 
 ## Projekt
 

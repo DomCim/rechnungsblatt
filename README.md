@@ -66,6 +66,14 @@ python scripts/erzeuge_referenzfaelle.py referenzfaelle
 python scripts/pruefe_referenzfaelle.py referenzfaelle --jar validator.jar --klasse .
 ```
 
+## Branches und Veröffentlichen
+
+`feature/…` → PR → `develop` → PR → `main`. Auf `main` und `develop` wird
+nicht direkt committet. Ein Push auf `main` löst den Workflow
+„Veröffentlichen" aus, der das Image nach `ghcr.io/domcim/rechnungsblatt`
+schiebt; ausgerollt wird danach von Hand in Portainer. Einzelheiten in
+[`CLAUDE.md`](CLAUDE.md) und [`deploy/README.md`](deploy/README.md).
+
 Der CI-Workflow (`.github/workflows/ci.yml`) fährt beides — Kern-Tests und
 vollständige Validierung aller Referenzfälle mit dem Mustang-Validator
 (PDF/A-3B via veraPDF + EN-16931-/XRechnung-Schematron) — ist aber bewusst

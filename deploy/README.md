@@ -57,8 +57,22 @@ Image, nur mit Traefik-Labels und Plausible obendrauf.
    Verbindungs-URL `postgresql://…:PASSWORT@datenbank:5432/…` eingesetzt;
    ein `@`, `:`, `/`, `#` oder `%` darin zerlegt die URL und die App findet
    die Datenbank nicht mehr. Länge statt Sonderzeichen.
-3. **Deploy the stack** — das Image wird aus `deploy/Dockerfile` gebaut
-   (Python 3.12 + Ghostscript + Ersatzschriften, App als Nicht-Root).
+3. **Deploy the stack** — der Stack zieht das fertige Image
+   `ghcr.io/domcim/rechnungsblatt:latest` (Python 3.12 + Ghostscript +
+   Ersatzschriften, App als Nicht-Root). Gebaut hat es der Workflow
+   „Veröffentlichen" beim letzten Push auf `main`; auf dem Server wird
+   nichts mehr kompiliert.
+
+   Ist das GHCR-Paket privat — die Voreinstellung —, braucht Portainer
+   einmalig eine **Registry-Anmeldung** (Registries → Add registry →
+   Custom, `ghcr.io`, GitHub-Benutzername, Personal Access Token mit
+   `read:packages`). Alternativ das Paket in GitHub unter Packages →
+   Package settings auf öffentlich stellen.
+
+   Optional `RECHNUNGSBLATT_VERSION` setzen (z. B. `sha-<commit>` oder ein
+   Datum wie `2026-08-22`), um auf einem bestimmten Stand zu bleiben statt
+   `latest` zu folgen. Das ist zugleich der Rückweg, wenn ein Release
+   schiefgeht: alten Wert eintragen, Stack neu deployen.
 
 Erzeugte Belege und die Einrichtung liegen im Volume `daten` (`/daten` im
 Container), getrennt je Konto unter `nutzer/<id>/`; die Konten selbst im
@@ -66,6 +80,19 @@ Volume `db`. Bei Stack-Updates bleibt beides erhalten. Rechnungen sind 8
 Jahre aufzubewahren: **beide** Volumes in die Server-Sicherung aufnehmen —
 ohne die Datenbank lässt sich später nicht mehr zuordnen, wem welches
 Verzeichnis gehört.
+
+## Ein Release ausrollen
+
+```
+develop ──PR──> main ──Push löst Workflow aus──> Image in ghcr.io
+                                                        │
+                                        Portainer: Stack neu deployen
+```
+
+Der Push auf `main` baut und veröffentlicht nur das Image — **ausgerollt
+ist damit nichts.** Der letzte Schritt bleibt bewusst manuell. Vor dem
+Merge einmal den CI-Workflow von Hand starten; er ist die letzte Prüfung,
+bevor der Stand auf den Server geht. Näheres in `CLAUDE.md`.
 
 ## Zwei Punkte, bevor es öffentlich wird
 

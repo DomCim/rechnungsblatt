@@ -2,6 +2,10 @@
 #
 # Voraussetzungen im Zielsystem:
 #   - Traefik läuft und hängt im externen Docker-Netz "edge"
+#   - Zugriff auf ghcr.io/domcim/rechnungsblatt: Ist das Paket privat,
+#     braucht Portainer eine Registry-Anmeldung (GitHub-Benutzer +
+#     Personal Access Token mit read:packages). Alternativ das Paket in
+#     GitHub auf öffentlich stellen.
 #   - Stack-Umgebungsvariablen sind gesetzt:
 #       RECHNUNGSBLATT_DOMAIN   z. B. rechnungsblatt.example.de
 #       DB_PASSWORT             Passwort der Datenbank — nur Buchstaben und
@@ -40,9 +44,12 @@ services:
       retries: 12
 
   rechnungsblatt:
-    build:
-      context: ..
-      dockerfile: deploy/Dockerfile
+    # Fertiges Image aus der Registry — gebaut vom Workflow
+    # „Veröffentlichen" bei jedem Push auf main. RECHNUNGSBLATT_VERSION
+    # setzen, um auf einen bestimmten Stand festzunageln (Marke oder
+    # sha-<commit>); ohne Angabe läuft der jeweils letzte main-Stand.
+    image: ghcr.io/domcim/rechnungsblatt:${RECHNUNGSBLATT_VERSION:-latest}
+    pull_policy: always
     container_name: rechnungsblatt
     restart: unless-stopped
     depends_on:
