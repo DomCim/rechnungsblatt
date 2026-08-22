@@ -4,7 +4,10 @@
 #   - Traefik läuft und hängt im externen Docker-Netz "edge"
 #   - Stack-Umgebungsvariablen sind gesetzt:
 #       RECHNUNGSBLATT_DOMAIN   z. B. rechnungsblatt.example.de
-#       DB_PASSWORT             Passwort der Datenbank (frei wählbar, lang)
+#       DB_PASSWORT             Passwort der Datenbank — nur Buchstaben und
+#                               Ziffern, keine Sonderzeichen: der Wert steht
+#                               in DATENBANK_URL, wo @ : / # % die URL
+#                               zerlegen würden. Länge statt Sonderzeichen.
 #       ADMIN_EMAIL             Anmeldung des ersten Admins
 #       ADMIN_PASSWORT          dessen Startpasswort — nach der ersten
 #                               Anmeldung unter „Konto“ ändern

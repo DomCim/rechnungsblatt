@@ -52,6 +52,11 @@ Image, nur mit Traefik-Labels und Plausible obendrauf.
    Die drei mittleren Variablen sind Pflicht; fehlt eine, verweigert der
    Stack den Start mit einer Meldung statt still ein Standardpasswort zu
    verwenden.
+
+   **`DB_PASSWORT` nur aus Buchstaben und Ziffern wählen.** Es wird in die
+   Verbindungs-URL `postgresql://…:PASSWORT@datenbank:5432/…` eingesetzt;
+   ein `@`, `:`, `/`, `#` oder `%` darin zerlegt die URL und die App findet
+   die Datenbank nicht mehr. Länge statt Sonderzeichen.
 3. **Deploy the stack** — das Image wird aus `deploy/Dockerfile` gebaut
    (Python 3.12 + Ghostscript + Ersatzschriften, App als Nicht-Root).
 
