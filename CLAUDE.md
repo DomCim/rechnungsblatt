@@ -72,6 +72,36 @@ vor jedem Push.
 festzunageln statt `latest` zu folgen; das ist zugleich der Rückweg, wenn
 ein Release schiefgeht.
 
+## Konto und Anmeldung
+
+Dieses Repository gehört dem privaten Konto **DomCim**, nicht dem
+Arbeitskonto. Auf dem Entwicklungsrechner sind beide in `gh` angemeldet,
+aktiv ist das Arbeitskonto — deshalb ist hier einiges lokal umgestellt.
+
+| Was | Wert |
+|---|---|
+| `user.name` | `Dominik Dill` |
+| `user.email` | `92850574+DomCim@users.noreply.github.com` |
+| `credential.helper` (lokal) | `store --file=~/.git-credentials-domcim` |
+
+Die Anmeldedaten liegen **nur** in dieser einen Datei und enthalten allein
+das DomCim-Token. Das globale `gh`-Anmeldeverfahren ist absichtlich
+ausgeschaltet (leerer `credential.helper` davor), weil es immer das aktive —
+also das falsche — Konto liefert.
+
+**Regeln**
+
+1. Vor dem ersten Commit prüfen, dass die Zuordnung stimmt:
+   `git log -1 --format='%an <%ae>'` muss die `…+DomCim@…`-Adresse zeigen.
+   Ein Commit mit der Arbeitsadresse gehört nicht in dieses Repository.
+2. **`gh` niemals direkt aufrufen.** Bare `gh` benutzt das Arbeitskonto und
+   hat hier nur Leserechte; `gh pr create` scheitert damit. Stattdessen:
+   `scripts/gh-domcim.sh pr create --base develop --fill`
+3. Das aktive `gh`-Konto **nicht** global umstellen (`gh auth switch`) — das
+   bricht die Arbeit an den Cimatron-Repos.
+4. Läuft das Token ab, `gh auth login` für DomCim wiederholen und die
+   Datei neu schreiben; sie wird nicht automatisch nachgezogen.
+
 ## Projekt
 
 Monorepo. Der **Kern** ist der Wert, die Oberfläche ist austauschbar
