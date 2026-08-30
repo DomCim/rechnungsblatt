@@ -127,7 +127,10 @@ def test_seiten_leiten_ohne_anmeldung_zur_anmeldung(klient):
 # ---------------------------------------------------------------- Freigabe
 
 def test_wartendes_konto_kommt_nicht_in_den_arbeitsbereich(klient, leere_konten):
-    leere_konten.registriere("wartet@example.de", "langgenug12")
+    person, _ = leere_konten.registriere("wartet@example.de", "langgenug12")
+    # Adresse bestätigen: Hier geht es um die ADMIN-Freigabe, nicht um die
+    # E-Mail-Bestätigung — die hat ihren eigenen Test.
+    leere_konten.bestaetige_email(person.id)
     melde_an(klient, "wartet@example.de", "langgenug12")
 
     antwort = klient.get("/api/status")
@@ -136,6 +139,63 @@ def test_wartendes_konto_kommt_nicht_in_den_arbeitsbereich(klient, leere_konten)
 
     seite = klient.get("/app/rechnung")
     assert "geprüft" in seite.text or "reviewed" in seite.text
+
+
+def test_ohne_bestaetigte_adresse_keine_anmeldung(klient, leere_konten):
+    """Die E-Mail-Bestätigung ist Bedingung, nicht Empfehlung.
+
+    Ohne sie darf keine Sitzung entstehen — sonst wäre der Code eine
+    Formalität, die man überspringen kann.
+    """
+    leere_konten.registriere("frisch@example.de", "langgenug12")
+    antwort = klient.post(
+        "/api/anmelden",
+        json={"email": "frisch@example.de", "passwort": "langgenug12"},
+    )
+    assert antwort.status_code == 403
+    assert antwort.json()["detail"]["code"] == "email_offen"
+
+
+def test_bestaetigungscode_wird_nach_fuenf_versuchen_verbraucht(klient, leere_konten):
+    """Sechs Ziffern tragen nur mit Begrenzung.
+
+    Eine Million Möglichkeiten sind ohne Sperre in Minuten durchprobiert.
+    """
+    person, _ = leere_konten.registriere("raten@example.de", "langgenug12")
+    leere_konten.lege_nachweis_an(person.id, leere_konten.ZWECK_EMAIL)
+
+    for _ in range(leere_konten.MAX_VERSUCHE):
+        antwort = klient.post(
+            "/api/email/bestaetigen",
+            json={"email": "raten@example.de", "code": "000000"},
+        )
+        assert antwort.status_code == 422
+
+    # Nachweis ist verbraucht — auch der richtige Code zöge jetzt nicht mehr.
+    with leere_konten.verbindung() as verbindung:
+        uebrig = verbindung.execute(
+            "SELECT count(*) AS anzahl FROM nachweise WHERE nutzer = %s",
+            (person.id,),
+        ).fetchone()
+    assert uebrig["anzahl"] == 0
+
+
+def test_ruecksetzmarke_gilt_nur_einmal(klient, leere_konten):
+    """Ein verbrauchter Link darf kein zweites Mal wirken."""
+    person = lege_kunden_an(leere_konten, "reset@example.de", "langgenug12")
+    marke = leere_konten.lege_nachweis_an(person.id, leere_konten.ZWECK_RUECKSETZEN)
+
+    erste = klient.post(
+        "/api/passwort/neu", json={"marke": marke, "passwort": "ganzneues123"}
+    )
+    assert erste.status_code == 200
+    # Ohne Wiederherstellungscode bleiben die Daten zu — ehrlich gemeldet.
+    assert erste.json()["daten_erhalten"] is False
+
+    zweite = klient.post(
+        "/api/passwort/neu", json={"marke": marke, "passwort": "nochmalneu12"}
+    )
+    assert zweite.status_code == 422
 
 
 def test_gesperrtes_konto_verliert_die_sitzung(klient, leere_konten):
@@ -159,7 +219,7 @@ def test_landung_fuehrt_zur_einrichtung_und_danach_zum_formular(
     ohne = klient.get("/app", follow_redirects=False)
     assert ohne.headers["location"] == "/app/einrichtung"
 
-    person = leere_konten.pruefe_anmeldung("kunde@example.de", "langgenug12")
+    person, _ = leere_konten.pruefe_anmeldung("kunde@example.de", "langgenug12")
     wurzel = tmp_path / "nutzer" / str(person.id)
     wurzel.mkdir(parents=True, exist_ok=True)
     for name in ("briefpapier.json", "schreibzone.json", "stammdaten.json"):
@@ -246,7 +306,7 @@ def test_verwaltung_ist_kunden_verwehrt(klient, leere_konten):
 
 
 def test_admin_gibt_konto_frei(admin_klient, leere_konten):
-    wartend = leere_konten.registriere("neu@example.de", "langgenug12")
+    wartend, _ = leere_konten.registriere("neu@example.de", "langgenug12")
 
     liste = admin_klient.get("/api/verwaltung/nutzer").json()
     assert {eintrag["email"] for eintrag in liste} == {"chef@example.de", "neu@example.de"}
@@ -279,7 +339,7 @@ def test_admin_bucht_guthaben_und_setzt_tarif(admin_klient, leere_konten):
 
 
 def test_letzter_admin_ist_geschuetzt(admin_klient, leere_konten):
-    chef = leere_konten.pruefe_anmeldung("chef@example.de", "langgenug12")
+    chef, _ = leere_konten.pruefe_anmeldung("chef@example.de", "langgenug12")
 
     rolle = admin_klient.post(
         f"/api/verwaltung/nutzer/{chef.id}/rolle", json={"rolle": leere_konten.ROLLE_KUNDE}
@@ -311,6 +371,133 @@ def test_admin_pflegt_tarife_und_die_startseite_zeigt_sie(admin_klient):
     monat = next(tarif for tarif in oeffentlich if tarif["schluessel"] == "monat")
     assert monat["name"] == "Monatlich neu"
     assert monat["inklusiv_rechnungen"] == 15
+
+
+def test_hervorgehobener_tarif_kommt_auf_der_startseite_an(admin_klient, klient):
+    """Die Empfehlung steht in der Datenbank, nicht im Code.
+
+    Der Weg geht durch sieben Stellen (Schema, Dataclass, Zeilenleser,
+    JSON, PUT, Verwaltung, Renderer). Wird eine vergessen, verschwindet
+    das Feld stillschweigend — genau das prüft dieser Test.
+    """
+    antwort = admin_klient.put(
+        "/api/verwaltung/tarife/guthaben",
+        json={
+            "name": "Guthaben",
+            "beschreibung": "Bezahlt wird je Rechnung.",
+            "monatsbeitrag_cent": 0,
+            "inklusiv_rechnungen": 0,
+            "preis_je_rechnung_cent": 249,
+            "reihenfolge": 20,
+            "sichtbar": True,
+            "hervorheben": True,
+        },
+    )
+    assert antwort.status_code == 200, antwort.text
+    assert antwort.json()["hervorheben"] is True
+
+    # Auch ohne Anmeldung: die öffentliche Seite liest denselben Endpunkt.
+    tarife = {t["schluessel"]: t for t in klient.get("/api/tarife").json()}
+    assert tarife["guthaben"]["hervorheben"] is True
+    # Kein hervorgehobener Tarif ist ein gültiger Zustand, keine Ausnahme.
+    assert tarife["probe"]["hervorheben"] is False
+
+
+def test_wallet_muster_passwortwechsel_und_wiederherstellung(leere_konten):
+    """Der Datenschlüssel überlebt Passwortwechsel und Wiederherstellung.
+
+    Das ist der Kern des Wallet-Musters: Das Passwort ist nicht der
+    Schlüssel, es öffnet nur die Hülle. Ginge der Schlüssel dabei
+    verloren, wären alle Dateien des Kontos unlesbar.
+    """
+    person, code = leere_konten.registriere("wallet@example.de", "erstespasswort1")
+    _, erster = leere_konten.pruefe_anmeldung("wallet@example.de", "erstespasswort1")
+    assert erster is not None
+
+    leere_konten.wechsle_passwort(person.id, "erstespasswort1", "zweitespasswort2")
+    _, nach_wechsel = leere_konten.pruefe_anmeldung(
+        "wallet@example.de", "zweitespasswort2"
+    )
+    assert nach_wechsel == erster, "Passwortwechsel hat den Datenschlüssel verloren"
+
+    leere_konten.stelle_mit_code_wieder_her(
+        "wallet@example.de", code, "drittespasswort3"
+    )
+    _, nach_code = leere_konten.pruefe_anmeldung(
+        "wallet@example.de", "drittespasswort3"
+    )
+    assert nach_code == erster, "Wiederherstellung hat den Datenschlüssel verloren"
+
+    with pytest.raises(leere_konten.KontoFehler):
+        leere_konten.stelle_mit_code_wieder_her(
+            "wallet@example.de", "AAAAA-BBBBB-CCCCC-DDDDD-EEEEE", "viertespasswort4"
+        )
+
+
+def test_betreiber_kommt_nicht_an_die_huelle(leere_konten):
+    """Was in der Datenbank steht, reicht nicht zum Öffnen.
+
+    Der Sinn der Übung: Wer Datenbank und Dateien in der Hand hält — also
+    der Betreiber — kommt an die Nutzdaten trotzdem nicht heran.
+    """
+    from rechnungsblatt_web import tresor
+
+    person, _ = leere_konten.registriere("still@example.de", "langgenug12")
+    with leere_konten.verbindung() as verbindung:
+        zeile = verbindung.execute(
+            "SELECT huelle_passwort, passwort_hash FROM nutzer WHERE id = %s",
+            (person.id,),
+        ).fetchone()
+
+    # Der gespeicherte Hash öffnet die Hülle nicht.
+    with pytest.raises(tresor.TresorFehler):
+        tresor.oeffne(bytes(zeile["huelle_passwort"]), zeile["passwort_hash"])
+    # Das echte Passwort schon — das kennt nur der Kunde.
+    assert tresor.oeffne(bytes(zeile["huelle_passwort"]), "langgenug12")
+
+
+def test_nutzdaten_liegen_verschluesselt_auf_der_platte(klient, leere_konten, tmp_path):
+    """Ende zu Ende: geschrieben wird Geheimtext, gelesen wird Klartext."""
+    lege_kunden_an(leere_konten, "kunde@example.de", "langgenug12")
+    melde_an(klient, "kunde@example.de", "langgenug12")
+
+    antwort = klient.put("/api/kunden", json=[{"name": "Streng Geheim GmbH"}])
+    assert antwort.status_code == 200, antwort.text
+
+    datei = next(tmp_path.glob("nutzer/*/kunden.json"))
+    roh = datei.read_bytes()
+    assert roh.startswith(b"RBV1"), "Datei ist nicht verschlüsselt"
+    assert b"Streng Geheim" not in roh, "Klartext steht in der Datei"
+
+    # Über die API kommt sie trotzdem lesbar zurück.
+    assert klient.get("/api/kunden").json()[0]["name"] == "Streng Geheim GmbH"
+
+
+def test_loeschen_entfernt_auch_die_nutzdaten(admin_klient, leere_konten, tmp_path):
+    """Konto weg heißt Daten weg — nicht nur die Zeile in der Datenbank.
+
+    Vorher blieb ``DATEN/nutzer/<id>/`` nach dem Löschen vollständig
+    liegen. Zwei Folgen: Die Daten eines gelöschten Kunden lagen weiter auf
+    der Platte, und eine spätere Nutzer-ID konnte dasselbe Verzeichnis
+    erben und fremde Belege sehen.
+    """
+    opfer = lege_kunden_an(leere_konten, "weg@example.de", "langgenug12")
+    seins = tmp_path / "nutzer" / str(opfer.id)
+    (seins / "ablage" / "RE-1").mkdir(parents=True)
+    (seins / "kunden.json").write_text('[{"name": "Geheim"}]', encoding="utf-8")
+    (seins / "ablage" / "RE-1" / "rechnung.pdf").write_bytes(b"%PDF-")
+
+    # Ein zweites Konto, das unberührt bleiben muss.
+    anderer = lege_kunden_an(leere_konten, "bleibt@example.de", "langgenug12")
+    seins_auch = tmp_path / "nutzer" / str(anderer.id)
+    seins_auch.mkdir(parents=True)
+    (seins_auch / "kunden.json").write_text("[]", encoding="utf-8")
+
+    antwort = admin_klient.delete(f"/api/verwaltung/nutzer/{opfer.id}")
+    assert antwort.status_code == 200, antwort.text
+
+    assert not seins.exists(), "Nutzdaten des gelöschten Kontos liegen noch da"
+    assert seins_auch.exists(), "fremdes Verzeichnis wurde mitgelöscht"
 
 
 def test_unsichtbarer_tarif_fehlt_auf_der_startseite(klient):

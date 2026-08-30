@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — Neues Passwort</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<meta name="theme-color" content="#1f1c18">
+<!-- Suchmaschinen haben auf einer Seite mit Einmalmarke nichts zu suchen. -->
+<meta name="robots" content="noindex, nofollow">
+<style>
+  .buehne { max-width: 620px; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke"><a href="/" style="color:inherit;text-decoration:none;">Rechnungsblatt</a></div>
+      <h1 data-i18n="titel">Neues Passwort setzen</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Bestätigen Sie hier, dass Sie das Zurücksetzen angefordert haben.
+      </p>
+    </div>
+    <div class="sprachen" role="group" aria-label="Sprache / Language">
+      <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+      <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <!-- Schritt 1: bestätigen. Der Klick im Postfach allein tut nichts —
+       Mail-Scanner und Vorschaufunktionen öffnen Links ungefragt. -->
+  <section class="karte" id="bestaetigen">
+    <h2 data-i18n="bestaetigenTitel">Waren Sie das?</h2>
+    <p class="beschreibung" data-i18n="bestaetigenText">
+      Über diesen Link lässt sich ein neues Passwort setzen. Haben Sie das
+      nicht angefordert, schließen Sie diese Seite einfach — dann bleibt
+      alles, wie es ist.
+    </p>
+    <div class="zeile">
+      <button type="button" class="knopf" id="weiter" data-i18n="weiter">
+        Ja, Passwort neu setzen
+      </button>
+      <a class="knopf leise" href="/anmelden" data-i18n="abbrechen">Abbrechen</a>
+    </div>
+  </section>
+
+  <!-- Schritt 2: das eigentliche Formular. -->
+  <section class="karte" id="formular" hidden>
+    <h2 data-i18n="formularTitel">Neues Passwort</h2>
+    <p class="beschreibung" data-i18n="formularText">
+      Mindestens 10 Zeichen.
+    </p>
+    <form id="neuForm" novalidate>
+      <div class="feld">
+        <label for="passwort" data-i18n="passwortNeu">Passwort (mind. 10 Zeichen)</label>
+        <input id="passwort" type="password" autocomplete="new-password" required minlength="10">
+      </div>
+
+      <!-- Der Wiederherstellungscode ist optional, aber entscheidend:
+           ohne ihn bleiben die vorhandenen Belege verschlüsselt. Das darf
+           die Seite nicht verschweigen. -->
+      <div class="hinweis" style="margin:14px 0;">
+        <strong data-i18n="datenTitel">Was mit Ihren Daten passiert</strong>
+        <p style="margin:6px 0 0;" data-i18n="datenText">
+          Ihre Rechnungen sind mit Ihrem alten Passwort verschlüsselt. Ein
+          neues Passwort allein öffnet sie nicht. Geben Sie hier Ihren
+          Wiederherstellungscode ein, bleiben sie lesbar — ohne ihn
+          bekommen Sie nur den Zugang zum Konto zurück.
+        </p>
+      </div>
+      <div class="feld">
+        <label for="rettung" data-i18n="rettungLabel">
+          Wiederherstellungscode (falls vorhanden)
+        </label>
+        <input id="rettung" autocomplete="off" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
+               style="font-family:'Spline Sans Mono',monospace; letter-spacing:0.06em;">
+      </div>
+      <button class="knopf" type="submit" data-i18n="setzen">Passwort setzen</button>
+    </form>
+    <div class="meldung" id="meldung" role="status" aria-live="polite"></div>
+  </section>
+
+  <p class="beschreibung">
+    <a class="verweis" href="/anmelden" data-i18n="zurAnmeldung">Zur Anmeldung</a>
+  </p>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      titel: "Neues Passwort setzen",
+      untertitel: "Bestätigen Sie hier, dass Sie das Zurücksetzen angefordert haben.",
+      bestaetigenTitel: "Waren Sie das?",
+      bestaetigenText: "Über diesen Link lässt sich ein neues Passwort setzen. Haben Sie das nicht angefordert, schließen Sie diese Seite einfach — dann bleibt alles, wie es ist.",
+      weiter: "Ja, Passwort neu setzen",
+      abbrechen: "Abbrechen",
+      formularTitel: "Neues Passwort",
+      formularText: "Mindestens 10 Zeichen.",
+      passwortNeu: "Passwort (mind. 10 Zeichen)",
+      datenTitel: "Was mit Ihren Daten passiert",
+      datenText: "Ihre Rechnungen sind mit Ihrem alten Passwort verschlüsselt. Ein neues Passwort allein öffnet sie nicht. Geben Sie hier Ihren Wiederherstellungscode ein, bleiben sie lesbar — ohne ihn bekommen Sie nur den Zugang zum Konto zurück.",
+      rettungLabel: "Wiederherstellungscode (falls vorhanden)",
+      setzen: "Passwort setzen",
+      zurAnmeldung: "Zur Anmeldung",
+      fehlendeMarke: "Dieser Link ist unvollständig. Fordern Sie das Zurücksetzen bitte neu an.",
+      gesetztMitDaten: "Passwort gesetzt. Ihre Daten bleiben lesbar. Sie können sich jetzt anmelden.",
+      gesetztOhneDaten: "Passwort gesetzt. Ohne Wiederherstellungscode bleiben die vorhandenen Belege verschlüsselt — neue Rechnungen entstehen wieder normal."
+    },
+    en: {
+      titel: "Set a new password",
+      untertitel: "Confirm here that you asked for the reset.",
+      bestaetigenTitel: "Was this you?",
+      bestaetigenText: "This link lets you set a new password. If you did not ask for it, simply close this page — nothing will change.",
+      weiter: "Yes, set a new password",
+      abbrechen: "Cancel",
+      formularTitel: "New password",
+      formularText: "At least 10 characters.",
+      passwortNeu: "Password (at least 10 characters)",
+      datenTitel: "What happens to your data",
+      datenText: "Your invoices are encrypted with your old password. A new password alone will not open them. Enter your recovery code here and they stay readable — without it you only get access to the account back.",
+      rettungLabel: "Recovery code (if you have it)",
+      setzen: "Set password",
+      zurAnmeldung: "Go to sign-in",
+      fehlendeMarke: "This link is incomplete. Please request the reset again.",
+      gesetztMitDaten: "Password set. Your data stays readable. You can sign in now.",
+      gesetztOhneDaten: "Password set. Without the recovery code the existing documents stay encrypted — new invoices are created normally again."
+    }
+  };
+
+  function el(kennung) { return document.getElementById(kennung); }
+
+  function melde(text, gut) {
+    var ziel = el("meldung");
+    ziel.className = "meldung hinweis" + (gut ? " gut" : "");
+    ziel.textContent = text;
+  }
+
+  // Die Marke steht im Link. Ohne sie ist die Seite wertlos.
+  var marke = new URLSearchParams(window.location.search).get("marke") || "";
+
+  el("weiter").addEventListener("click", function () {
+    if (!marke) { melde(RB.t("fehlendeMarke"), false); return; }
+    el("bestaetigen").hidden = true;
+    el("formular").hidden = false;
+    el("passwort").focus();
+  });
+
+  el("neuForm").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    melde(RB.t("laedt"), true);
+    var antwort = await RB.api("/api/passwort/neu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        marke: marke,
+        passwort: el("passwort").value,
+        wiederherstellungscode: el("rettung").value.trim()
+      })
+    });
+    if (!antwort.ok) {
+      var d = antwort.daten;
+      melde((d && d.detail && d.detail.grund) || RB.t("fehlerAllgemein"), false);
+      return;
+    }
+    el("neuForm").hidden = true;
+    melde(RB.t(antwort.daten.daten_erhalten
+      ? "gesetztMitDaten" : "gesetztOhneDaten"), true);
+  });
+
+  RB.starte(texte);
+  if (!marke) melde(RB.t("fehlendeMarke"), false);
+})();
+</script>
+</body>
+</html>

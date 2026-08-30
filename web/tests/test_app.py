@@ -317,3 +317,52 @@ def test_rechnung_nutzt_gespeicherte_gestaltung(client):
 
 def test_ablage_pfadausbruch_wird_abgewiesen(client):
     assert client.get("/api/ablage/..%2F..%2Fstammdaten/pdf").status_code in (404, 422)
+
+
+@benoetigt_gs
+def test_vergebene_nummer_wird_nicht_ueberschrieben(client):
+    """Eine erteilte Rechnung darf nicht geändert werden.
+
+    Ohne diese Sperre überschriebe ein zweiter Aufruf mit derselben Nummer
+    PDF, XML und Daten des ersten Belegs — die fortlaufende Nummerierung
+    wäre wertlos, weil hinter einer Nummer nacheinander verschiedene
+    Rechnungen stünden. Korrigiert wird per Gutschrift, nicht durch
+    Überschreiben.
+    """
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+
+    anders = dict(RECHNUNG)
+    anders["empfaenger"] = dict(RECHNUNG["empfaenger"], name="Jemand anderes")
+    antwort = client.post("/api/rechnung", json=anders)
+    assert antwort.status_code == 409, antwort.text
+    assert antwort.json()["code"] == "nummer_vergeben"
+
+    # Der erste Beleg steht unverändert.
+    belege = client.get("/api/ablage").json()
+    assert [b["nummer"] for b in belege] == [RECHNUNG["nummer"]]
+    assert belege[0]["empfaenger"] == RECHNUNG["empfaenger"]["name"]
+
+
+@benoetigt_gs
+def test_gutschrift_traegt_bezug_zur_ursprungsrechnung(client):
+    """Der Storno-Weg: Gutschrift mit Bezug, eigene Nummer.
+
+    Der Bezug ist Pflicht (Befund G1) und landet als
+    InvoiceReferencedDocument im XML — daran erkennt der Empfänger, welche
+    Rechnung aufgehoben wird.
+    """
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+
+    ohne_bezug = dict(RECHNUNG, nummer="GS-2026-0001", typ="GUTSCHRIFT")
+    antwort = client.post("/api/rechnung", json=ohne_bezug)
+    assert antwort.status_code == 422
+    assert "G1" in [b["code"] for b in antwort.json()["befunde"]]
+
+    gutschrift = dict(ohne_bezug, bezugs_nummer=RECHNUNG["nummer"])
+    antwort = client.post("/api/rechnung", json=gutschrift)
+    assert antwort.status_code == 200, antwort.text
+    xml = client.get(antwort.json()["xml"]).content
+    assert b"<ram:TypeCode>381</ram:TypeCode>" in xml
+    assert RECHNUNG["nummer"].encode() in xml

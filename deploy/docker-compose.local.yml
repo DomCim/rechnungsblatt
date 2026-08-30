@@ -9,8 +9,13 @@
 # Dieses Standardpasswort gilt NUR hier; der Portainer-Stack verlangt ein
 # eigenes (siehe docker-compose.yml).
 #
-# Nur die Datenbank starten, etwa für die Tests der Web-Schicht:
-#   docker compose -f deploy/docker-compose.local.yml up -d datenbank
+# Tests der Web-Schicht — gegen die WEGWERF-Datenbank, nicht gegen die
+# Entwicklungsdatenbank oben:
+#   docker compose -f deploy/docker-compose.local.yml --profile test up -d testdatenbank
+#   TEST_DATENBANK_URL=postgresql://rechnungsblatt:rechnungsblatt@127.0.0.1:5433/rechnungsblatt_test #     python -m pytest kern/tests web/tests
+#
+# Die Tests leeren vor jedem Fall nutzer/sitzungen. Zeigt TEST_DATENBANK_URL
+# auf den Dienst „datenbank“, ist die Anmeldung weg.
 #
 # Daten (Briefpapier, Einrichtung, Ablage) liegen im Volume
 # "rechnungsblatt-daten-lokal", die Konten in "rechnungsblatt-db-lokal";
@@ -37,6 +42,30 @@ services:
       timeout: 5s
       retries: 12
 
+  # Wegwerf-Datenbank NUR für die Tests. Bewusst ohne Volume und auf einem
+  # eigenen Port: `pytest web/tests` macht vor jedem Test ein TRUNCATE auf
+  # nutzer/sitzungen — liefe das gegen den Dienst „datenbank“ oben, wäre die
+  # Anmeldung samt Kontozuordnung weg und die Nutzdaten unter
+  # DATEN/nutzer/<id>/ verwaist.
+  testdatenbank:
+    image: postgres:16-alpine
+    container_name: rechnungsblatt-testdb
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: rechnungsblatt
+      POSTGRES_PASSWORD: rechnungsblatt
+      POSTGRES_DB: rechnungsblatt_test
+    ports:
+      - "5433:5432"
+    tmpfs:
+      # Im Arbeitsspeicher: schnell und nach dem Stoppen restlos weg.
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rechnungsblatt -d rechnungsblatt_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
   rechnungsblatt:
     build:
       context: ..
@@ -54,6 +83,15 @@ services:
       DATENBANK_URL: postgresql://rechnungsblatt:rechnungsblatt@datenbank:5432/rechnungsblatt
       ADMIN_EMAIL: admin@rechnungsblatt.local
       ADMIN_PASSWORT: rechnungsblatt-admin
+      # Nur lokal: Sitzungsschlüssel auch per Kopfzeile annehmen. iOS leert
+      # bei Web-Apps über HTTP den Cookie-Speicher beim Schließen, man müsste
+      # sich bei jedem Start neu anmelden. Der Portainer-Stack läuft über
+      # HTTPS und setzt das bewusst NICHT — dort liegt der Schlüssel dann
+      # auch nicht im localStorage, wo JavaScript ihn lesen könnte.
+      SITZUNG_KOPFZEILE: "1"
+      # Schützt Betriebsgeheimnisse in der Datenbank (SMTP-Passwort).
+      # Lokal fest verdrahtet; im Portainer-Stack eine echte Zufallskette.
+      RECHNUNGSBLATT_SCHLUESSEL: "lokal-nur-zum-entwickeln-nicht-geheim"
       # Plausible lokal testen? Beide Zeilen einkommentieren:
       # PLAUSIBLE_URL: http://192.168.178.129:8001
       # PLAUSIBLE_DOMAIN: localhost

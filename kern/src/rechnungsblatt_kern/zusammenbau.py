@@ -70,7 +70,13 @@ def baue_pdfa3(
         else str(briefpapier_norm)
     )
     with pikepdf.open(quelle) as pdf, pikepdf.open(io.BytesIO(blatt)) as overlay:
-        pdf.pages[0].add_overlay(overlay.pages[0])
+        # Das Briefpapier hat eine Seite, das Blatt kann mehrere haben.
+        # Für jede weitere Blattseite den Bogen erneut anhängen, damit auch
+        # Folgeseiten auf dem Briefpapier stehen.
+        while len(pdf.pages) < len(overlay.pages):
+            pdf.pages.append(pdf.pages[0])
+        for nummer, blattseite in enumerate(overlay.pages):
+            pdf.pages[nummer].add_overlay(blattseite)
 
         # OutputIntent: genau eine Ausgabebedingung (sRGB), ICC eingebettet
         icc_stream = Stream(pdf, icc)

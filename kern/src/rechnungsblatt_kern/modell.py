@@ -97,6 +97,7 @@ class Stammdaten:
     kontakt_email: str | None = None
     kontakt_telefon: str | None = None
     kleinunternehmer: bool = False
+    artikelnummern: bool = False  # steuert nur die Anzeige in der Vorschau
 
 
 @dataclass(frozen=True)
@@ -116,6 +117,7 @@ class Position:
     einzelpreis: Decimal  # Netto je Einheit
     steuer: Steuerkategorie
     beschreibung: str | None = None
+    artikelnummer: str | None = None  # BT-155, Artikelnummer des Verkäufers
 
 
 @dataclass(frozen=True)
@@ -135,6 +137,8 @@ class Rechnung:
     leistungsdatum: _dt.date | None = None
     leistungszeitraum: Zeitraum | None = None
     rabatt_betrag: Decimal | None = None  # Nettominderung auf die Summe
+    rabatt_prozent: Decimal | None = None  # BT-138, nur zur Angabe; maßgeblich
+    # bleibt rabatt_betrag — siehe summen.rabatt_aus_prozent().
     rabatt_grund: str = "Rabatt"
     freitext: str | None = None
     waehrung: str = "EUR"
@@ -153,6 +157,9 @@ class Layoutvariante(enum.Enum):
     KLASSISCH = "klassisch"  # Belegdaten als Block rechts, klare Linien
     KOMPAKT = "kompakt"  # Belegdaten als Zeile, enge Abstände — viele Positionen
     MODERN = "modern"  # großer Titel, graue Linien, mehr Weißraum
+    ZEBRA = "zebra"  # getönte Wechselzeilen statt Trennlinien
+    LUFTIG = "luftig"  # ohne Linien, Gliederung nur über Abstände
+    DOPPELT = "doppelt"  # sehr eng, Belegdaten zweispaltig
 
 
 class Schriftgrad(enum.Enum):
@@ -176,6 +183,11 @@ class Blattgestaltung:
     schriftgrad: Schriftgrad = Schriftgrad.NORMAL
     layout: Layoutvariante = Layoutvariante.KLASSISCH
     belegdaten_als_zeile: bool = False  # KOMPAKT erzwingt die Zeile ohnehin
+    # Akzentfarbe quer zu allen Layouts: aus = schwarze bzw. graue Linien wie
+    # bisher, an = Titel und Linien tragen die Farbe. ZEBRA tönt damit auch
+    # seine Wechselzeilen.
+    akzent_an: bool = False
+    akzentfarbe: str = "#136f83"
 
 
 @dataclass(frozen=True)

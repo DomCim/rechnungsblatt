@@ -10,6 +10,7 @@ from rechnungsblatt_kern import (
     runden,
     zeilensumme,
 )
+from rechnungsblatt_kern.summen import rabatt_aus_prozent
 
 
 def _position(preis: str, menge: str = "1", steuer=Steuerkategorie.UST_19) -> Position:
@@ -122,3 +123,59 @@ def test_keine_positionen_ist_fehler(rechnung):
     leer = dataclasses.replace(rechnung, positionen=())
     with pytest.raises(ValueError):
         berechne_summen(leer)
+
+
+# ---------------------------------------------------------------- Prozentrabatt
+
+def test_prozentrabatt_wird_zu_betrag(rechnung):
+    """10 % auf 200,00 € (8 Std. à 25,00) sind 20,00 €."""
+    mit = dataclasses.replace(rechnung, rabatt_prozent=Decimal("10"))
+    summen = berechne_summen(mit)
+    assert summen.rabatt == Decimal("20.00")
+    assert summen.steuerbasis == Decimal("180.00")
+    assert summen.steuer == Decimal("34.20")
+
+
+def test_prozentrabatt_rundet_kaufmaennisch(rechnung):
+    """10 % auf 1.234,56 € = 123,456 → 123,46 €; die Summen bleiben exakt."""
+    mit = dataclasses.replace(
+        rechnung,
+        positionen=(_position("1234.56"),),
+        rabatt_prozent=Decimal("10"),
+    )
+    summen = berechne_summen(mit)
+    assert summen.rabatt == Decimal("123.46")
+    assert summen.steuerbasis + summen.rabatt == summen.zeilensumme
+
+
+def test_rabatt_betrag_schlaegt_prozent(rechnung):
+    """Sind beide gesetzt, gilt der Betrag — er ist die maßgebliche Größe."""
+    mit = dataclasses.replace(
+        rechnung, rabatt_betrag=Decimal("5.00"), rabatt_prozent=Decimal("10")
+    )
+    assert berechne_summen(mit).rabatt == Decimal("5.00")
+
+
+def test_prozentrabatt_verteilt_sich_auf_koerbe(rechnung):
+    """Bei gemischten Sätzen wird der errechnete Betrag anteilig verteilt."""
+    mit = dataclasses.replace(
+        rechnung,
+        positionen=(
+            _position("800.00"),
+            _position("200.00", steuer=Steuerkategorie.UST_7),
+        ),
+        rabatt_prozent=Decimal("10"),
+    )
+    summen = berechne_summen(mit)
+    assert summen.rabatt == Decimal("100.00")
+    assert sum(korb.rabatt for korb in summen.koerbe) == Decimal("100.00")
+
+
+def test_prozentrabatt_ueber_hundert_scheitert():
+    with pytest.raises(ValueError, match="100"):
+        rabatt_aus_prozent(Decimal("101"), Decimal("1000.00"))
+
+
+def test_prozentrabatt_negativ_scheitert():
+    with pytest.raises(ValueError, match="negativ"):
+        rabatt_aus_prozent(Decimal("-1"), Decimal("1000.00"))

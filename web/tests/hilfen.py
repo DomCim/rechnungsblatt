@@ -14,7 +14,12 @@ def melde_an(klient, email: str, passwort: str) -> None:
 
 
 def lege_kunden_an(konten, email: str, passwort: str, tarif: str = "unbegrenzt"):
-    """Freigeschaltetes Konto, standardmäßig ohne Mengenbegrenzung."""
-    person = konten.registriere(email, passwort)
+    """Freigeschaltetes Konto mit bestätigter Adresse.
+
+    Die E-Mail-Bestätigung wird hier übersprungen: Sie hat einen eigenen
+    Test, und ohne sie käme kein anderer Test mehr an eine Sitzung.
+    """
+    person, _code = konten.registriere(email, passwort)
+    konten.bestaetige_email(person.id)
     konten.setze_status(person.id, konten.STATUS_FREI)
     return konten.setze_tarif(person.id, tarif)

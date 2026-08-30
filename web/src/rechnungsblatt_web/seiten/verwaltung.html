@@ -2,10 +2,18 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Verwaltung</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
 <style>
   .buehne { max-width: 1240px; }
   td.eng { white-space: nowrap; }
@@ -27,6 +35,61 @@
   .meldung { margin-bottom: 12px; }
   .meldung:empty { display: none; }
   .tarif-zeile td input { min-width: 70px; }
+
+  /* Kennzahlen: knappe Kacheln, Zahl gross, Bezeichnung klein darunter. */
+  .kennzahlen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .kennzahl {
+    border: 1px solid var(--linie);
+    border-radius: var(--radius-innen);
+    padding: 14px 16px;
+  }
+  .kennzahl .wert {
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "opsz" 96, "SOFT" 30;
+    font-weight: 700;
+    font-size: 28px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .kennzahl .name {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--tinte-2);
+    margin-top: 4px;
+  }
+  .kennzahl .neben { font-size: 12.5px; color: var(--tinte-2); margin-top: 5px; }
+
+  /* Zwölf Monate als Balken — kein Diagrammwerkzeug für zwölf Zahlen. */
+  .verlauf {
+    display: flex;
+    align-items: flex-end;
+    gap: 5px;
+    height: 84px;
+    margin-top: 18px;
+    padding-top: 10px;
+    border-top: 1px solid var(--linie);
+  }
+  .verlauf > div { flex: 1; display: flex; flex-direction: column;
+                   align-items: center; gap: 5px; justify-content: flex-end; }
+  .verlauf .balken {
+    width: 100%;
+    background: var(--akzent);
+    border-radius: 3px 3px 0 0;
+    min-height: 2px;
+    opacity: 0.85;
+  }
+  .verlauf .monat {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 9.5px;
+    color: var(--tinte-2);
+  }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -46,6 +109,7 @@
       <nav class="reiter">
         <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
         <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/stamm" data-i18n="navStamm">Stammdaten</a>
         <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
         <a href="/app/konto" data-i18n="navKonto">Konto</a>
         <a href="/app/verwaltung" aria-current="page" data-i18n="navVerwaltung">Verwaltung</a>
@@ -84,6 +148,60 @@
   </section>
 
   <section class="karte">
+    <h2 data-i18n="zahlenTitel">Im Überblick</h2>
+    <p class="beschreibung" data-i18n="zahlenText">
+      Was im eigenen Haus messbar ist. Seitenaufrufe zählt Plausible daneben.
+    </p>
+    <div class="kennzahlen" id="zahlen"></div>
+    <div id="verlauf" class="verlauf"></div>
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="postTitel">Postausgang</h2>
+    <p class="beschreibung" data-i18n="postText">
+      Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und
+      keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll.
+      Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.
+    </p>
+    <div class="felder">
+      <div class="feld"><label for="smtpHost" data-i18n="fHost">Server</label>
+        <input id="smtpHost" placeholder="mail.example.de"></div>
+      <div class="feld"><label for="smtpPort" data-i18n="fPort">Port</label>
+        <input id="smtpPort" inputmode="numeric" placeholder="587"></div>
+      <div class="feld"><label for="smtpBenutzer" data-i18n="fBenutzer">Benutzer</label>
+        <input id="smtpBenutzer" autocomplete="off"></div>
+      <div class="feld"><label for="smtpPasswort" data-i18n="fPasswort">Passwort</label>
+        <input id="smtpPasswort" type="password" autocomplete="new-password"></div>
+      <div class="feld breit"><label for="smtpAbsender" data-i18n="fAbsender">Absender</label>
+        <input id="smtpAbsender" placeholder="no-reply@example.de"></div>
+      <div class="feld breit"><label for="oeffAdresse" data-i18n="fAdresse">Öffentliche Adresse</label>
+        <input id="oeffAdresse" placeholder="https://rechnungsblatt.example.de"></div>
+    </div>
+    <label class="schalter" style="margin-top:10px;">
+      <input type="checkbox" id="smtpTls"><span class="hebel"></span>
+      <span data-i18n="fTls">Verschlüsselt ab Verbindungsaufbau (Port 465)</span>
+    </label>
+
+    <h2 style="margin-top:22px;" data-i18n="zaehlungTitel">Zählung</h2>
+    <p class="beschreibung" data-i18n="zaehlungText">
+      Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein
+      Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible
+      über HTTPS erreichbar sein — sonst blockt der Browser.
+    </p>
+    <div class="felder">
+      <div class="feld breit"><label for="plausUrl" data-i18n="fPlausUrl">Plausible-Adresse</label>
+        <input id="plausUrl" placeholder="https://plausible.example.de"></div>
+      <div class="feld breit"><label for="plausDomain" data-i18n="fPlausDomain">Gezählte Domain</label>
+        <input id="plausDomain" placeholder="rechnungsblatt.example.de"></div>
+    </div>
+    <div class="zeile" style="margin-top:12px;">
+      <button type="button" class="knopf" id="postSpeichern" data-i18n="speichern">Speichern</button>
+      <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Testnachricht schicken</button>
+    </div>
+    <div class="meldung" id="postMeldung" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="karte">
     <h2 data-i18n="tarifeTitel">Tarife</h2>
     <p class="beschreibung" data-i18n="tarifeText">
       Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900
@@ -100,6 +218,7 @@
             <th data-i18n="spJeRechnung">Je Rechnung (ct)</th>
             <th data-i18n="spReihenfolge">Reihung</th>
             <th data-i18n="spSichtbar">Sichtbar</th>
+            <th data-i18n="spHervorheben">Empfohlen</th>
             <th data-i18n="spAktion">Aktion</th>
           </tr>
         </thead>
@@ -129,11 +248,29 @@
       loeschen: "Löschen",
       loeschenFrage: "Konto und alle zugehörigen Rechnungsdaten endgültig löschen?",
       guthabenFrage: "Guthaben in Cent buchen (negativ zum Abziehen):",
+      zahlenTitel: "Im Überblick",
+      zahlenText: "Was im eigenen Haus messbar ist. Seitenaufrufe zählt Plausible daneben.",
+      zKonten: "Konten", zWartet: "warten auf Freigabe",
+      zAktiv: "Aktiv", zAktivNeben: "mit Beleg diesen Monat",
+      zBelegeMonat: "Belege im Monat", zWoche: "in den letzten 7 Tagen",
+      zBelegeGesamt: "Belege gesamt",
+      zUmsatz: "Verbraucht", zUmsatzNeben: "abgerechnet über Guthaben",
+      zUnbestaetigt: "E-Mail offen",
+      zaehlungTitel: "Zählung",
+      zaehlungText: "Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible über HTTPS erreichbar sein — sonst blockt der Browser.",
+      fPlausUrl: "Plausible-Adresse", fPlausDomain: "Gezählte Domain",
+      postTitel: "Postausgang",
+      postText: "Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll. Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.",
+      fHost: "Server", fPort: "Port", fBenutzer: "Benutzer", fPasswort: "Passwort",
+      fAbsender: "Absender", fAdresse: "Öffentliche Adresse",
+      fTls: "Verschlüsselt ab Verbindungsaufbau (Port 465)",
+      postTest: "Testnachricht schicken", testOk: "Verschickt an",
+      gespeichert: "Gespeichert.",
       tarifeTitel: "Tarife",
       tarifeText: "Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900 bedeutet 9,00 €. Inklusivmenge leer lassen heißt „unbegrenzt“.",
       spSchluessel: "Schlüssel", spName: "Name", spMonatsbeitrag: "Monat (ct)",
       spInklusiv: "Inklusiv", spJeRechnung: "Je Rechnung (ct)",
-      spReihenfolge: "Reihung", spSichtbar: "Sichtbar",
+      spReihenfolge: "Reihung", spSichtbar: "Sichtbar", spHervorheben: "Empfohlen",
       gespeichertKurz: "Gespeichert.",
       keine: "Noch keine Konten."
     },
@@ -150,11 +287,29 @@
       loeschen: "Delete",
       loeschenFrage: "Permanently delete the account and all its invoice data?",
       guthabenFrage: "Book credit in cents (negative to deduct):",
+      zahlenTitel: "At a glance",
+      zahlenText: "What is measurable in-house. Page views are counted by Plausible alongside.",
+      zKonten: "Accounts", zWartet: "awaiting approval",
+      zAktiv: "Active", zAktivNeben: "with a document this month",
+      zBelegeMonat: "Documents this month", zWoche: "in the last 7 days",
+      zBelegeGesamt: "Documents in total",
+      zUmsatz: "Consumed", zUmsatzNeben: "billed against credit",
+      zUnbestaetigt: "E-mail pending",
+      zaehlungTitel: "Analytics",
+      zaehlungText: "Plausible counts page views without cookies. Without an address no script is embedded at all. If the site runs over HTTPS, Plausible must be reachable over HTTPS too — otherwise the browser blocks it.",
+      fPlausUrl: "Plausible address", fPlausDomain: "Counted domain",
+      postTitel: "Outgoing mail",
+      postText: "Without these details Rechnungsblatt sends no confirmation codes and no reset links — the messages only end up in the log. The password is stored encrypted and never shown again.",
+      fHost: "Server", fPort: "Port", fBenutzer: "User", fPasswort: "Password",
+      fAbsender: "Sender", fAdresse: "Public address",
+      fTls: "Encrypted from connect (port 465)",
+      postTest: "Send a test message", testOk: "Sent to",
+      gespeichert: "Saved.",
       tarifeTitel: "Plans",
       tarifeText: "What stands here is what the public page shows. Amounts in cents — 900 means € 9.00. Leave the included allowance empty for “unlimited”.",
       spSchluessel: "Key", spName: "Name", spMonatsbeitrag: "Month (ct)",
       spInklusiv: "Included", spJeRechnung: "Per invoice (ct)",
-      spReihenfolge: "Order", spSichtbar: "Visible",
+      spReihenfolge: "Order", spSichtbar: "Visible", spHervorheben: "Recommended",
       gespeichertKurz: "Saved.",
       keine: "No accounts yet."
     }
@@ -341,6 +496,17 @@
       sichtbar.style.width = "auto";
       sichtbarZelle.appendChild(sichtbar);
 
+      // Empfohlen: hebt den Tarif auf der oeffentlichen Seite hervor.
+      // Mehrere gleichzeitig sind erlaubt — die Seite zeichnet dann alle
+      // aus; das zu verbieten waere eine Regel im Code statt einer
+      // Entscheidung des Betreibers.
+      var hervorZelle = zeile.insertCell();
+      var hervorheben = document.createElement("input");
+      hervorheben.type = "checkbox";
+      hervorheben.checked = eintrag.hervorheben;
+      hervorheben.style.width = "auto";
+      hervorZelle.appendChild(hervorheben);
+
       var aktion = zeile.insertCell();
       aktion.appendChild(knopf(RB.t("speichern"), async function () {
         var ergebnis = await sende("/api/verwaltung/tarife/" + eintrag.schluessel, {
@@ -350,12 +516,136 @@
           inklusiv_rechnungen: inklusiv.value === "" ? null : Number(inklusiv.value),
           preis_je_rechnung_cent: Number(jeRechnung.value || 0),
           reihenfolge: Number(reihenfolge.value || 0),
-          sichtbar: sichtbar.checked
+          sichtbar: sichtbar.checked,
+          hervorheben: hervorheben.checked
         }, "PUT");
         if (ergebnis) lade();
       }));
     });
   }
+
+  // ---------- Zahlen ----------
+  function kachel(wert, name, neben) {
+    var k = document.createElement("div");
+    k.className = "kennzahl";
+    var w = document.createElement("div");
+    w.className = "wert";
+    w.textContent = wert;
+    var n = document.createElement("div");
+    n.className = "name";
+    n.textContent = name;
+    k.appendChild(w); k.appendChild(n);
+    if (neben) {
+      var z = document.createElement("div");
+      z.className = "neben";
+      z.textContent = neben;
+      k.appendChild(z);
+    }
+    return k;
+  }
+
+  function euroAus(cent) {
+    return (cent / 100).toLocaleString(RB.sprache() === "de" ? "de-DE" : "en-GB",
+      { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " \u20ac";
+  }
+
+  var zahlenStand = null;
+
+  function zeichneZahlen() {
+    if (!zahlenStand) return;
+    var ziel = el("zahlen");
+    ziel.textContent = "";
+    var k = zahlenStand.konten, b = zahlenStand.belege;
+    ziel.appendChild(kachel(k.gesamt, RB.t("zKonten"),
+      k.wartet > 0 ? k.wartet + " " + RB.t("zWartet") : ""));
+    ziel.appendChild(kachel(zahlenStand.aktive_konten_monat, RB.t("zAktiv"),
+      RB.t("zAktivNeben")));
+    ziel.appendChild(kachel(b.monat, RB.t("zBelegeMonat"),
+      b.woche + " " + RB.t("zWoche")));
+    ziel.appendChild(kachel(b.gesamt, RB.t("zBelegeGesamt")));
+    ziel.appendChild(kachel(euroAus(b.umsatz_cent), RB.t("zUmsatz"),
+      RB.t("zUmsatzNeben")));
+    if (k.unbestaetigt > 0) {
+      ziel.appendChild(kachel(k.unbestaetigt, RB.t("zUnbestaetigt")));
+    }
+
+    // Verlauf: die Balken werden auf den groessten Monat bezogen. Ohne
+    // Belege bleibt der Bereich leer statt zwoelf Nullbalken zu zeigen.
+    var v = el("verlauf");
+    v.textContent = "";
+    var reihe = zahlenStand.verlauf || [];
+    // Unter drei Monaten ist es kein Verlauf, sondern ein Klotz — ein
+    // einzelner Balken über die volle Breite sagt nichts und sieht aus
+    // wie ein Fehler.
+    if (reihe.length < 3) { v.style.display = "none"; return; }
+    v.style.display = "";
+    var groesster = Math.max.apply(null, reihe.map(function (m) { return m.anzahl; }));
+    reihe.forEach(function (m) {
+      var spalte = document.createElement("div");
+      var balken = document.createElement("div");
+      balken.className = "balken";
+      balken.style.height = Math.round((m.anzahl / groesster) * 52) + "px";
+      balken.title = m.monat + ": " + m.anzahl;
+      var text = document.createElement("div");
+      text.className = "monat";
+      text.textContent = m.monat.slice(5);   // nur der Monat
+      spalte.appendChild(balken); spalte.appendChild(text);
+      v.appendChild(spalte);
+    });
+  }
+  RB.beiSprachwechsel(zeichneZahlen);
+
+  // ---------- Postausgang ----------
+  function postMelde(text, gut) {
+    var ziel = el("postMeldung");
+    ziel.className = "meldung hinweis" + (gut ? " gut" : "");
+    ziel.textContent = text;
+  }
+
+  function postFuellen(werte) {
+    el("smtpHost").value = werte.smtp_host || "";
+    el("smtpPort").value = werte.smtp_port || "";
+    el("smtpBenutzer").value = werte.smtp_benutzer || "";
+    el("smtpPasswort").value = werte.smtp_passwort || "";
+    el("smtpAbsender").value = werte.smtp_absender || "";
+    el("oeffAdresse").value = werte.oeffentliche_adresse || "";
+    el("smtpTls").checked = werte.smtp_tls === "1";
+    el("plausUrl").value = werte.plausible_url || "";
+    el("plausDomain").value = werte.plausible_domain || "";
+  }
+
+  el("postSpeichern").addEventListener("click", async function () {
+    var ergebnis = await sende("/api/verwaltung/einstellungen", {
+      smtp_host: el("smtpHost").value.trim(),
+      smtp_port: el("smtpPort").value.trim(),
+      smtp_benutzer: el("smtpBenutzer").value.trim(),
+      // Punkte heissen "unveraendert lassen" -- das Passwort kommt nie
+      // im Klartext zurueck, also darf es auch nicht zurueckgeschrieben
+      // werden.
+      smtp_passwort: el("smtpPasswort").value,
+      smtp_absender: el("smtpAbsender").value.trim(),
+      smtp_tls: el("smtpTls").checked ? "1" : "",
+      oeffentliche_adresse: el("oeffAdresse").value.trim(),
+      plausible_url: el("plausUrl").value.trim(),
+      plausible_domain: el("plausDomain").value.trim()
+    }, "PUT");
+    if (ergebnis) { postFuellen(ergebnis); postMelde(RB.t("gespeichert"), true); }
+  });
+
+  el("postTest").addEventListener("click", async function () {
+    postMelde(RB.t("laedt"), true);
+    var antwort = await RB.api("/api/verwaltung/testmail", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    if (antwort.ok) {
+      postMelde(RB.t("testOk") + " " + antwort.daten.an, true);
+    } else {
+      var d = antwort.daten;
+      postMelde((d && d.detail && d.detail.grund) || RB.t("fehlerAllgemein"), false);
+    }
+  });
 
   async function lade() {
     ich = await RB.kopfKonto();
@@ -366,6 +656,10 @@
     tarife = (antwortTarife.ok && antwortTarife.daten) || [];
     var antwortNutzer = await RB.api("/api/verwaltung/nutzer");
     nutzer = (antwortNutzer.ok && antwortNutzer.daten) || [];
+    var antwortPost = await RB.api("/api/verwaltung/einstellungen");
+    if (antwortPost.ok) postFuellen(antwortPost.daten);
+    var antwortZahlen = await RB.api("/api/verwaltung/zahlen");
+    if (antwortZahlen.ok) { zahlenStand = antwortZahlen.daten; zeichneZahlen(); }
 
     zeichneNutzer();
     zeichneTarife();
@@ -375,6 +669,17 @@
   RB.beiSprachwechsel(function () { zeichneNutzer(); zeichneTarife(); });
   lade();
 })();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
 </script>
 </body>
 </html>

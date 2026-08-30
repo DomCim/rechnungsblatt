@@ -2,15 +2,87 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Neue Rechnung</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
 <style>
   .beleg-gitter { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
   #bezugFelder[hidden], #zeitraumFelder[hidden], #datumFeld[hidden] { display: none; }
   .positionen-fuss { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-top: 12px; }
   .ergebnis-links { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+  /* --- Positionen am Handy -------------------------------------------
+     Sechs Spalten sind auf einem Telefon nicht bedienbar. Unter 700 px
+     wird jede Position ein Block; die Spaltennamen stehen dann vor dem
+     Wert statt in einer Kopfzeile. Rein visuell — das JS baut weiter
+     Tabellenzeilen. */
+  @media (max-width: 700px) {
+    .tabelle-rolle { overflow-x: visible; }
+    .tabelle-rolle table,
+    .tabelle-rolle tbody,
+    .tabelle-rolle tr,
+    .tabelle-rolle td { display: block; width: auto; }
+    .tabelle-rolle thead { display: none; }
+
+    tr.p-zeile {
+      border: 1px solid var(--linie);
+      border-radius: var(--radius);
+      padding: 12px;
+      margin-bottom: 10px;
+      background: var(--flaeche);
+      position: relative;
+    }
+    tr.p-zeile td { border: 0; padding: 4px 0; }
+
+    /* Spaltenname vor dem Feld — sonst weiß niemand, was er eingibt. */
+    tr.p-zeile td[data-spalte]::before {
+      content: attr(data-spalte);
+      display: block;
+      font-family: "Spline Sans Mono", ui-monospace, monospace;
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--tinte-2);
+      margin-bottom: 3px;
+    }
+    tr.p-zeile td.zahl { text-align: left; }
+    tr.p-zeile td.betrag {
+      text-align: left;
+      font-weight: 700;
+      border-top: 1px solid var(--linie);
+      margin-top: 6px;
+      padding-top: 8px;
+    }
+    /* Entfernen-Knopf in die rechte obere Ecke des Blocks. */
+    tr.p-zeile td:last-child {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 0;
+    }
+    tr.p-zeile td:last-child::before { content: none; }
+
+    /* Beschreibungszeile schließt sich dem Block an. */
+    tr.p-unterzeile {
+      display: block;
+      margin: -8px 0 12px;
+    }
+    tr.p-unterzeile td { display: block; padding: 0; border: 0; }
+    tr.p-unterzeile td::before { content: none; }
+
+    .positionen-fuss { flex-direction: column; align-items: stretch; gap: 12px; }
+    .positionen-fuss .zeile { margin-left: 0 !important; }
+    .positionen-fuss .feld { max-width: none !important; }
+  }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -29,6 +101,7 @@
       <nav class="reiter">
         <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
         <a href="/app/rechnung" aria-current="page" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/stamm" data-i18n="navStamm">Stammdaten</a>
         <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
         <a href="/app/konto" data-i18n="navKonto">Konto</a>
       </nav>
@@ -108,7 +181,7 @@
     </section>
 
     <!-- Empfänger -->
-    <section class="karte" style="margin-top:20px;">
+    <section class="karte">
       <div class="zeile" style="justify-content:space-between;">
         <h2 data-i18n="empfaengerTitel">Empfänger</h2>
         <select id="merkliste" style="max-width:260px;background:var(--grund);border:1px solid var(--linie);border-radius:8px;color:var(--tinte);font:500 14px 'Instrument Sans',system-ui,sans-serif;padding:8px 10px;">
@@ -156,16 +229,29 @@
     </section>
 
     <!-- Positionen -->
-    <section class="karte" style="margin-top:20px;">
-      <h2 data-i18n="positionenTitel">Positionen</h2>
+    <section class="karte">
+      <div class="zeile" style="justify-content:space-between;">
+        <h2 data-i18n="positionenTitel">Positionen</h2>
+        <div class="zeile" style="gap:8px;">
+          <select id="vorlagenwahl" style="max-width:220px;background:var(--grund);border:1px solid var(--linie);border-radius:8px;color:var(--tinte);font:500 14px 'Instrument Sans',system-ui,sans-serif;padding:8px 10px;">
+            <option value="" data-i18n="vorlagenwahl">Vorlage laden …</option>
+          </select>
+          <button type="button" id="vorlageSichern" class="knopf leise"
+                  data-i18n="vorlageSichern">Als Vorlage sichern</button>
+        </div>
+      </div>
       <p class="beschreibung"></p>
       <div class="feld" data-feld="rechnung.positionen" style="gap:0;">
         <span class="fehler" style="margin-bottom:8px;"></span>
       </div>
+      <!-- Vorschläge für das Leistungsfeld; wird aus den Stammdaten
+           gefüllt und ist leer, solange dort nichts steht. -->
+      <datalist id="artikelListe"></datalist>
       <div class="tabelle-rolle">
         <table>
           <thead>
             <tr>
+              <th class="sp-artikel" style="width:14%;" hidden data-i18n="spArtikel">Art.-Nr.</th>
               <th style="width:38%;" data-i18n="spBezeichnung">Leistung</th>
               <th style="width:11%;" data-i18n="spMenge">Menge</th>
               <th style="width:13%;" data-i18n="spEinheit">Einheit</th>
@@ -181,9 +267,15 @@
       <div class="positionen-fuss">
         <button type="button" class="knopf leise" id="positionHinzu" data-i18n="positionHinzu">+ Position</button>
         <div class="zeile" style="margin-left:auto;">
-          <div class="feld" data-feld="rechnung.rabatt" style="max-width:140px;">
-            <label for="rabatt" data-i18n="rabatt">Rabatt €</label>
-            <input id="rabatt" inputmode="decimal" placeholder="0,00">
+          <div class="feld" data-feld="rechnung.rabatt" style="max-width:170px;">
+            <label for="rabatt" data-i18n="rabatt">Rabatt</label>
+            <div class="zeile" style="gap:6px;flex-wrap:nowrap;">
+              <input id="rabatt" inputmode="decimal" placeholder="0,00">
+              <select id="rabattArt" style="width:auto;" aria-label="Rabattart">
+                <option value="betrag">€</option>
+                <option value="prozent">%</option>
+              </select>
+            </div>
             <span class="fehler"></span>
           </div>
           <div class="feld" style="max-width:180px;">
@@ -201,7 +293,7 @@
     </section>
 
     <!-- Freitext + Aktionen -->
-    <section class="karte" style="margin-top:20px;">
+    <section class="karte">
       <div class="felder">
         <div class="feld breit" data-feld="rechnung.freitext">
           <label for="freitext" data-i18n="freitext">Freitext (erscheint auf der Rechnung)</label>
@@ -233,6 +325,7 @@
             <th data-i18n="empfaengerTitel">Empfänger</th>
             <th>PDF</th>
             <th>XML</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="ablage"></tbody>
@@ -260,8 +353,20 @@
       eName: "Name / Firma", strasse: "Straße und Hausnummer", plz: "PLZ", ort: "Ort",
       eUstIdnr: "USt-IdNr. (bei Reverse Charge / EU)", eEmail: "E-Mail (für XRechnung)", eLeitweg: "Leitweg-ID (für XRechnung)",
       positionenTitel: "Positionen",
+      stornieren: "Stornieren",
+      stornoFrage: "Rechnung {nummer} stornieren?\n\nDie Rechnung bleibt unverändert bestehen — sie wird durch eine Gutschrift über denselben Betrag aufgehoben. Das Formular wird dafür vorbereitet; erzeugt wird die Gutschrift erst, wenn Sie sie absenden.",
+      stornoFreitext: "Storno der Rechnung {nummer}.",
+      nummerVergeben: "Diese Nummer ist bereits vergeben.",
+      vorlagenwahl: "Vorlage laden …", vorlageSichern: "Als Vorlage sichern",
+      vorlageName: "Name der Vorlage:",
+      vorlageLeer: "Erst Positionen erfassen, dann sichern.",
+      vorlageGesichert: "Vorlage gesichert.",
+      vorlageErsetzt: "Vorlage überschrieben.",
+      vorlageLoeschen: "Vorlage „{name}“ löschen?",
+      vorlagePreis: "Andere Preise als im Artikelstamm:\n{liste}\n\nPreise aus dem Artikelstamm übernehmen?",
       spBezeichnung: "Leistung", spMenge: "Menge", spEinheit: "Einheit", spEinzelpreis: "Einzelpreis €", spSteuer: "Steuer", spBetrag: "Betrag",
-      positionHinzu: "+ Position", rabatt: "Rabatt €", rabattGrund: "Rabattgrund",
+      positionHinzu: "+ Position", rabatt: "Rabatt", rabattGrund: "Rabattgrund",
+      spArtikel: "Art.-Nr.", beschreibungPlatzhalter: "Beschreibung (optional)",
       netto: "Netto", ust: "Umsatzsteuer", gesamt: "Gesamt",
       freitext: "Freitext (erscheint auf der Rechnung)",
       erzeugen: "Rechnung erzeugen (PDF)", xrechnung: "XRechnung (XML)",
@@ -288,8 +393,20 @@
       eName: "Name / company", strasse: "Street and number", plz: "Postcode", ort: "City",
       eUstIdnr: "VAT ID (reverse charge / EU)", eEmail: "E-mail (for XRechnung)", eLeitweg: "Leitweg-ID (for XRechnung)",
       positionenTitel: "Line items",
+      stornieren: "Cancel",
+      stornoFrage: "Cancel invoice {nummer}?\n\nThe invoice stays unchanged — it is voided by a credit note for the same amount. The form will be prepared; the credit note is only created once you submit it.",
+      stornoFreitext: "Cancellation of invoice {nummer}.",
+      nummerVergeben: "This number has already been used.",
+      vorlagenwahl: "Load template …", vorlageSichern: "Save as template",
+      vorlageName: "Template name:",
+      vorlageLeer: "Add line items first, then save.",
+      vorlageGesichert: "Template saved.",
+      vorlageErsetzt: "Template overwritten.",
+      vorlageLoeschen: "Delete template “{name}”?",
+      vorlagePreis: "Prices differ from the item list:\n{liste}\n\nUse the prices from the item list?",
       spBezeichnung: "Service", spMenge: "Qty", spEinheit: "Unit", spEinzelpreis: "Unit price €", spSteuer: "Tax", spBetrag: "Amount",
-      positionHinzu: "+ Line item", rabatt: "Discount €", rabattGrund: "Discount reason",
+      positionHinzu: "+ Line item", rabatt: "Discount", rabattGrund: "Discount reason",
+      spArtikel: "Item no.", beschreibungPlatzhalter: "Description (optional)",
       netto: "Net", ust: "VAT", gesamt: "Total",
       freitext: "Free text (appears on the invoice)",
       erzeugen: "Create invoice (PDF)", xrechnung: "XRechnung (XML)",
@@ -317,6 +434,54 @@
   }
 
   // ---------- Positionen ----------
+  // Aus den Stammdaten: blendet die Art.-Nr.-Spalte ein oder aus.
+  var artikelnummernAn = false;
+
+  // --- Artikelvorlagen ------------------------------------------------
+  // Aus den Stammdaten. Tippen im Leistungsfeld schlägt sie vor; wird ein
+  // Name genau getroffen, füllen sich die übrigen Felder der Position.
+  var artikel = [];
+
+  function artikelListeFuellen() {
+    var liste = document.getElementById("artikelListe");
+    if (!liste) return;
+    liste.innerHTML = artikel.map(function (a) {
+      var zusatz = a.artikelnummer ? " · " + a.artikelnummer : "";
+      return '<option value="' + String(a.bezeichnung).replace(/"/g, "&quot;") +
+             '">' + euro(Number(a.einzelpreis) || 0) + zusatz + "</option>";
+    }).join("");
+  }
+
+  function artikelUebernehmen(zeile, vorlage) {
+    if (!vorlage) return;
+    var setze = function (klasse, wert) {
+      var f = zeile.querySelector("." + klasse);
+      if (f && wert !== undefined && wert !== null) f.value = wert;
+    };
+    setze("p-artikelnummer", vorlage.artikelnummer || "");
+    setze("p-bezeichnung", vorlage.bezeichnung || "");
+    setze("p-einheit", vorlage.einheit || "C62");
+    setze("p-preis", String(vorlage.einzelpreis || "").replace(".", ","));
+    setze("p-steuer", vorlage.steuer || "UST_19");
+    // Beschreibung steht in der Unterzeile.
+    var unter = zeile.nextElementSibling;
+    if (unter && unter.classList.contains("p-unterzeile")) {
+      var b = unter.querySelector(".p-beschreibung");
+      if (b) b.value = vorlage.beschreibung || "";
+    }
+    rechne();
+  }
+
+  function artikelspalteZeigen(an) {
+    artikelnummernAn = !!an;
+    var zellen = document.querySelectorAll(".sp-artikel");
+    for (var i = 0; i < zellen.length; i++) zellen[i].hidden = !artikelnummernAn;
+    var unter = document.querySelectorAll(".p-unterzeile td");
+    for (var u = 0; u < unter.length; u++) {
+      unter[u].setAttribute("colspan", artikelnummernAn ? 7 : 6);
+    }
+  }
+
   function auswahl(optionen, klasse) {
     var teile = [];
     for (var schluessel in optionen) {
@@ -327,23 +492,41 @@
 
   function neueZeile(vorgabe) {
     var zeile = document.createElement("tr");
+    zeile.className = "p-zeile";
     var w = texte[RB.sprache()];
     zeile.innerHTML =
-      '<td><input class="p-bezeichnung"></td>' +
-      '<td class="zahl"><input class="p-menge" inputmode="decimal" value="1"></td>' +
-      "<td>" + auswahl(w.einheiten, "p-einheit") + "</td>" +
-      '<td class="zahl"><input class="p-preis" inputmode="decimal" placeholder="0,00"></td>' +
-      "<td>" + auswahl(w.steuern, "p-steuer") + "</td>" +
-      '<td class="betrag p-betrag">0,00 €</td>' +
+      '<td class="sp-artikel" data-spalte="' + w.spArtikel + '"' +
+        (artikelnummernAn ? "" : " hidden") +
+        '><input class="p-artikelnummer"></td>' +
+      '<td data-spalte="' + w.spBezeichnung + '">' +
+        '<input class="p-bezeichnung" list="artikelListe" autocomplete="off"></td>' +
+      '<td class="zahl" data-spalte="' + w.spMenge +
+        '"><input class="p-menge" inputmode="decimal" value="1"></td>' +
+      '<td data-spalte="' + w.spEinheit + '">' + auswahl(w.einheiten, "p-einheit") + "</td>" +
+      '<td class="zahl" data-spalte="' + w.spEinzelpreis +
+        '"><input class="p-preis" inputmode="decimal" placeholder="0,00"></td>' +
+      '<td data-spalte="' + w.spSteuer + '">' + auswahl(w.steuern, "p-steuer") + "</td>" +
+      '<td class="betrag p-betrag" data-spalte="' + w.spBetrag + '">0,00 €</td>' +
       '<td><button type="button" class="entfernen" aria-label="Position entfernen">×</button></td>';
+    // Beschreibung als eigene Unterzeile — in der schmalen Tabelle waere
+    // daneben kein Platz, auf dem Handy schon gar nicht.
+    var unter = document.createElement("tr");
+    unter.className = "p-unterzeile";
+    unter.innerHTML =
+      '<td colspan="' + (artikelnummernAn ? 7 : 6) + '" style="padding-top:0;">' +
+      '<input class="p-beschreibung" style="width:100%;font-size:13px;" ' +
+      'placeholder="' + w.beschreibungPlatzhalter + '"></td>';
     if (vorgabe) {
       zeile.querySelector(".p-bezeichnung").value = vorgabe.bezeichnung || "";
       zeile.querySelector(".p-menge").value = String(vorgabe.menge || "1").replace(".", ",");
       zeile.querySelector(".p-einheit").value = vorgabe.einheit || "C62";
       zeile.querySelector(".p-preis").value = String(vorgabe.einzelpreis || "").replace(".", ",");
       zeile.querySelector(".p-steuer").value = vorgabe.steuer || "UST_19";
+      zeile.querySelector(".p-artikelnummer").value = vorgabe.artikelnummer || "";
+      unter.querySelector(".p-beschreibung").value = vorgabe.beschreibung || "";
     }
     el("positionen").appendChild(zeile);
+    el("positionen").appendChild(unter);
     rechne();
   }
 
@@ -351,15 +534,31 @@
   el("positionen").addEventListener("click", function (ereignis) {
     var knopf = ereignis.target.closest(".entfernen");
     if (!knopf) return;
-    knopf.closest("tr").remove();
+    var zeile = knopf.closest("tr");
+    var unter = zeile.nextElementSibling;   // Beschreibungszeile mitnehmen
+    if (unter && unter.classList.contains("p-unterzeile")) unter.remove();
+    zeile.remove();
     rechne();
+  });
+  // Ein getroffener Artikelname füllt die restlichen Felder. Nur bei
+  // exakter Übereinstimmung — sonst würde Tippen laufend überschreiben.
+  el("positionen").addEventListener("input", function (ereignis) {
+    var feld = ereignis.target;
+    if (!feld.classList || !feld.classList.contains("p-bezeichnung")) return;
+    var name = feld.value.trim().toLowerCase();
+    if (!name) return;
+    var treffer = artikel.filter(function (a) {
+      return String(a.bezeichnung).trim().toLowerCase() === name;
+    })[0];
+    if (treffer) artikelUebernehmen(feld.closest("tr"), treffer);
   });
   el("positionen").addEventListener("input", rechne);
   el("positionen").addEventListener("change", rechne);
   el("rabatt").addEventListener("input", rechne);
+  el("rabattArt").addEventListener("change", rechne);
 
   function positionenDaten() {
-    var zeilen = el("positionen").querySelectorAll("tr");
+    var zeilen = el("positionen").querySelectorAll("tr.p-zeile");
     var liste = [];
     for (var i = 0; i < zeilen.length; i++) {
       var zeile = zeilen[i];
@@ -368,7 +567,13 @@
         menge: zeile.querySelector(".p-menge").value.trim().replace(",", "."),
         einheit: zeile.querySelector(".p-einheit").value,
         einzelpreis: zeile.querySelector(".p-preis").value.trim().replace(",", "."),
-        steuer: zeile.querySelector(".p-steuer").value
+        steuer: zeile.querySelector(".p-steuer").value,
+        artikelnummer: zeile.querySelector(".p-artikelnummer").value.trim(),
+        beschreibung: (
+          zeile.nextElementSibling
+            ? zeile.nextElementSibling.querySelector(".p-beschreibung").value.trim()
+            : ""
+        )
       });
     }
     return liste;
@@ -376,7 +581,7 @@
 
   // Anzeige-Summen (verbindlich rechnet der Server mit Decimal)
   function rechne() {
-    var zeilen = el("positionen").querySelectorAll("tr");
+    var zeilen = el("positionen").querySelectorAll("tr.p-zeile");
     var koerbe = {};
     var netto = 0;
     for (var i = 0; i < zeilen.length; i++) {
@@ -388,7 +593,11 @@
       var satz = STEUERSAETZE[zeile.querySelector(".p-steuer").value] || 0;
       koerbe[satz] = (koerbe[satz] || 0) + betrag;
     }
-    var rabatt = Math.min(zahl(el("rabatt").value), netto);
+    var eingabe = zahl(el("rabatt").value);
+    var rabatt = el("rabattArt").value === "prozent"
+      ? Math.round(netto * Math.min(eingabe, 100)) / 100
+      : Math.min(eingabe, netto);
+    rabatt = Math.min(rabatt, netto);
     var basisGesamt = netto - rabatt;
     var steuer = 0;
     for (var s in koerbe) {
@@ -427,7 +636,10 @@
         : null,
       bezugs_nummer: el("bezugsNummer").value.trim() || null,
       bezugs_datum: el("bezugsDatum").value || null,
-      rabatt_betrag: el("rabatt").value.trim() ? el("rabatt").value.trim().replace(",", ".") : null,
+      rabatt_betrag: (el("rabattArt").value === "betrag" && el("rabatt").value.trim())
+        ? el("rabatt").value.trim().replace(",", ".") : null,
+      rabatt_prozent: (el("rabattArt").value === "prozent" && el("rabatt").value.trim())
+        ? el("rabatt").value.trim().replace(",", ".") : null,
       rabatt_grund: el("rabattGrund").value.trim() || null,
       freitext: el("freitext").value.trim() || null,
       empfaenger: {
@@ -522,6 +734,12 @@
         "<td>" + (beleg.empfaenger || "") + "</td>" +
         '<td><a class="verweis" target="_blank" rel="noopener" href="' + beleg.pdf + '">PDF</a></td>' +
         '<td><a class="verweis" href="' + beleg.xml + '">XML</a></td>' +
+        // Storniert wird nur eine Rechnung — eine Gutschrift ist bereits
+        // der Gegenbeleg, eine zweite darüber ergäbe keinen Sinn.
+        "<td>" + (beleg.typ === "RECHNUNG"
+          ? '<a class="verweis" href="#" data-storno="' + beleg.nummer + '">' +
+            RB.t("stornieren") + "</a>"
+          : "") + "</td>" +
         "</tr>"
       );
     }
@@ -530,6 +748,12 @@
 
   // Merkliste: gepflegter Kundenstamm (wird bei jeder Rechnung fortgeschrieben)
   var kunden = [];
+  async function ladeArtikel() {
+    var antwort = await RB.api("/api/artikel");
+    artikel = (antwort.ok && antwort.daten) || [];
+    artikelListeFuellen();
+  }
+
   async function ladeKunden() {
     var antwort = await RB.api("/api/kunden");
     if (!antwort.ok) return;
@@ -562,11 +786,183 @@
     for (var i = 0; i < positionen.length; i++) neueZeile(positionen[i]);
     el("rabatt").value = daten.rabatt_betrag ? String(daten.rabatt_betrag).replace(".", ",") : "";
     el("rabattGrund").value = daten.rabatt_grund || "";
+    if (daten.rabatt_prozent) {
+      el("rabattArt").value = "prozent";
+      el("rabatt").value = String(daten.rabatt_prozent).replace(".", ",");
+    }
     el("freitext").value = daten.freitext || "";
     window.scrollTo({ top: 0 });
   }
 
+  // ---------- Rechnungsvorlagen ----------
+  // Benannte Positionslisten ohne Empfänger: dieselbe Leistung an
+  // wechselnde Kunden. Vorlage laden, Kunde aus der Merkliste — fertig.
+  var vorlagen = [];
+
+  async function ladeVorlagen() {
+    var antwort = await RB.api("/api/vorlagen");
+    vorlagen = (antwort.ok && antwort.daten) || [];
+    vorlagenListeFuellen();
+  }
+
+  function vorlagenListeFuellen() {
+    var optionen = ['<option value="">' + RB.t("vorlagenwahl") + "</option>"];
+    for (var i = 0; i < vorlagen.length; i++) {
+      optionen.push('<option value="' + i + '">' + vorlagen[i].name + "</option>");
+    }
+    // Löschweg ohne eigene Verwaltungsseite: dieselbe Auswahl, negativer Index.
+    for (var j = 0; j < vorlagen.length; j++) {
+      optionen.push('<option value="x' + j + '">✕ ' + vorlagen[j].name + "</option>");
+    }
+    el("vorlagenwahl").innerHTML = optionen.join("");
+  }
+
+  async function vorlagenSpeichern() {
+    var antwort = await RB.api("/api/vorlagen", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(vorlagen)
+    });
+    if (antwort.ok) { vorlagen = antwort.daten; vorlagenListeFuellen(); }
+    else zeigeFehler(antwort);
+    return antwort.ok;
+  }
+
+  // Preise altern: steht in der Vorlage ein anderer Preis als im
+  // Artikelstamm, ist das fast immer eine Preiserhöhung, die die Vorlage
+  // nicht mitbekommen hat. Stillschweigend den alten Preis zu verschicken
+  // ist der teure Fehler — also nachfragen.
+  function preiseAbgleichen(positionen) {
+    var abweichend = [];
+    for (var i = 0; i < positionen.length; i++) {
+      var p = positionen[i];
+      var stamm = artikel.filter(function (a) {
+        return String(a.bezeichnung).trim().toLowerCase() ===
+               String(p.bezeichnung).trim().toLowerCase();
+      })[0];
+      if (!stamm) continue;
+      if (Number(stamm.einzelpreis) !== Number(p.einzelpreis)) {
+        abweichend.push({ position: p, neu: stamm.einzelpreis });
+      }
+    }
+    if (!abweichend.length) return positionen;
+    var liste = abweichend.map(function (a) {
+      return "· " + a.position.bezeichnung + ": " +
+             String(a.position.einzelpreis).replace(".", ",") + " → " +
+             String(a.neu).replace(".", ",");
+    }).join("\n");
+    if (window.confirm(RB.t("vorlagePreis").replace("{liste}", liste))) {
+      for (var k = 0; k < abweichend.length; k++) {
+        abweichend[k].position.einzelpreis = abweichend[k].neu;
+      }
+    }
+    return positionen;
+  }
+
+  function vorlageLaden(vorlage) {
+    var positionen = preiseAbgleichen(
+      // Kopie: die Vorlage selbst darf der Abgleich nicht verändern.
+      (vorlage.positionen || []).map(function (p) { return Object.assign({}, p); })
+    );
+    el("positionen").innerHTML = "";
+    for (var i = 0; i < positionen.length; i++) neueZeile(positionen[i]);
+    el("rabattArt").value = vorlage.rabatt_art === "prozent" ? "prozent" : "betrag";
+    el("rabatt").value = vorlage.rabatt ? String(vorlage.rabatt).replace(".", ",") : "";
+    el("rabattGrund").value = vorlage.rabatt_grund || "";
+    el("freitext").value = vorlage.freitext || "";
+    rechne();
+  }
+
+  el("vorlagenwahl").addEventListener("change", async function () {
+    var wert = this.value;
+    this.value = "";
+    if (!wert) return;
+    if (wert.charAt(0) === "x") {           // Löschen
+      var weg = vorlagen[Number(wert.slice(1))];
+      if (!weg) return;
+      if (!window.confirm(RB.t("vorlageLoeschen").replace("{name}", weg.name))) return;
+      vorlagen = vorlagen.filter(function (v) { return v !== weg; });
+      await vorlagenSpeichern();
+      return;
+    }
+    var vorlage = vorlagen[Number(wert)];
+    if (vorlage) vorlageLaden(vorlage);
+  });
+
+  el("vorlageSichern").addEventListener("click", async function () {
+    var positionen = positionenDaten().filter(function (p) { return p.bezeichnung; });
+    if (!positionen.length) { el("aktionMeldung").textContent = RB.t("vorlageLeer"); return; }
+    var name = window.prompt(RB.t("vorlageName"), "");
+    if (name === null) return;
+    name = name.trim();
+    if (!name) return;
+    var eintrag = {
+      name: name,
+      positionen: positionen,
+      rabatt: el("rabatt").value.trim().replace(",", "."),
+      rabatt_art: el("rabattArt").value,
+      rabatt_grund: el("rabattGrund").value.trim(),
+      freitext: el("freitext").value.trim(),
+    };
+    // Gleicher Name ersetzt — sonst sammeln sich Dubletten in der Auswahl.
+    var vorhanden = vorlagen.filter(function (v) {
+      return v.name.trim().toLowerCase() === name.toLowerCase();
+    })[0];
+    if (vorhanden) vorlagen[vorlagen.indexOf(vorhanden)] = eintrag;
+    else vorlagen.push(eintrag);
+    if (await vorlagenSpeichern()) {
+      el("aktionMeldung").textContent = RB.t(vorhanden ? "vorlageErsetzt" : "vorlageGesichert");
+    }
+  });
+
+  // ---------- Stornieren ----------
+  // Eine erteilte Rechnung wird nicht geändert und nicht gelöscht: sie
+  // bleibt stehen und bekommt eine Gutschrift über denselben Betrag
+  // entgegengesetzt. Nur so bleibt die fortlaufende Nummerierung lückenlos
+  // und für den Prüfer nachvollziehbar.
+  async function stornieren(nummer) {
+    var antwort = await RB.api("/api/ablage/" + encodeURIComponent(nummer) + "/daten");
+    if (!antwort.ok) return;
+    var daten = antwort.daten;
+    if (!window.confirm(RB.t("stornoFrage").replace("{nummer}", nummer))) return;
+
+    fuelleEmpfaenger(daten.empfaenger || {});
+    el("typ").value = "GUTSCHRIFT";
+    // Der Bezug ist bei Gutschriften Pflicht (Befund G1) und landet im XML
+    // als InvoiceReferencedDocument — daran erkennt der Empfänger, welche
+    // Rechnung aufgehoben wird.
+    el("bezugsNummer").value = nummer;
+    if (el("bezugsDatum")) el("bezugsDatum").value = daten.rechnungsdatum || "";
+
+    el("positionen").innerHTML = "";
+    var positionen = daten.positionen || [];
+    // Bewusst unverändert übernommen: die Gutschrift muss betragsgleich
+    // sein. Preise werden hier NICHT gegen den Artikelstamm abgeglichen —
+    // storniert wird, was tatsächlich berechnet wurde.
+    for (var i = 0; i < positionen.length; i++) neueZeile(positionen[i]);
+    el("rabattArt").value = daten.rabatt_prozent ? "prozent" : "betrag";
+    el("rabatt").value = daten.rabatt_prozent
+      ? String(daten.rabatt_prozent).replace(".", ",")
+      : (daten.rabatt_betrag ? String(daten.rabatt_betrag).replace(".", ",") : "");
+    el("rabattGrund").value = daten.rabatt_grund || "";
+    el("freitext").value = RB.t("stornoFreitext").replace("{nummer}", nummer);
+
+    // Neue eigene Nummer — die Gutschrift ist ein eigener Beleg im Kreis.
+    el("nummer").value = "";
+    await ladeNummer();
+    // Blendet die Bezugsfelder ein — die Logik hängt am change-Ereignis.
+    el("typ").dispatchEvent(new Event("change"));
+    rechne();
+    window.scrollTo({ top: 0 });
+  }
+
   el("ablage").addEventListener("click", function (ereignis) {
+    var storno = ereignis.target.closest("a[data-storno]");
+    if (storno) {
+      ereignis.preventDefault();
+      stornieren(storno.getAttribute("data-storno"));
+      return;
+    }
     var verweis = ereignis.target.closest("a[data-vorlage]");
     if (!verweis) return;
     ereignis.preventDefault();
@@ -585,12 +981,39 @@
   }
   async function pruefeEinrichtung() {
     var antwort = await RB.api("/api/status");
-    if (antwort.ok) el("einrichtungHinweis").hidden = antwort.daten.bereit;
+    if (!antwort.ok) return;
+    el("einrichtungHinweis").hidden = antwort.daten.bereit;
+    var stamm = antwort.daten.stammdaten || {};
+    artikelspalteZeigen(stamm.artikelnummern);
+    zahlungszielTage = Number(stamm.zahlungsziel_tage) || 14;
+    faelligkeitRechnen();
   }
+
+  // --- Zahlbar bis ----------------------------------------------------
+  // Rechnungsdatum + Zahlungsziel aus den Stammdaten. Wer das Datum selbst
+  // setzt, behält es: ab dann wird nicht mehr nachgerechnet.
+  var zahlungszielTage = 14;
+  var faelligkeitVonHand = false;
+
+  function faelligkeitRechnen() {
+    if (faelligkeitVonHand) return;
+    var start = el("rechnungsdatum").value;
+    if (!start) return;
+    var tag = new Date(start + "T12:00:00");   // Mittag: keine Zeitzonen-Rutscher
+    tag.setDate(tag.getDate() + zahlungszielTage);
+    el("faelligkeit").value = tag.toISOString().slice(0, 10);
+  }
+
+  el("rechnungsdatum").addEventListener("change", faelligkeitRechnen);
+  el("faelligkeit").addEventListener("change", function () {
+    // Leeren heißt: wieder automatisch rechnen.
+    faelligkeitVonHand = !!this.value;
+    if (!faelligkeitVonHand) faelligkeitRechnen();
+  });
 
   RB.beiSprachwechsel(function () {
     // Auswahllisten neu beschriften, Werte erhalten
-    var zeilen = el("positionen").querySelectorAll("tr");
+    var zeilen = el("positionen").querySelectorAll("tr.p-zeile");
     var w = texte[RB.sprache()];
     for (var i = 0; i < zeilen.length; i++) {
       ["einheit", "steuer"].forEach(function (art) {
@@ -613,7 +1036,21 @@
   pruefeEinrichtung();
   ladeAblage();
   ladeKunden();
+  // Erst die Artikel, dann die Vorlagen: der Preisabgleich beim Laden
+  // einer Vorlage braucht den Artikelstamm.
+  ladeArtikel().then(ladeVorlagen);
 })();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
 </script>
 </body>
 </html>

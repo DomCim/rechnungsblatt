@@ -81,19 +81,22 @@ def _standard_rechnung() -> Rechnung:
         empfaenger=EMPFAENGER,
         leistungszeitraum=Zeitraum(von=dt.date(2026, 8, 1), bis=dt.date(2026, 8, 31)),
         faelligkeit=dt.date(2026, 9, 4),
-        rabatt_betrag=Decimal("25.00"),
+        rabatt_prozent=Decimal("10"),
         rabatt_grund="Treuerabatt",
         freitext="Vielen Dank für Ihren Auftrag.",
         verwendungszweck="RE-2026-0042 Beispielkunde GmbH",
         positionen=(
             Position(
                 bezeichnung="Montagearbeiten",
+                artikelnummer="ART-4711",
+                beschreibung="Demontage Altanlage, Aufbau und Inbetriebnahme",
                 menge=Decimal("8"),
                 einheit="HUR",
                 einzelpreis=Decimal("25.00"),
                 steuer=Steuerkategorie.UST_19,
             ),
             Position(
+                # Ohne Artikelnummer — der gemischte Fall gehört mit geprüft.
                 bezeichnung="Fachbuch „E-Rechnung kompakt“",
                 menge=Decimal("2"),
                 einheit="C62",
@@ -162,6 +165,37 @@ def _xrechnung() -> Rechnung:
     )
 
 
+def _mehrseitige_rechnung() -> Rechnung:
+    """25 Positionen — muss über mehrere Seiten laufen und trotzdem PDF/A-3B
+    bleiben. Prüft Übertrag, wiederholten Tabellenkopf und das je Seite
+    unterlegte Briefpapier."""
+    return Rechnung(
+        nummer="RE-2026-0099",
+        rechnungsdatum=dt.date(2026, 8, 21),
+        empfaenger=EMPFAENGER,
+        leistungsdatum=dt.date(2026, 8, 20),
+        faelligkeit=dt.date(2026, 9, 4),
+        verwendungszweck="RE-2026-0099",
+        freitext="Vielen Dank für Ihren Auftrag.",
+        positionen=tuple(
+            Position(
+                bezeichnung=f"Leistungsposition Nummer {i}",
+                artikelnummer=f"ART-{4000 + i}",
+                beschreibung=(
+                    "Ausführliche Beschreibung der erbrachten Leistung"
+                    if i % 3 == 0
+                    else None
+                ),
+                menge=Decimal("2"),
+                einheit="HUR",
+                einzelpreis=Decimal("45.00"),
+                steuer=Steuerkategorie.UST_19,
+            )
+            for i in range(1, 26)
+        ),
+    )
+
+
 def main() -> None:
     ausgabe = Path(sys.argv[1] if len(sys.argv) > 1 else "referenzfaelle")
     ausgabe.mkdir(parents=True, exist_ok=True)
@@ -192,6 +226,9 @@ def main() -> None:
         # Gestaltungs-Referenz: andere Schrift, anderes Layout — muss genauso
         # PDF/A-3B-konform sein wie der Standard
         ("rechnung_gestaltet", _standard_rechnung(), STAMMDATEN, boegen["gut"], modern),
+        # Mehrseitig: Seitenumbruch mit Übertrag darf die PDF/A-Konformität
+        # nicht brechen und muss das Briefpapier auf jeder Seite tragen.
+        ("rechnung_mehrseitig", _mehrseitige_rechnung(), STAMMDATEN, boegen["gut"], None),
     ]
     for name, rechnung, stammdaten, bogen, gestaltung in faelle:
         ergebnis = erzeuge_rechnung(

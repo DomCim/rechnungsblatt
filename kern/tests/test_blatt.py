@@ -1,6 +1,9 @@
 import dataclasses
+import io
+import re
 from decimal import Decimal
 
+import pikepdf
 import pytest
 
 from rechnungsblatt_kern import (
@@ -69,8 +72,8 @@ def test_blatt_bettet_benutzte_schriften_ein(rechnung, stammdaten):
             ), f"{name}: Schriftprogramm nicht eingebettet"
 
 
-def test_ueberlauf_wird_erkannt(rechnung, stammdaten):
-    viele = dataclasses.replace(
+def _viele_positionen(rechnung, anzahl: int):
+    return dataclasses.replace(
         rechnung,
         positionen=tuple(
             Position(
@@ -81,9 +84,60 @@ def test_ueberlauf_wird_erkannt(rechnung, stammdaten):
                 einzelpreis=Decimal("10.00"),
                 steuer=Steuerkategorie.UST_19,
             )
-            for i in range(40)
+            for i in range(anzahl)
         ),
     )
+
+
+def test_viele_positionen_brechen_um(rechnung, stammdaten):
+    """40 Positionen ergeben mehrere Seiten statt eines Überlauffehlers."""
+    viele = _viele_positionen(rechnung, 40)
     summen = berechne_summen(viele)
-    with pytest.raises(BlattUeberlauf):
-        rendere_blatt(viele, stammdaten, summen, Schreibzone())
+    blatt = rendere_blatt(viele, stammdaten, summen, Schreibzone())
+    with pikepdf.open(io.BytesIO(blatt)) as pdf:
+        assert len(pdf.pages) > 1
+
+
+def test_umbruch_auch_bei_hoher_fussleiste(rechnung, stammdaten):
+    """Eine hohe Fußleiste verkleinert die Zone — es muss trotzdem gehen."""
+    viele = _viele_positionen(rechnung, 25)
+    summen = berechne_summen(viele)
+    eng = Schreibzone(kopf_ende_mm=50, fuss_beginn_mm=60)
+    blatt = rendere_blatt(viele, stammdaten, summen, eng)
+    with pikepdf.open(io.BytesIO(blatt)) as pdf:
+        assert len(pdf.pages) > 2  # enge Zone braucht mehr Seiten
+
+
+def _seitentext(pdf, nummer: int) -> str:
+    """Sichtbaren Text einer Seite aus den Content-Streams lesen.
+
+    pikepdf bringt keine Textextraktion mit; für die Prüfung genügen die
+    Zeichenketten in Klammern, die der Textoperator ausgibt.
+    """
+    roh = pikepdf.Page(pdf.pages[nummer]).obj.Contents.read_bytes()
+    stuecke = re.findall(rb"\(([^()]*)\)", roh)
+    return b" ".join(stuecke).decode("latin-1", "replace")
+
+
+def test_uebertrag_und_seitenzahl_stehen_auf_dem_blatt(rechnung, stammdaten):
+    viele = _viele_positionen(rechnung, 40)
+    summen = berechne_summen(viele)
+    blatt = rendere_blatt(viele, stammdaten, summen, Schreibzone())
+    with pikepdf.open(io.BytesIO(blatt)) as pdf:
+        gesamt = len(pdf.pages)
+        erste = _seitentext(pdf, 0)
+        letzte = _seitentext(pdf, gesamt - 1)
+    assert "bertrag" in erste  # „Übertrag“, Umlaut je nach Kodierung
+    assert f"Seite 1 von {gesamt}" in erste
+    assert f"Seite {gesamt} von {gesamt}" in letzte
+
+
+def test_einseitig_ohne_seitenzahl(rechnung, stammdaten):
+    """Eine Seite bleibt eine Seite — ohne Fußzeile und ohne Übertrag."""
+    summen = berechne_summen(rechnung)
+    blatt = rendere_blatt(rechnung, stammdaten, summen, Schreibzone())
+    with pikepdf.open(io.BytesIO(blatt)) as pdf:
+        assert len(pdf.pages) == 1
+        text = _seitentext(pdf, 0)
+    assert "Seite 1 von" not in text
+    assert "bertrag" not in text

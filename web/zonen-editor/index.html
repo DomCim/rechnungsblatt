@@ -2,50 +2,53 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Schreibzone</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <style>
   :root {
-    --grund: #eceff1;
-    --flaeche: #ffffff;
-    --tinte: #16232e;
-    --tinte-2: #5b6b77;
-    --linie: #d3dade;
-    --akzent: #136f83;
-    --akzent-tinte: #0d5060;
-    --akzent-schleier: rgba(19, 111, 131, 0.07);
+    --grund: #f2efe8;
+    --flaeche: #fbf9f4;
+    --tinte: #1f1c18;
+    --tinte-2: #6b6459;
+    --linie: #ddd7cb;
+--feld: #ffffff;
+    --akzent: #b23c26;
+    --akzent-tinte: #8f2f1e;
+    --akzent-schleier: rgba(178, 60, 38, 0.07);
     --scrim: rgba(22, 35, 46, 0.42);
-    --warn: #a3491b;
+    --warn: #a3591b;
     --schatten: 0 12px 40px rgba(22, 35, 46, 0.14);
     --radius: 10px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --grund: #101820;
-      --flaeche: #182430;
-      --tinte: #e7edf1;
-      --tinte-2: #8fa1ae;
-      --linie: #2a3945;
-      --akzent: #4fb3c5;
-      --akzent-tinte: #7fd0de;
-      --akzent-schleier: rgba(79, 179, 197, 0.10);
+      --grund: #1f1c18;
+      --flaeche: #24211c;
+      --feld: #191612;
+      --tinte: #f3f0e9;
+      --tinte-2: #a49c8d;
+      --linie: #35302a;
+      --akzent: #e2694c;
+      --akzent-tinte: #e87a5e;
+      --akzent-schleier: rgba(217, 86, 58, 0.12);
       --scrim: rgba(6, 12, 18, 0.55);
-      --warn: #e0854f;
+      --warn: #d9954f;
       --schatten: 0 12px 40px rgba(0, 0, 0, 0.45);
     }
   }
   :root[data-theme="dark"] {
-    --grund: #101820;
-    --flaeche: #182430;
-    --tinte: #e7edf1;
-    --tinte-2: #8fa1ae;
-    --linie: #2a3945;
-    --akzent: #4fb3c5;
-    --akzent-tinte: #7fd0de;
-    --akzent-schleier: rgba(79, 179, 197, 0.10);
+    --grund: #1f1c18;
+    --flaeche: #24211c;
+    --feld: #191612;
+    --tinte: #f3f0e9;
+    --tinte-2: #a49c8d;
+    --linie: #35302a;
+    --akzent: #e2694c;
+    --akzent-tinte: #e87a5e;
+    --akzent-schleier: rgba(217, 86, 58, 0.12);
     --scrim: rgba(6, 12, 18, 0.55);
-    --warn: #e0854f;
+    --warn: #d9954f;
     --schatten: 0 12px 40px rgba(0, 0, 0, 0.45);
   }
 
@@ -76,7 +79,7 @@
     flex-wrap: wrap;
   }
   .marke {
-    font-family: "Bricolage Grotesque", Georgia, serif;
+    font-family: "Fraunces", Georgia, serif;
     font-weight: 500;
     font-size: 13px;
     letter-spacing: 0.14em;
@@ -84,7 +87,7 @@
     color: var(--akzent);
   }
   h1 {
-    font-family: "Bricolage Grotesque", Georgia, serif;
+    font-family: "Fraunces", Georgia, serif;
     font-weight: 700;
     font-size: clamp(24px, 4vw, 32px);
     line-height: 1.15;
@@ -172,7 +175,7 @@
   }
   .platzhalter .ph-text {
     position: absolute; top: 5%; left: 7%;
-    color: #fff; font-family: "Bricolage Grotesque", Georgia, serif;
+    color: #fff; font-family: "Fraunces", Georgia, serif;
     font-weight: 700; font-size: clamp(12px, 2.4vw, 19px);
   }
   .blatt.ohne-bild img { display: none; }
@@ -648,6 +651,25 @@
   });
 
   uebersetze();
+
+  // --- Höhe an die Einbettung melden --------------------------------
+  // Sonst braucht der iframe eine feste Höhe und scrollt in sich —
+  // zwei Scrollebenen übereinander sind auf dem Telefon unbrauchbar.
+  if (window.parent !== window) {
+    var zuletzt = 0;
+    function hoeheMelden() {
+      var h = Math.ceil(document.documentElement.scrollHeight);
+      if (Math.abs(h - zuletzt) < 4) return;   // Zappeln vermeiden
+      zuletzt = h;
+      window.parent.postMessage({ typ: "editorHoehe", hoehe: h }, "*");
+    }
+    hoeheMelden();
+    window.addEventListener("load", hoeheMelden);
+    window.addEventListener("resize", hoeheMelden);
+    if (window.ResizeObserver) {
+      new ResizeObserver(hoeheMelden).observe(document.documentElement);
+    }
+  }
 })();
 </script>
 </body>

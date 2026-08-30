@@ -21,3 +21,5 @@ validator.jar
 .vscode/
 *.swp
 .DS_Store
+*.code-workspace
+.mcp.json

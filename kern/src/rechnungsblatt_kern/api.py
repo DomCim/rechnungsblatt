@@ -115,6 +115,10 @@ def erzeuge_gestaltungsvorschau(
         positionen=(
             Position(
                 bezeichnung="Montagearbeiten",
+                # Nur zeigen, wenn eingeschaltet — die Vorschau soll den
+                # Beleg abbilden, den die Einrichtung tatsächlich erzeugt.
+                artikelnummer="ART-4711" if stammdaten.artikelnummern else None,
+                beschreibung="Demontage Altanlage, Aufbau und Inbetriebnahme",
                 menge=Decimal("8"),
                 einheit="HUR",
                 einzelpreis=Decimal("25.00"),
@@ -122,6 +126,7 @@ def erzeuge_gestaltungsvorschau(
             ),
             Position(
                 bezeichnung="Anfahrtspauschale",
+                artikelnummer="ART-0815" if stammdaten.artikelnummern else None,
                 menge=Decimal("1"),
                 einheit="C62",
                 einzelpreis=Decimal("35.00"),

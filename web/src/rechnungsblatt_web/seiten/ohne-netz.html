@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — keine Verbindung</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<style>
+  .huelle {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 18px;
+    max-width: 46ch;
+    margin: 0 auto;
+    padding: calc(32px + env(safe-area-inset-top, 0px))
+             calc(24px + env(safe-area-inset-right, 0px))
+             calc(32px + env(safe-area-inset-bottom, 0px))
+             calc(24px + env(safe-area-inset-left, 0px));
+  }
+  .huelle h1 { font-size: clamp(24px, 6vw, 32px); }
+  .huelle p { color: var(--tinte-2); line-height: 1.55; }
+  .huelle ul { color: var(--tinte-2); padding-left: 18px; line-height: 1.6; }
+  .huelle li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="huelle">
+  <h1>Keine Verbindung</h1>
+  <p>
+    Rechnungsblatt erzeugt PDF und XML auf dem Server — beides entsteht aus
+    denselben Daten im selben Vorgang. Ohne Verbindung lässt sich deshalb
+    keine Rechnung schreiben.
+  </p>
+  <ul>
+    <li>WLAN oder Mobilfunk prüfen</li>
+    <li>Danach erneut versuchen</li>
+  </ul>
+  <div class="zeile">
+    <button type="button" class="knopf" id="erneut">Erneut versuchen</button>
+  </div>
+</div>
+<script>
+  document.getElementById("erneut").addEventListener("click", function () {
+    location.reload();
+  });
+  // Sobald das Netz zurück ist, von selbst weitermachen.
+  window.addEventListener("online", function () { location.reload(); });
+</script>
+</body>
+</html>
