@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — Einrichtung</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
+<style>
+  .editor-rahmen {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius);
+    /* Anfangswert; die echte Höhe meldet der Editor selbst, damit er
+       nicht in sich scrollt. */
+    height: 880px;
+    background: transparent;
+    transition: height 140ms ease;
+  }
+  @media (max-width: 780px) { .editor-rahmen { height: 1180px; } }
+  @media (prefers-reduced-motion: reduce) { .editor-rahmen { transition: none; } }
+  .upload-zone {
+    /* label ist von Haus aus inline: ohne block fällt die Fläche auf die
+       Textbreite zusammen und der Rahmen läuft in den Absatz darunter. */
+    display: block;
+    border: 2px dashed var(--linie);
+    border-radius: var(--radius);
+    padding: 26px 20px;
+    text-align: center;
+    color: var(--tinte-2);
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .upload-zone:hover, .upload-zone.aktiv {
+    border-color: var(--akzent);
+    background: var(--akzent-schleier);
+    color: var(--akzent-tinte);
+  }
+  .upload-zone strong { color: var(--tinte); display: block; margin-bottom: 3px; }
+  .schritt-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
+  .wahl-karten { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .wahl-karten label {
+    position: relative;  /* Bezugsrahmen für das versteckte Radio-Input */
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    /* Erbschaft des Feld-Etiketts (Versalien, Sperrung) zurücknehmen */
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 500;
+    color: var(--tinte);
+    font-size: 13px;
+  }
+  .wahl-karten input { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .wahl-karten label:hover { border-color: var(--akzent); }
+  .wahl-karten input { position: absolute; opacity: 0; }
+  .wahl-karten label:has(input:checked) {
+    border-color: var(--akzent);
+    background: var(--akzent-schleier);
+  }
+  .wahl-karten label:has(input:focus-visible) { outline: 2px solid var(--akzent); }
+  .wahl-karten strong { font-size: 14px; }
+  .wahl-karten span { color: var(--tinte-2); font-size: 12.5px; line-height: 1.35; }
+  .gestaltung-gitter { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 20px; align-items: start; }
+  @media (max-width: 820px) { .gestaltung-gitter { grid-template-columns: 1fr; } }
+  .vorschau-blatt {
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    background: #fff;
+    width: 100%;
+    aspect-ratio: 210 / 297;
+    object-fit: contain;
+    box-shadow: var(--schatten);
+  }
+  .vorschau-blatt.laedt { opacity: 0.45; }
+  /* Die Miniatur ist zu klein, um Schrift und Layout zu beurteilen —
+     ein Klick zeigt dieselbe Musterrechnung in voller Groesse. */
+  .vorschau-blatt { cursor: zoom-in; }
+
+  .leuchtkasten {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.72);
+    cursor: zoom-out;
+  }
+  .leuchtkasten[hidden] { display: none; }
+  .leuchtkasten img {
+    max-width: min(100%, calc((100vh - 96px) * 210 / 297));
+    max-height: calc(100vh - 96px);
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--schatten);
+    cursor: default;
+  }
+  .leuchtkasten .schliessen {
+    /* Sichtbarer Ausweg neben Escape und Hintergrundklick. */
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font: 500 13px/1 "Instrument Sans", system-ui, sans-serif;
+    padding: 8px 14px;
+  }
+  .leuchtkasten .schliessen:hover { background: rgba(255, 255, 255, 0.14); }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Einrichtung</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Dreimal einrichten, dann nur noch Rechnungen schreiben: Briefpapier
+        hochladen, Schreibzone festlegen, Stammdaten hinterlegen.
+      </p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/app/einrichtung" aria-current="page" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/stamm" data-i18n="navStamm">Stammdaten</a>
+        <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" data-i18n="navKonto">Konto</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Schritt 1: Briefpapier -->
+  <section class="karte">
+    <div class="schritt-kopf">
+      <h2 data-i18n="briefpapierTitel">1 · Briefpapier</h2>
+      <span class="ampel offen" id="briefpapierAmpel" data-i18n="ampelOffen">noch nicht eingerichtet</span>
+    </div>
+    <p class="beschreibung" data-i18n="briefpapierText">
+      Laden Sie Ihren Briefbogen als PDF hoch (eine Seite). Wir vereinheitlichen
+      Farben und Schriften automatisch, damit daraus eine gültige E-Rechnung
+      werden kann — Ihr Original bleibt unangetastet und wird nicht gespeichert.
+    </p>
+    <label class="upload-zone" id="uploadZone" for="uploadEingabe">
+      <strong data-i18n="uploadTitel">PDF hier ablegen oder klicken</strong>
+      <span data-i18n="uploadHinweis">Eine Seite, bis 20 MB</span>
+      <input id="uploadEingabe" type="file" accept=".pdf,application/pdf" hidden>
+    </label>
+    <p class="beschreibung" style="margin:10px 0 0;" data-i18n="wordTipp">
+      Ihr Briefbogen liegt nur als Word-Datei vor? In Word einmal
+      „Datei → Speichern unter → Dateityp: PDF“ wählen — dann die PDF hochladen.
+    </p>
+    <div id="briefpapierMeldung" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- Schritt 2: Schreibzone -->
+  <section class="karte" id="zonenKarte" hidden>
+    <div class="schritt-kopf">
+      <h2 data-i18n="zoneTitel">2 · Schreibzone</h2>
+      <span class="ampel offen" id="zonenAmpel" data-i18n="ampelOffen">noch nicht eingerichtet</span>
+    </div>
+    <p class="beschreibung" data-i18n="zoneText">
+      Zwei Linien, mehr nicht: Wo endet Ihr Briefkopf, wo beginnt Ihre Fußzeile?
+      Dazwischen wird die Rechnung gedruckt.
+    </p>
+    <iframe class="editor-rahmen" id="zonenEditor" title="Schreibzonen-Editor"></iframe>
+  </section>
+
+  <!-- Schritt 3: Stammdaten -->
+  <section class="karte">
+    <div class="schritt-kopf">
+      <h2 data-i18n="stammdatenTitel">3 · Stammdaten</h2>
+      <span class="ampel offen" id="stammdatenAmpel" data-i18n="ampelOffen">noch nicht eingerichtet</span>
+    </div>
+    <p class="beschreibung" data-i18n="stammdatenText">
+      Einmal erfassen — erscheint auf jeder Rechnung und im E-Rechnungs-Datensatz.
+    </p>
+    <form id="stammdatenFormular">
+      <div class="felder">
+        <div class="feld breit" data-feld="stammdaten.firmierung">
+          <label for="firmierung" data-i18n="firmierung">Firmierung</label>
+          <input id="firmierung" name="firmierung" autocomplete="organization">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld breit" data-feld="stammdaten.anschrift">
+          <label for="strasse" data-i18n="strasse">Straße und Hausnummer</label>
+          <input id="strasse" name="strasse" autocomplete="street-address">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.plz">
+          <label for="plz" data-i18n="plz">PLZ</label>
+          <input id="plz" name="plz" autocomplete="postal-code">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.ort">
+          <label for="ort" data-i18n="ort">Ort</label>
+          <input id="ort" name="ort" autocomplete="address-level2">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.steuernummer">
+          <label for="steuernummer" data-i18n="steuernummer">Steuernummer</label>
+          <input id="steuernummer" name="steuernummer">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.ust_idnr">
+          <label for="ust_idnr" data-i18n="ustIdnr">USt-IdNr.</label>
+          <input id="ust_idnr" name="ust_idnr" placeholder="DE123456789">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.iban">
+          <label for="iban">IBAN</label>
+          <input id="iban" name="iban" placeholder="DE00 0000 0000 0000 0000 00">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.bic">
+          <label for="bic">BIC</label>
+          <input id="bic" name="bic">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.zahlungsziel_tage">
+          <label for="zahlungsziel" data-i18n="zahlungsziel">Zahlungsziel (Tage)</label>
+          <input id="zahlungsziel" name="zahlungsziel_tage" type="number" min="0" value="14">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.kontakt">
+          <label for="kontakt_name" data-i18n="kontaktName">Ansprechpartner</label>
+          <input id="kontakt_name" name="kontakt_name" autocomplete="name">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.kontakt_email">
+          <label for="kontakt_email" data-i18n="kontaktEmail">E-Mail</label>
+          <input id="kontakt_email" name="kontakt_email" type="email" autocomplete="email">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.kontakt_telefon">
+          <label for="kontakt_telefon" data-i18n="kontaktTelefon">Telefon</label>
+          <input id="kontakt_telefon" name="kontakt_telefon" type="tel" autocomplete="tel">
+          <span class="fehler"></span>
+        </div>
+        <div class="feld" data-feld="stammdaten.nummern_muster">
+          <label for="nummern_muster" data-i18n="nummernMuster">Rechnungsnummern-Muster</label>
+          <input id="nummern_muster" name="nummern_muster" value="RE-{JJJJ}-{NNNN}" spellcheck="false">
+          <span class="fehler"></span>
+          <span class="beschreibung" style="margin:0;font-size:12.5px;" data-i18n="nummernMusterHilfe">
+            {JJJJ}/{JJ} = Jahr, {NNNN} = fortlaufender Zähler (Stellenzahl = Anzahl N).
+            Beispiel: RE-{JJJJ}-{NNNN} → RE-2026-0001
+          </span>
+        </div>
+        <div class="feld" data-feld="stammdaten.verwendungszweck_muster">
+          <label for="verwendungszweck_muster" data-i18n="zweckMuster">Verwendungszweck-Vorlage</label>
+          <input id="verwendungszweck_muster" name="verwendungszweck_muster" value="{NUMMER}" spellcheck="false">
+          <span class="fehler"></span>
+          <span class="beschreibung" style="margin:0;font-size:12.5px;" data-i18n="zweckMusterHilfe">
+            Erscheint auf dem Blatt und im E-Rechnungs-Datensatz (BT-83).
+            Platzhalter: {NUMMER}, {DATUM}, {KUNDE}. Leer = kein Verwendungszweck.
+          </span>
+        </div>
+      </div>
+      <div class="zeile" style="margin-top:16px;">
+        <button type="submit" class="knopf" id="stammdatenKnopf" data-i18n="speichern">Speichern</button>
+        <span id="stammdatenMeldung" class="beschreibung" style="margin:0;"></span>
+      </div>
+    </form>
+  </section>
+
+  <!-- Schritt 4: Gestaltung -->
+  <section class="karte">
+    <div class="schritt-kopf">
+      <h2 data-i18n="gestaltungTitel">4 · Gestaltung</h2>
+      <span class="ampel offen" id="gestaltungAmpel" data-i18n="ampelStandard">Standard</span>
+    </div>
+    <p class="beschreibung" data-i18n="gestaltungText">
+      Schrift, Größe und eines von drei geprüften Layouts — jede Kombination
+      bleibt eine gültige E-Rechnung. Die Vorschau zeigt eine Musterrechnung
+      auf Ihrem Briefpapier.
+    </p>
+    <div class="gestaltung-gitter">
+      <div style="display:flex;flex-direction:column;gap:16px;">
+        <div class="feld">
+          <label for="gSchrift" data-i18n="schrift">Schrift</label>
+          <select id="gSchrift"></select>
+        </div>
+        <div class="feld">
+          <label data-i18n="schriftgrad">Schriftgröße</label>
+          <div class="wahl-karten" id="gGrad">
+            <label><input type="radio" name="gGrad" value="kompakt"><strong data-i18n="gradKompakt">Kompakt</strong><span>9 pt</span></label>
+            <label><input type="radio" name="gGrad" value="normal" checked><strong data-i18n="gradNormal">Normal</strong><span>10 pt</span></label>
+            <label><input type="radio" name="gGrad" value="gross"><strong data-i18n="gradGross">Groß</strong><span>11 pt</span></label>
+          </div>
+        </div>
+        <div class="feld">
+          <label data-i18n="layout">Layout</label>
+          <div class="wahl-karten" id="gLayout">
+            <label><input type="radio" name="gLayout" value="klassisch" checked><strong data-i18n="layoutKlassisch">Klassisch</strong><span data-i18n="layoutKlassischText">Belegdaten rechts, klare Linien</span></label>
+            <label><input type="radio" name="gLayout" value="kompakt"><strong data-i18n="layoutKompakt">Kompakt</strong><span data-i18n="layoutKompaktText">Enge Abstände — viele Positionen</span></label>
+            <label><input type="radio" name="gLayout" value="modern"><strong data-i18n="layoutModern">Modern</strong><span data-i18n="layoutModernText">Großer Titel, mehr Weißraum</span></label>
+            <label><input type="radio" name="gLayout" value="zebra"><strong data-i18n="layoutZebra">Zebra</strong><span data-i18n="layoutZebraText">Getönte Wechselzeilen — lange Listen</span></label>
+            <label><input type="radio" name="gLayout" value="luftig"><strong data-i18n="layoutLuftig">Luftig</strong><span data-i18n="layoutLuftigText">Ohne Linien, ruhig und zurückhaltend</span></label>
+            <label><input type="radio" name="gLayout" value="doppelt"><strong data-i18n="layoutDoppelt">Kompakt-Doppelt</strong><span data-i18n="layoutDoppeltText">Belegdaten zweispaltig, sehr eng</span></label>
+          </div>
+        </div>
+        <label class="schalter" style="margin-bottom:8px;">
+          <input id="gAkzent" type="checkbox"><span class="hebel"></span>
+          <span data-i18n="akzentAn">Akzentfarbe statt schwarzer Linien</span>
+        </label>
+        <!-- Nur sichtbar, wenn der Akzent eingeschaltet ist. -->
+        <div class="feld" id="gFarbeFeld" hidden style="max-width:260px;margin-bottom:12px;">
+          <label for="gFarbe" data-i18n="akzentfarbe">Farbe</label>
+          <div class="zeile" style="gap:8px;flex-wrap:nowrap;">
+            <input id="gFarbe" type="color" value="#136f83"
+                   style="width:52px;height:38px;padding:2px;cursor:pointer;">
+            <input id="gFarbeText" inputmode="text" spellcheck="false"
+                   placeholder="#136f83" style="max-width:110px;">
+          </div>
+          <span class="fehler" id="gFarbeFehler"></span>
+        </div>
+        <div class="feld" id="gZeileFeld">
+          <label class="schalter">
+            <input id="gZeile" type="checkbox"><span class="hebel"></span>
+            <span data-i18n="belegdatenZeile">Belegdaten als Zeile unter dem Titel (statt Block rechts)</span>
+          </label>
+        </div>
+        <label class="schalter" style="margin-bottom:10px;">
+          <input id="artikelnummern" name="artikelnummern" type="checkbox"><span class="hebel"></span>
+          <span data-i18n="artikelnummern">Artikelnummern verwenden (Spalte im Rechnungsformular und auf dem Beleg)</span>
+        </label>
+        <label class="schalter" style="margin-bottom:10px;">
+          <input id="kleinunternehmer" name="kleinunternehmer" type="checkbox"><span class="hebel"></span>
+          <span data-i18n="kleinunternehmer">Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)</span>
+        </label>
+        <label class="schalter" style="margin-bottom:16px;">
+          <input id="girocode" name="girocode" type="checkbox" checked><span class="hebel"></span>
+          <span data-i18n="girocode">GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)</span>
+        </label>
+        <div class="zeile">
+          <button type="button" class="knopf" id="gSpeichern" data-i18n="speichern">Speichern</button>
+          <span id="gMeldung" class="beschreibung" style="margin:0;"></span>
+        </div>
+      </div>
+      <div>
+        <img class="vorschau-blatt" id="gVorschau" alt="" src=""
+             role="button" tabindex="0" title="Zum Vergrößern klicken">
+        <p class="beschreibung" style="margin-top:8px;" data-i18n="vorschauHinweis">
+          Musterrechnung — Ihre echten Daten erscheinen beim Erzeugen.
+        </p>
+      </div>
+    </div>
+  </section>
+
+<!-- Vorschau in voller Groesse (Schritt 4) -->
+<div class="leuchtkasten" id="vorschauKasten" hidden role="dialog" aria-modal="true"
+     aria-label="Vorschau in voller Größe">
+  <img id="vorschauGross" alt="" src="">
+  <button type="button" class="schliessen" id="vorschauZu"
+          data-i18n="schliessen">Schließen</button>
+</div>
+
+  <section class="hinweis gut" id="bereitHinweis" hidden>
+    <span data-i18n="bereit">Alles eingerichtet — Sie können jetzt Rechnungen schreiben:</span>
+    <a class="verweis" href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+  </section>
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  // Erst speichern, wenn Schritt 3 schon einmal gesichert wurde: sonst legte
+  // ein Klick hier eine halbleere stammdaten.json an, und /api/status meldete
+  // die Einrichtung als fertig, obwohl die Firmierung noch fehlt.
+  var stammdatenGesichert = false;
+
+  "use strict";
+  var texte = {
+    de: {
+      titel: "Einrichtung",
+      untertitel: "Dreimal einrichten, dann nur noch Rechnungen schreiben: Briefpapier hochladen, Schreibzone festlegen, Stammdaten hinterlegen.",
+      briefpapierTitel: "1 · Briefpapier",
+      briefpapierText: "Laden Sie Ihren Briefbogen als PDF hoch (eine Seite). Wir vereinheitlichen Farben und Schriften automatisch, damit daraus eine gültige E-Rechnung werden kann — Ihr Original bleibt unangetastet und wird nicht gespeichert.",
+      uploadTitel: "PDF hier ablegen oder klicken",
+      uploadHinweis: "Eine Seite, bis 20 MB",
+      wordTipp: "Ihr Briefbogen liegt nur als Word-Datei vor? In Word einmal „Datei → Speichern unter → Dateityp: PDF“ wählen — dann die PDF hochladen.",
+      wordAbgelehnt: "Das ist eine Word-Datei — daraus können wir keine rechtssichere E-Rechnung bauen, aus einer PDF schon. So geht’s: In Word „Datei → Speichern unter“ öffnen, als Dateityp „PDF“ wählen (oder „Datei → Exportieren → PDF/XPS-Dokument erstellen“), speichern — und die neue PDF-Datei hier hochladen. In LibreOffice: „Datei → Als PDF exportieren“.",
+      keinPdf: "Diese Datei ist kein PDF. Bitte den Briefbogen als PDF speichern (in Word: „Datei → Speichern unter → Dateityp: PDF“) und die PDF hochladen.",
+      ampelOffen: "noch nicht eingerichtet",
+      ampelGruen: "eingerichtet",
+      ampelSchriften: "Schriften ersetzt — bitte prüfen",
+      normalisiert: "Ihr Briefbogen ist vorbereitet.",
+      schriftenErsetzt: "Wir mussten Schriften ersetzen, bitte prüfen Sie die Vorschau unten.",
+      zoneTitel: "2 · Schreibzone",
+      zoneText: "Zwei Linien, mehr nicht: Wo endet Ihr Briefkopf, wo beginnt Ihre Fußzeile? Dazwischen wird die Rechnung gedruckt.",
+      zoneGespeichert: "Schreibzone gespeichert.",
+      stammdatenTitel: "3 · Stammdaten",
+      stammdatenText: "Einmal erfassen — erscheint auf jeder Rechnung und im E-Rechnungs-Datensatz.",
+      firmierung: "Firmierung",
+      strasse: "Straße und Hausnummer",
+      plz: "PLZ",
+      ort: "Ort",
+      steuernummer: "Steuernummer",
+      ustIdnr: "USt-IdNr.",
+      zahlungsziel: "Zahlungsziel (Tage)",
+      kontaktName: "Ansprechpartner",
+      kontaktEmail: "E-Mail",
+      kontaktTelefon: "Telefon",
+      kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      artikelnummern: "Artikelnummern verwenden (Spalte im Rechnungsformular und auf dem Beleg)",
+      girocode: "GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)",
+      nummernMuster: "Rechnungsnummern-Muster",
+      nummernMusterHilfe: "{JJJJ}/{JJ} = Jahr, {NNNN} = fortlaufender Zähler (Stellenzahl = Anzahl N). Beispiel: RE-{JJJJ}-{NNNN} → RE-2026-0001",
+      zweckMuster: "Verwendungszweck-Vorlage",
+      zweckMusterHilfe: "Erscheint auf dem Blatt und im E-Rechnungs-Datensatz (BT-83). Platzhalter: {NUMMER}, {DATUM}, {KUNDE}. Leer = kein Verwendungszweck.",
+      gestaltungTitel: "4 · Gestaltung",
+      gestaltungText: "Schrift, Größe und eines von drei geprüften Layouts — jede Kombination bleibt eine gültige E-Rechnung. Die Vorschau zeigt eine Musterrechnung auf Ihrem Briefpapier.",
+      schrift: "Schrift",
+      schriftgrad: "Schriftgröße",
+      gradKompakt: "Kompakt", gradNormal: "Normal", gradGross: "Groß",
+      layout: "Layout",
+      layoutKlassisch: "Klassisch", layoutKlassischText: "Belegdaten rechts, klare Linien",
+      layoutKompakt: "Kompakt", layoutKompaktText: "Enge Abstände — viele Positionen",
+      layoutModern: "Modern", layoutModernText: "Großer Titel, mehr Weißraum",
+      layoutZebra: "Zebra", layoutZebraText: "Getönte Wechselzeilen — lange Listen",
+      layoutLuftig: "Luftig", layoutLuftigText: "Ohne Linien, ruhig und zurückhaltend",
+      layoutDoppelt: "Kompakt-Doppelt", layoutDoppeltText: "Belegdaten zweispaltig, sehr eng",
+      akzentAn: "Akzentfarbe statt schwarzer Linien",
+      akzentfarbe: "Farbe",
+      farbeUngueltig: "Bitte eine Farbe wie #136f83 angeben.",
+      belegdatenZeile: "Belegdaten als Zeile unter dem Titel (statt Block rechts)",
+      vorschauHinweis: "Musterrechnung — Ihre echten Daten erscheinen beim Erzeugen.",
+      vorschauVergroessern: "Zum Vergrößern klicken",
+      vorschauVoll: "Vorschau in voller Größe",
+      schliessen: "Schließen",
+      ampelStandard: "Standard",
+      ampelAngepasst: "angepasst",
+      bereit: "Alles eingerichtet — Sie können jetzt Rechnungen schreiben:"
+    },
+    en: {
+      titel: "Setup",
+      untertitel: "Set up three things once, then just write invoices: upload your letterhead, set the writing zone, enter your master data.",
+      briefpapierTitel: "1 · Letterhead",
+      briefpapierText: "Upload your letterhead as a PDF (one page). We unify colours and fonts automatically so it can carry a valid e-invoice — your original stays untouched and is not stored.",
+      uploadTitel: "Drop a PDF here or click",
+      uploadHinweis: "One page, up to 20 MB",
+      wordTipp: "Only have your letterhead as a Word file? In Word, choose “File → Save As → file type: PDF” once — then upload the PDF.",
+      wordAbgelehnt: "That’s a Word file — we can’t build a legally valid e-invoice from it, but we can from a PDF. Here’s how: in Word open “File → Save As”, pick “PDF” as the file type (or “File → Export → Create PDF/XPS”), save — and upload the new PDF here. In LibreOffice: “File → Export as PDF”.",
+      keinPdf: "This file is not a PDF. Please save your letterhead as a PDF (in Word: “File → Save As → file type: PDF”) and upload the PDF.",
+      ampelOffen: "not set up yet",
+      ampelGruen: "ready",
+      ampelSchriften: "fonts replaced — please check",
+      normalisiert: "Your letterhead is prepared.",
+      schriftenErsetzt: "We had to replace fonts — please check the preview below.",
+      zoneTitel: "2 · Writing zone",
+      zoneText: "Two lines, nothing more: where does your header end, where does your footer begin? The invoice is printed in between.",
+      zoneGespeichert: "Writing zone saved.",
+      stammdatenTitel: "3 · Master data",
+      stammdatenText: "Enter once — appears on every invoice and in the e-invoice data set.",
+      firmierung: "Company name",
+      strasse: "Street and number",
+      plz: "Postcode",
+      ort: "City",
+      steuernummer: "Tax number",
+      ustIdnr: "VAT ID",
+      zahlungsziel: "Payment term (days)",
+      kontaktName: "Contact person",
+      kontaktEmail: "E-mail",
+      kontaktTelefon: "Phone",
+      kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      artikelnummern: "Use article numbers (column in the invoice form and on the document)",
+      girocode: "Print GiroCode on invoices (QR code — customer scans and pays with prefilled details)",
+      nummernMuster: "Invoice number pattern",
+      nummernMusterHilfe: "{JJJJ}/{JJ} = year, {NNNN} = sequential counter (digits = number of Ns). Example: RE-{JJJJ}-{NNNN} → RE-2026-0001",
+      zweckMuster: "Payment reference template",
+      zweckMusterHilfe: "Appears on the sheet and in the e-invoice data (BT-83). Placeholders: {NUMMER}, {DATUM}, {KUNDE}. Empty = no payment reference.",
+      gestaltungTitel: "4 · Design",
+      gestaltungText: "Font, size and one of three verified layouts — every combination stays a valid e-invoice. The preview shows a sample invoice on your letterhead.",
+      schrift: "Font",
+      schriftgrad: "Font size",
+      gradKompakt: "Compact", gradNormal: "Normal", gradGross: "Large",
+      layout: "Layout",
+      layoutKlassisch: "Classic", layoutKlassischText: "Details on the right, clear rules",
+      layoutKompakt: "Compact", layoutKompaktText: "Tight spacing — many line items",
+      layoutModern: "Modern", layoutModernText: "Large title, more whitespace",
+      layoutZebra: "Zebra", layoutZebraText: "Shaded alternating rows — long lists",
+      layoutLuftig: "Airy", layoutLuftigText: "No rules, calm and restrained",
+      layoutDoppelt: "Compact-Double", layoutDoppeltText: "Document data in two columns, very tight",
+      akzentAn: "Accent colour instead of black rules",
+      akzentfarbe: "Colour",
+      farbeUngueltig: "Please enter a colour like #136f83.",
+      belegdatenZeile: "Invoice details as a line below the title (instead of a block on the right)",
+      vorschauHinweis: "Sample invoice — your real data appears when you create one.",
+      vorschauVergroessern: "Click to enlarge",
+      vorschauVoll: "Full-size preview",
+      schliessen: "Close",
+      ampelStandard: "default",
+      ampelAngepasst: "customised",
+      bereit: "All set — you can write invoices now:"
+    }
+  };
+
+  var el = function (id) { return document.getElementById(id); };
+
+  function setzeAmpel(knoten, zustand, textSchluessel) {
+    knoten.className = "ampel " + zustand;
+    knoten.setAttribute("data-i18n", textSchluessel);
+    knoten.textContent = RB.t(textSchluessel);
+  }
+
+  function zeigeEditor(zone) {
+    el("zonenKarte").hidden = false;
+    var kopf = zone ? zone.kopf_ende_mm : 45;
+    var fuss = zone ? zone.fuss_beginn_mm : 25;
+    el("zonenEditor").src =
+      "/zonen-editor/?bild=" + encodeURIComponent("/api/briefpapier/vorschau.png?" + Date.now()) +
+      "&kopf=" + kopf + "&fuss=" + fuss;
+  }
+
+  function fuelleStammdaten(daten) {
+    if (!daten) return;
+    var anschrift = daten.anschrift || {};
+    el("firmierung").value = daten.firmierung || "";
+    el("strasse").value = anschrift.strasse || "";
+    el("plz").value = anschrift.plz || "";
+    el("ort").value = anschrift.ort || "";
+    el("steuernummer").value = daten.steuernummer || "";
+    el("ust_idnr").value = daten.ust_idnr || "";
+    el("iban").value = daten.iban || "";
+    el("bic").value = daten.bic || "";
+    el("zahlungsziel").value = daten.zahlungsziel_tage || 14;
+    el("kontakt_name").value = daten.kontakt_name || "";
+    el("kontakt_email").value = daten.kontakt_email || "";
+    el("kontakt_telefon").value = daten.kontakt_telefon || "";
+    el("kleinunternehmer").checked = !!daten.kleinunternehmer;
+    el("girocode").checked = daten.girocode !== false;
+    el("artikelnummern").checked = !!daten.artikelnummern;
+    if (daten.nummern_muster !== undefined) el("nummern_muster").value = daten.nummern_muster;
+    if (daten.verwendungszweck_muster !== undefined) el("verwendungszweck_muster").value = daten.verwendungszweck_muster;
+  }
+
+  async function ladeStatus() {
+    var status = await RB.api("/api/status");
+    if (!status.ok) return;
+    var s = status.daten;
+    if (s.briefpapier) {
+      var schriften = s.briefpapier.schriften_ersetzt;
+      setzeAmpel(el("briefpapierAmpel"), schriften ? "gelb" : "gruen",
+                 schriften ? "ampelSchriften" : "ampelGruen");
+      zeigeEditor(s.schreibzone);
+    }
+    if (s.schreibzone) setzeAmpel(el("zonenAmpel"), "gruen", "ampelGruen");
+    if (s.stammdaten) {
+      setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
+      stammdatenGesichert = true;
+      fuelleStammdaten(s.stammdaten);
+    }
+    el("bereitHinweis").hidden = !s.bereit;
+  }
+
+  // ---------- Upload ----------
+  var zone = el("uploadZone");
+  var eingabe = el("uploadEingabe");
+  zone.addEventListener("dragover", function (e) { e.preventDefault(); zone.classList.add("aktiv"); });
+  zone.addEventListener("dragleave", function () { zone.classList.remove("aktiv"); });
+  zone.addEventListener("drop", function (e) {
+    e.preventDefault(); zone.classList.remove("aktiv");
+    if (e.dataTransfer.files.length) ladeHoch(e.dataTransfer.files[0]);
+  });
+  eingabe.addEventListener("change", function () {
+    if (eingabe.files.length) ladeHoch(eingabe.files[0]);
+    eingabe.value = "";  // dieselbe Datei darf erneut gewählt werden
+  });
+
+  function istWordDatei(datei) {
+    var name = (datei.name || "").toLowerCase();
+    return /\.(docx?|odt|rtf)$/.test(name) ||
+      (datei.type || "").indexOf("officedocument.wordprocessingml") >= 0 ||
+      datei.type === "application/msword";
+  }
+
+  function istPdf(datei) {
+    var name = (datei.name || "").toLowerCase();
+    return datei.type === "application/pdf" || name.slice(-4) === ".pdf";
+  }
+
+  var letzterHinweis = null;  // i18n-Schlüssel der stehenden Meldung
+
+  function zeigeHinweis(schluessel) {
+    letzterHinweis = schluessel;
+    el("briefpapierMeldung").innerHTML =
+      '<div class="hinweis">' + RB.t(schluessel) + "</div>";
+  }
+  RB.beiSprachwechsel(function () {
+    if (letzterHinweis) zeigeHinweis(letzterHinweis);
+  });
+
+  async function ladeHoch(datei) {
+    var meldung = el("briefpapierMeldung");
+    letzterHinweis = null;
+    // Falsches Format schon vor dem Upload freundlich erklären (lokalisiert)
+    if (istWordDatei(datei)) { zeigeHinweis("wordAbgelehnt"); return; }
+    if (!istPdf(datei)) { zeigeHinweis("keinPdf"); return; }
+    meldung.innerHTML = '<span class="beschreibung">' + RB.t("laedt") + "</span>";
+    var formular = new FormData();
+    formular.append("datei", datei);
+    var antwort = await RB.api("/api/briefpapier", { method: "POST", body: formular });
+    if (!antwort.ok) {
+      var detail = (antwort.daten && antwort.daten.detail) || {};
+      if (detail.code === "word_datei") { zeigeHinweis("wordAbgelehnt"); return; }
+      if (detail.code === "kein_pdf") { zeigeHinweis("keinPdf"); return; }
+      meldung.innerHTML =
+        '<div class="hinweis">' + (detail.grund || RB.t("fehlerAllgemein")) + "</div>";
+      return;
+    }
+    var schriften = antwort.daten.schriften_ersetzt;
+    setzeAmpel(el("briefpapierAmpel"), schriften ? "gelb" : "gruen",
+               schriften ? "ampelSchriften" : "ampelGruen");
+    meldung.innerHTML = schriften
+      ? '<div class="hinweis">' + RB.t("schriftenErsetzt") + "</div>"
+      : '<div class="hinweis gut">' + RB.t("normalisiert") + "</div>";
+    zeigeEditor(null);
+    ladeStatus();
+  }
+
+  // ---------- Schreibzone (Nachricht aus dem Editor-Iframe) ----------
+  window.addEventListener("message", async function (ereignis) {
+    var daten = ereignis.data;
+    if (!daten) return;
+    // Der Editor meldet seine Höhe, damit der Rahmen mitwächst und nicht
+    // in sich scrollt — zwei Scrollebenen sind auf dem Telefon unbrauchbar.
+    if (daten.typ === "editorHoehe" && daten.hoehe > 0) {
+      el("zonenEditor").style.height = Math.ceil(daten.hoehe) + "px";
+      return;
+    }
+    if (daten.typ !== "schreibzone") return;
+    var antwort = await RB.api("/api/schreibzone", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kopf_ende_mm: daten.kopf_ende_mm, fuss_beginn_mm: daten.fuss_beginn_mm })
+    });
+    if (antwort.ok) {
+      setzeAmpel(el("zonenAmpel"), "gruen", "ampelGruen");
+      ladeStatus();
+    }
+  });
+
+  // ---------- Stammdaten ----------
+  // Sammelt das vollstaendige Stammdaten-Objekt. Auch Schritt 4 speichert
+  // hierueber: /api/stammdaten schreibt die Datei komplett neu, ein PUT mit
+  // nur den beiden Schaltern dort wuerde alles Uebrige loeschen.
+  function stammdatenLese() {
+    return {
+      firmierung: el("firmierung").value.trim(),
+      anschrift: {
+        strasse: el("strasse").value.trim(),
+        plz: el("plz").value.trim(),
+        ort: el("ort").value.trim(),
+        land: "DE"
+      },
+      steuernummer: el("steuernummer").value.trim(),
+      ust_idnr: el("ust_idnr").value.trim(),
+      iban: el("iban").value.trim(),
+      bic: el("bic").value.trim(),
+      zahlungsziel_tage: Number(el("zahlungsziel").value) || 14,
+      kontakt_name: el("kontakt_name").value.trim(),
+      kontakt_email: el("kontakt_email").value.trim(),
+      kontakt_telefon: el("kontakt_telefon").value.trim(),
+      kleinunternehmer: el("kleinunternehmer").checked,
+      girocode: el("girocode").checked,
+      artikelnummern: el("artikelnummern").checked,
+      nummern_muster: el("nummern_muster").value.trim(),
+      verwendungszweck_muster: el("verwendungszweck_muster").value.trim()
+    };
+  }
+
+  el("stammdatenFormular").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    var daten = stammdatenLese();
+    var antwort = await RB.api("/api/stammdaten", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(daten)
+    });
+    var meldung = el("stammdatenMeldung");
+    var musterFeld = document.querySelector('[data-feld="stammdaten.nummern_muster"]');
+    musterFeld.classList.remove("hat-fehler");
+    if (antwort.ok) {
+      meldung.textContent = RB.t("gespeichert");
+      setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
+      stammdatenGesichert = true;
+      ladeStatus();
+    } else {
+      var detail = (antwort.daten && antwort.daten.detail) || {};
+      if (detail.code === "nummern_muster") {
+        musterFeld.classList.add("hat-fehler");
+        musterFeld.querySelector(".fehler").textContent = detail.grund;
+        meldung.textContent = "";
+      } else {
+        meldung.textContent = RB.t("fehlerAllgemein");
+      }
+    }
+  });
+
+  // ---------- Gestaltung ----------
+  function gLese() {
+    return {
+      schrift: el("gSchrift").value || "liberation-sans",
+      schriftgrad: (document.querySelector('input[name="gGrad"]:checked') || {}).value || "normal",
+      layout: (document.querySelector('input[name="gLayout"]:checked') || {}).value || "klassisch",
+      belegdaten_als_zeile: el("gZeile").checked,
+      akzent_an: el("gAkzent").checked,
+      akzentfarbe: el("gFarbe").value
+    };
+  }
+
+  function gSetze(daten) {
+    if (!daten) return;
+    if (daten.schrift) el("gSchrift").value = daten.schrift;
+    var grad = document.querySelector('input[name="gGrad"][value="' + (daten.schriftgrad || "normal") + '"]');
+    if (grad) grad.checked = true;
+    var layout = document.querySelector('input[name="gLayout"][value="' + (daten.layout || "klassisch") + '"]');
+    if (layout) layout.checked = true;
+    el("gZeile").checked = !!daten.belegdaten_als_zeile;
+    el("gAkzent").checked = !!daten.akzent_an;
+    if (daten.akzentfarbe) {
+      el("gFarbe").value = daten.akzentfarbe;
+      el("gFarbeText").value = daten.akzentfarbe;
+    }
+    farbfeldZeigen();
+  }
+
+  // Der Farbwähler gehört nur zum Akzent — sonst steht er nutzlos herum.
+  function farbfeldZeigen() {
+    el("gFarbeFeld").hidden = !el("gAkzent").checked;
+  }
+
+  var gZeitgeber = null;
+  function gAktualisiere() {
+    // "Kompakt" erzwingt die Belegdaten-Zeile ohnehin — Schalter dann aus
+    var kompakt = gLese().layout === "kompakt";
+    // Das Ausgrauen macht .schalter:has(input:disabled) in basis.css.
+    el("gZeile").disabled = kompakt;
+    clearTimeout(gZeitgeber);
+    gZeitgeber = setTimeout(gVorschauLaden, 250);
+  }
+
+  function gVorschauLaden() {
+    var daten = gLese();
+    var bild = el("gVorschau");
+    bild.classList.add("laedt");
+    var quelle = "/api/gestaltung/vorschau.png?schrift=" + encodeURIComponent(daten.schrift) +
+      "&schriftgrad=" + daten.schriftgrad + "&layout=" + daten.layout +
+      "&zeile=" + daten.belegdaten_als_zeile +
+      "&akzent=" + daten.akzent_an +
+      "&farbe=" + encodeURIComponent(daten.akzentfarbe) + "&t=" + Date.now();
+    var lader = new Image();
+    lader.onload = function () { bild.src = quelle; bild.classList.remove("laedt"); };
+    lader.onerror = function () { bild.classList.remove("laedt"); };
+    lader.src = quelle;
+  }
+
+  async function gLadeSchriften(ausgewaehlt) {
+    var antwort = await RB.api("/api/gestaltung/schriften");
+    if (!antwort.ok) return;
+    el("gSchrift").innerHTML = antwort.daten.map(function (schrift) {
+      return '<option value="' + schrift.schluessel + '">' + schrift.name + "</option>";
+    }).join("");
+    if (ausgewaehlt) el("gSchrift").value = ausgewaehlt;
+  }
+
+  // --- Vorschau in voller Groesse -----------------------------------------
+  // Die Miniatur ist 300 px breit; Schrift und Layout lassen sich darin kaum
+  // beurteilen. Der Leuchtkasten zeigt dasselbe Bild, das schon geladen ist.
+  var zuletztScharf = null;
+
+  function vorschauOeffnen() {
+    var klein = el("gVorschau");
+    if (!klein.src) return;           // noch nichts geladen
+    zuletztScharf = document.activeElement;
+    el("vorschauGross").src = klein.src;
+    el("vorschauGross").alt = RB.t("vorschauVoll");
+    el("vorschauKasten").hidden = false;
+    el("vorschauZu").focus();
+  }
+
+  function vorschauSchliessen() {
+    el("vorschauKasten").hidden = true;
+    el("vorschauGross").src = "";
+    if (zuletztScharf) zuletztScharf.focus();
+  }
+
+  el("gVorschau").addEventListener("click", vorschauOeffnen);
+  el("gVorschau").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); vorschauOeffnen(); }
+  });
+  el("vorschauZu").addEventListener("click", vorschauSchliessen);
+  el("vorschauKasten").addEventListener("click", function (e) {
+    // Klick aufs Bild selbst schliesst nicht — nur daneben.
+    if (e.target === el("vorschauGross")) return;
+    vorschauSchliessen();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !el("vorschauKasten").hidden) vorschauSchliessen();
+  });
+  // Titel der Miniatur beim Sprachwechsel mitziehen (kein data-i18n fuer Attribute).
+  RB.beiSprachwechsel(function () {
+    el("gVorschau").title = RB.t("vorschauVergroessern");
+  });
+
+  ["change", "input"].forEach(function (art) {
+    el("gSchrift").addEventListener(art, gAktualisiere);
+    el("gGrad").addEventListener(art, gAktualisiere);
+    el("gLayout").addEventListener(art, gAktualisiere);
+    el("gZeile").addEventListener(art, gAktualisiere);
+    el("gFarbe").addEventListener(art, gAktualisiere);
+  });
+
+  // Akzent-Schalter blendet den Farbwähler ein und zeichnet neu.
+  el("gAkzent").addEventListener("change", function () {
+    farbfeldZeigen();
+    gAktualisiere();
+  });
+
+  // Farbwähler und Texteingabe halten sich gegenseitig aktuell. Das Textfeld
+  // ist für alle da, die einen Hexwert aus ihrem Logo einsetzen wollen.
+  el("gFarbe").addEventListener("input", function () {
+    el("gFarbeText").value = this.value;
+    el("gFarbeFehler").textContent = "";
+  });
+  el("gFarbeText").addEventListener("input", function () {
+    var wert = this.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(wert)) {
+      el("gFarbe").value = wert;
+      el("gFarbeFehler").textContent = "";
+      gAktualisiere();
+    } else if (wert) {
+      el("gFarbeFehler").textContent = RB.t("farbeUngueltig");
+    } else {
+      el("gFarbeFehler").textContent = "";
+    }
+  });
+
+  // Die drei Schalter stehen neben der Vorschau und wirken sichtbar aufs
+  // Blatt (Steuerausweis, QR-Code, Art.-Nr.). Die Vorschau liest sie aus den
+  // GESPEICHERTEN Stammdaten — also erst sichern, dann neu zeichnen.
+  ["kleinunternehmer", "girocode", "artikelnummern"].forEach(function (name) {
+    el(name).addEventListener("change", async function () {
+      if (!stammdatenGesichert) return;   // Speichern erledigt Schritt 3
+      await RB.api("/api/stammdaten", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(stammdatenLese())
+      });
+      gVorschauLaden();
+    });
+  });
+
+  el("gSpeichern").addEventListener("click", async function () {
+    var antwort = await RB.api("/api/gestaltung", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(gLese())
+    });
+    // Kleinunternehmer und GiroCode stehen zwar hier, gehoeren fachlich aber
+    // zu den Stammdaten — beide wirken sichtbar aufs Blatt, darum der Platz
+    // neben der Vorschau.
+    var stamm = await RB.api("/api/stammdaten", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(stammdatenLese())
+    });
+    var gut = antwort.ok && stamm.ok;
+    el("gMeldung").textContent = gut ? RB.t("gespeichert") : RB.t("fehlerAllgemein");
+    if (gut) {
+      setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+      // Die Vorschau liest den GiroCode aus den gespeicherten Stammdaten.
+      gVorschauLaden();
+    }
+  });
+
+  async function gStart() {
+    var status = await RB.api("/api/status");
+    var gespeichert = status.ok ? status.daten.gestaltung : null;
+    await gLadeSchriften(gespeichert && gespeichert.schrift);
+    if (gespeichert) {
+      gSetze(gespeichert);
+      setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+    } else {
+      // Ohne gespeicherte Gestaltung läuft gSetze nicht — Textfeld und
+      // Sichtbarkeit trotzdem auf den Anfangszustand bringen.
+      el("gFarbeText").value = el("gFarbe").value;
+      farbfeldZeigen();
+    }
+    gAktualisiere();
+  }
+
+  RB.starte(texte);
+  RB.kopfKonto();
+  ladeStatus();
+  gStart();
+})();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
+</script>
+</body>
+</html>

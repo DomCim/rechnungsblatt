@@ -1,0 +1,1328 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — E-Rechnung auf Ihrem eigenen Briefpapier</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
+<style>
+  /* ==================================================================
+     Startseite — eigene Handschrift.
+
+     Das Thema ist Papier: Kopfband, Fußband, dazwischen die Schreibzone.
+     Der Auftakt zeigt genau das als echten Bogen, statt es zu behaupten.
+     Der Arbeitsbereich behält bewusst die nüchterne basis.css; hier wird
+     geworben, dort gearbeitet.
+     ================================================================== */
+
+  :root {
+    --papier: #fbf9f4;      /* gebrochenes Weiß — der Bogen selbst */
+    --schwarz: #1f1c18;     /* Tiefdruckgrau: warm, nicht Vollschwarz */
+    --schwarz-2: #2b2721;
+    --tinte-hell: #e8e2d6;
+    --tinte-matt: #a49c8d;
+    --stempel: #c8452d;     /* Prüfstempel-Rot, sparsam */
+    --zone: #6f9a80;        /* nur für die Schreibzonen-Bemaßung */
+    --kante: rgba(232, 226, 214, 0.16);
+
+    /* Abstandsleiter. Vorher standen sieben Einzelwerte verstreut im Blatt;
+       die Abschnitte lagen 158 px auseinander, die Kacheln darin nur 14 px.
+       Dieses Verhältnis von 11:1 ließ die Seite in weit entfernte Blöcke
+       aus zusammengeklebten Kästchen zerfallen. */
+    --takt-1: 8px;                        /* innerhalb einer Kachel */
+    --takt-2: 14px;                       /* Text zu Text */
+    --takt-3: clamp(20px, 2.4vw, 30px);   /* Kachel zu Kachel */
+    --takt-4: clamp(28px, 3.4vw, 44px);   /* Abschnittskopf zu Inhalt */
+
+    /* Doppelrand — dieselbe Bauweise wie in basis.css, aber auf dem
+       dunklen Grund dieser Seite: die Schale vertieft sich, die Kante
+       fängt Licht. */
+    --fuge-start: 5px;
+    --schale-start: rgba(0, 0, 0, 0.22);
+  }
+
+  body {
+    background: var(--schwarz);
+    color: var(--tinte-hell);
+  }
+
+  .buehne { max-width: 1080px; }
+
+  /* --- Kopfzeile ---------------------------------------------------- */
+  header.kopf { border-bottom: 1px solid var(--kante); }
+  .marke {
+    text-transform: none;
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "opsz" 40, "SOFT" 20;
+    font-weight: 700;
+    font-size: 19px;
+    letter-spacing: -0.015em;
+    color: var(--papier);
+  }
+  nav.reiter a { color: var(--tinte-matt); }
+  nav.reiter a:hover { color: var(--papier); }
+  .sprachen { background: transparent; border-color: var(--kante); }
+  .sprachen button { color: var(--tinte-matt); }
+  .sprachen button[aria-pressed="true"] {
+    background: var(--papier); color: var(--schwarz);
+  }
+
+  /* --- Typografie --------------------------------------------------- */
+  h1, h2 {
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "opsz" 96, "SOFT" 30;
+    letter-spacing: -0.022em;
+    color: var(--papier);
+    text-wrap: balance;
+  }
+  h1 { font-weight: 700; }
+  h2 { font-weight: 600; }
+
+  /* Normkürzel sind Kennungen, keine Prosa — darum Mono. */
+  .norm {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 0.86em;
+    letter-spacing: 0.01em;
+    color: var(--zone);
+    white-space: nowrap;
+  }
+
+  /* --- Auftakt: der Bogen ------------------------------------------- */
+  .auftakt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+    gap: clamp(28px, 5vw, 64px);
+    align-items: center;
+    padding: clamp(32px, 6vw, 72px) 0 clamp(28px, 5vw, 56px);
+  }
+  .auftakt h1 {
+    font-size: clamp(34px, 5.6vw, 62px);
+    line-height: 1.04;
+    max-width: min(15ch, 100%);
+    margin: 0;
+  }
+  .auftakt .vorlauf {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tinte-matt);
+    margin-bottom: 18px;
+  }
+  .auftakt .fuehrung {
+    color: var(--tinte-matt);
+    font-size: 16.5px;
+    line-height: 1.55;
+    max-width: min(46ch, 100%);
+    margin: 18px 0 0;
+  }
+  .auftakt .zeile { margin-top: 26px; }
+
+  .auftakt .normen {
+    margin: 22px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+    color: var(--tinte-matt);
+    font-size: 12px;
+  }
+
+  /* Der Bogen: A4-Verhältnis, Kopf- und Fußband wie ein echter Briefbogen */
+  .bogen-halter { position: relative; padding: 8px 0; }
+
+  .bogen {
+    position: relative;
+    aspect-ratio: 210 / 297;
+    background: var(--papier);
+    border-radius: 3px;
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.48), 0 2px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+    /* Ein Blatt liegt nie exakt gerade auf dem Tisch — auf jedem Gerät. */
+    transform: rotate(-1.1deg);
+  }
+  .bogen .band {
+    position: absolute;
+    left: 0; right: 0;
+    background: var(--schwarz-2);
+    color: var(--papier);
+    padding: 0 7%;
+    display: flex;
+    align-items: center;
+  }
+  .bogen .band.oben { top: 0; height: 15%; }
+  .bogen .band.unten {
+    bottom: 0; height: 7.5%;
+    font-size: clamp(5px, 1.1vw, 7px);
+    color: var(--tinte-matt);
+    letter-spacing: 0.02em;
+  }
+  .bogen .band.oben strong {
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "opsz" 40, "SOFT" 20;
+    font-size: clamp(11px, 2.3vw, 16px);
+    font-weight: 700;
+  }
+  .bogen .band .punkt {
+    margin-left: auto;
+    width: clamp(14px, 3vw, 22px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: clamp(3px, 0.8vw, 5px) solid var(--stempel);
+  }
+
+  /* Schreibzone: die Zeilen erscheinen nacheinander */
+  .bogen .satz {
+    position: absolute;
+    left: 7%; right: 7%;
+    top: 21%; bottom: 11%;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(4px, 1.05vw, 7px);
+  }
+  .bogen .satz i {
+    display: block;
+    height: clamp(3.5px, 0.78vw, 5px);
+    border-radius: 1px;
+    background: #2a2723;
+    opacity: 0;
+    transform-origin: left center;
+    transform: scaleX(0);
+    animation: zeile-setzen 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  }
+  .bogen .satz i.titel {
+    height: clamp(8px, 1.7vw, 12px);
+    width: 52%;
+    margin-bottom: clamp(4px, 1vw, 7px);
+  }
+  .bogen .satz i.kurz { width: 34%; }
+  .bogen .satz i.mittel { width: 68%; }
+  .bogen .satz i.lang { width: 88%; }
+  .bogen .satz i.summe {
+    width: 38%;
+    margin-left: auto;
+    margin-top: clamp(8px, 2vw, 14px);
+    background: var(--stempel);
+    height: clamp(5px, 1.05vw, 7px);
+  }
+  /* --- Das eingebettete XML sichtbar machen -------------------------
+     Der Text verspricht „die Daten als XML hinein“, der Bogen zeigte
+     bisher nur Papier — also genau die Hälfte, die das Produkt ausmacht,
+     blieb unsichtbar. Nach der Summenzeile senkt sich deshalb eine
+     XML-Struktur über das Blatt: dieselbe Rechnung, andere Gestalt.
+
+     Bewusst als Andeutung, nicht als lesbarer Code — lesbar wäre es bei
+     dieser Größe ohnehin nicht, und die Aussage ist „das steckt darin“,
+     nicht „lies das“. */
+  .bogen .xml {
+    position: absolute;
+    left: 7%; right: 7%;
+    bottom: 13%;
+    display: flex;
+    flex-direction: column;
+    gap: clamp(2px, 0.5vw, 3.5px);
+    padding: clamp(7px, 1.6vw, 11px) clamp(8px, 1.8vw, 12px);
+    border-radius: 3px;
+    /* Papier scheint durch: die Daten liegen IM Blatt, nicht darauf. */
+    background: rgba(31, 28, 24, 0.93);
+    /* Feiner Lichtsaum: das Feld sitzt im Papier, nicht als Aufkleber
+       darauf. Ohne ihn wirkt die harte Kante wie ein Fremdkörper. */
+    box-shadow: inset 0 1px 0 rgba(232, 226, 214, 0.10),
+                0 1px 0 rgba(255, 255, 255, 0.55);
+    opacity: 0;
+    transform: translateY(8px);
+    animation: xml-senkt-sich 0.62s cubic-bezier(0.2, 0.7, 0.3, 1) 1.62s forwards;
+  }
+  .bogen .xml b {
+    display: block;
+    height: clamp(2.5px, 0.55vw, 3.5px);
+    border-radius: 1px;
+    background: var(--zone);
+    opacity: 0.85;
+  }
+  /* Einrückung wie in echtem XML — das macht die Struktur erkennbar,
+     ohne dass ein Zeichen lesbar sein muss. */
+  .bogen .xml b.e1 { width: 62%; }
+  .bogen .xml b.e2 { width: 46%; margin-left: 9%; }
+  .bogen .xml b.e3 { width: 54%; margin-left: 18%; }
+  .bogen .xml b.wert { background: var(--stempel); opacity: 0.9; }
+  .bogen .xml .marke {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: clamp(5px, 1.05vw, 7px);
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--zone);
+    margin-bottom: clamp(2px, 0.5vw, 4px);
+  }
+  @keyframes xml-senkt-sich {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  @keyframes zeile-setzen {
+    from { opacity: 0; transform: scaleX(0); }
+    to   { opacity: 1; transform: scaleX(1); }
+  }
+
+  /* Die Schreibzone markiert sich auf dem Papier selbst: zwei feine Linien
+     dort, wo Kopf endet und Fuß beginnt. Ein Maßstab daneben erklärte nur,
+     was der Bogen ohnehin zeigt. */
+  .bogen .satz::before,
+  .bogen .satz::after {
+    content: "";
+    position: absolute;
+    left: -3%;
+    right: -3%;
+    height: 1px;
+    background: var(--zone);
+    opacity: 0.42;
+  }
+  .bogen .satz::before { top: -3.5%; }
+  .bogen .satz::after { bottom: -3.5%; }
+
+
+  /* --- Knöpfe -------------------------------------------------------- */
+  .knopf {
+    background: var(--papier);
+    color: var(--schwarz);
+    /* Pille wie im Arbeitsbereich — die Form ist überall dieselbe,
+       nur Farbe und Anordnung unterscheiden Werbung von Werkzeug. */
+    border-radius: 999px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    padding: 12px 22px;
+  }
+  .knopf {
+    transition: transform 420ms cubic-bezier(0.32, 0.72, 0, 1),
+                background 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .knopf:hover { background: #fff; filter: none; }
+  /* Eindrücken wie im Arbeitsbereich — der Knopf hat Masse. */
+  .knopf:active { transform: scale(0.975); }
+  .knopf.leise {
+    background: transparent;
+    color: var(--tinte-hell);
+    border: 1px solid var(--kante);
+  }
+  .knopf.leise:hover { border-color: var(--tinte-matt); background: transparent; }
+  /* basis.css setzt den Fokusring in Türkis — auf dieser Seite unsichtbar. */
+  .knopf:focus-visible,
+  nav.reiter a:focus-visible,
+  .fuss a:focus-visible {
+    outline: 2px solid var(--stempel);
+    outline-offset: 3px;
+  }
+  .sprachen button:focus-visible { outline: 2px solid var(--stempel); outline-offset: -2px; }
+
+  /* --- Abschnitte ---------------------------------------------------- */
+  .karte {
+    background: transparent;
+    border: 0;
+    border-top: 1px solid var(--kante);
+    border-radius: 0;
+    padding: clamp(38px, 6vw, 68px) 0 0;
+    margin-top: clamp(34px, 5vw, 60px);
+    box-shadow: none;
+  }
+  /* basis.css legt hinter jede .karte eine getönte Schale (::before).
+     Im Arbeitsbereich trägt sie — hier sind die Abschnitte aber gar keine
+     Karten, sondern nur durch eine Linie getrennt. Die Schale zeichnete
+     einen zweiten Rahmen um jeden Abschnitt, und weil die Kacheln darin
+     ihren eigenen haben, entstand Kasten in Kasten in Kasten. */
+  .karte::before { display: none; }
+  /* Karten INNERHALB eines Abschnitts sind wieder Flächen. Ohne diese
+     Rücknahme hebt die Regel oben sie mit auf. */
+  .karte .karte {
+    border: 1px solid var(--kante);
+    border-radius: 6px;
+    padding: 20px;
+    margin-top: 0;
+    background: rgba(255, 255, 255, 0.018);
+  }
+  .karte .karte strong { color: var(--papier); font-size: 15px; }
+  .karte .karte p, .karte .karte li { color: var(--tinte-matt); }
+
+  /* Ersetzt die früheren Inline-margin-top im HTML: der Abstand vom
+     Abschnittskopf zum Inhalt gehört ins Stylesheet, nicht in sechs
+     einzelne style-Attribute. */
+  .abschnitt-kopf + * { margin-top: var(--takt-4); }
+
+  .abschnitt-kopf { max-width: min(60ch, 100%); }
+  .abschnitt-kopf h2 {
+    font-size: clamp(24px, 3.4vw, 34px);
+    line-height: 1.12;
+    margin: 0;
+  }
+  .abschnitt-kopf p {
+    color: var(--tinte-matt);
+    margin-top: 12px;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .raster {
+    display: grid;
+    /* Zwei Spalten statt auto-fit: bei vier Kacheln ergab auto-fit drei
+       oben und eine einsame darunter — die vierte sah aus wie vergessen.
+       2×2 trägt gleichmäßig, und die Kacheln werden breit genug, dass
+       ihr Text nicht in schmalen Säulen bricht. */
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--takt-3);
+  }
+  @media (min-width: 900px) {
+    .raster { grid-template-columns: 1fr 1fr; }
+  }
+  .raster .karte { display: flex; flex-direction: column; gap: var(--takt-1); }
+
+  /* --- Schritte: hier ist die Reihenfolge echte Information ---------- */
+  .schritte {
+    list-style: none;
+    counter-reset: schritt;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 2px;
+  }
+  .schritte li {
+    counter-increment: schritt;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 20px;
+    padding: 22px 0;
+    border-top: 1px solid var(--kante);
+    align-items: start;
+  }
+  .schritte li:first-child { border-top: 0; }
+  /* Die ersten drei sind Einrichtung, der letzte ist der Alltag danach —
+     deshalb zählt er nicht mit, sondern wird abgesetzt. */
+  .schritte li.danach {
+    counter-increment: none;
+    margin-top: 14px;
+    border-top: 1px solid var(--kante);
+    padding-top: 30px;
+  }
+  .schritte li.danach::before {
+    content: "→";
+    color: var(--stempel);
+    font-size: 15px;
+  }
+  .schritte li::before {
+    content: counter(schritt, decimal-leading-zero);
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 13px;
+    color: var(--zone);
+    padding-top: 3px;
+    letter-spacing: 0.06em;
+  }
+  .schritte strong {
+    display: block;
+    color: var(--papier);
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .schritte p { color: var(--tinte-matt); margin: 0; line-height: 1.55; max-width: min(62ch, 100%); }
+
+  /* --- Gegenüberstellung: KEINE Nummern, das ist keine Sequenz ------- */
+  .gegenueber {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--takt-3);
+  }
+  .gegenueber ul { margin: 10px 0 0; padding-left: 18px; }
+  .gegenueber li { margin-bottom: 8px; line-height: 1.5; }
+  .gegenueber .andere { opacity: 0.62; }
+  .gegenueber .andere strong { color: var(--tinte-matt); }
+  /* Nicht die "andere" Karte, sondern die eigene bekommt die Kante. */
+  .gegenueber .karte:not(.andere) { border-left: 2px solid var(--stempel); }
+
+  /* --- Ehrlichkeitsabschnitt ---------------------------------------- */
+  .kein-versprechen ul { margin: 14px 0 0; padding-left: 18px; }
+  .kein-versprechen li {
+    color: var(--tinte-matt);
+    margin-bottom: 9px;
+    line-height: 1.5;
+    max-width: min(72ch, 100%);
+  }
+
+  /* --- Tarife -------------------------------------------------------- */
+  /* Funktionsspiegel — Register statt Kacheln: zwölf Punkte in Kästchen
+     wären eine Wand. Zwei Spalten am Rechner, eine am Telefon. */
+  .koennen {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 0 var(--takt-3);
+    margin: 0;
+  }
+  .koennen > div {
+    padding: 14px 0;
+    border-top: 1px solid var(--kante);
+  }
+  .koennen dt {
+    font-weight: 600;
+    font-size: 14.5px;
+    color: var(--papier);
+    margin-bottom: 3px;
+  }
+  .koennen dd {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--tinte-matt);
+  }
+
+  .tarife { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--takt-3); }
+
+  /* --- Preistafel ----------------------------------------------------
+     Die Karten entstehen im Skript (zeichneTarife); ihre Klassen hatten
+     bisher keine einzige Regel — die Preise standen in 15px Fließtext.
+     Auf einer Seite, die etwas verkaufen soll, war das die teuerste
+     Lücke. */
+  .tarife .karte.tarif {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--takt-1);
+    padding: 24px 22px;
+  }
+  /* Doppelrand: die Karte liegt in einer Vertiefung statt flach auf dem
+     Grund. Über ::before statt eines Wrapper-Divs — das Skript baut die
+     Karten, ein zusätzlicher Rahmen hätte es umschreiben müssen. */
+  .tarife .karte.tarif::before {
+    content: "";
+    position: absolute;
+    inset: calc(var(--fuge-start) * -1);
+    border: 1px solid var(--kante);
+    background: var(--schale-start);
+    border-radius: 12px;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .tarife .karte.tarif > strong {
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--tinte-matt);
+  }
+  /* Der Preis ist die zweitgrößte Type der Seite. Vorher führte die
+     Hierarchie von 62 auf 34 px und stürzte dann auf 15 — hier schließt
+     sich die Lücke. */
+  .tarife .preis {
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "opsz" 96, "SOFT" 30;
+    font-weight: 700;
+    font-size: clamp(30px, 3.6vw, 42px);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--papier);
+    font-variant-numeric: tabular-nums;
+    margin-top: 2px;
+  }
+  /* Die Einheit wächst NICHT mit: sonst gerät „je Rechnung“ gleichrangig
+     neben den Betrag und nimmt ihm die Wucht. */
+  .tarife .preis .einheit {
+    font-family: "Instrument Sans", system-ui, sans-serif;
+    font-variation-settings: normal;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: var(--tinte-matt);
+    white-space: nowrap;
+  }
+  .tarife .karte.tarif .beschreibung {
+    margin: 0;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--tinte-matt);
+  }
+  .tarife .merkmal {
+    margin-top: auto;          /* drückt die Merkmale auf gleiche Höhe */
+    padding-top: 10px;
+    border-top: 1px solid var(--kante);
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    color: var(--tinte-matt);
+  }
+  .tarife .merkmal + .merkmal { margin-top: 0; border-top: 0; padding-top: 2px; }
+  .tarife .merkmal strong { color: var(--tinte-hell); font-weight: 600; }
+
+  /* Empfohlener Tarif — welcher das ist, steht in der Datenbank, nicht
+     hier (Adminbereich → Tarife). */
+  .tarife .karte.tarif.empfohlen::before {
+    border-color: color-mix(in srgb, var(--stempel) 55%, transparent);
+    background: color-mix(in srgb, var(--stempel) 7%, var(--schale-start));
+  }
+  .tarife .karte.tarif.empfohlen .marke-empfohlen {
+    position: absolute;
+    top: calc(var(--fuge-start) * -1 - 9px);
+    left: 18px;
+    background: var(--stempel);
+    color: var(--papier);
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 999px;
+  }
+
+  /* --- Schluss ------------------------------------------------------- */
+  .schluss { text-align: center; }
+  .schluss h2 { font-size: clamp(26px, 4vw, 40px); }
+
+  .fuss {
+    margin-top: clamp(40px, 6vw, 72px);
+    padding: 22px 0 34px;
+    border-top: 1px solid var(--kante);
+    color: var(--tinte-matt);
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .fuss a { color: var(--tinte-hell); }
+
+  /* --- Schmale Geräte ------------------------------------------------ */
+  @media (max-width: 780px) {
+    .auftakt { grid-template-columns: 1fr; }
+    /* Die Drehung bleibt — sonst verhält sich die Seite auf zwei
+       Geräten grundsätzlich anders. Der Rand fängt die Ecken ab, die
+       durch die Drehung über die Box hinausragen. */
+    .bogen-halter { padding: 10px 12px; }
+    .bogen { max-width: 340px; margin: 0 auto; }
+    .schritte li { grid-template-columns: 40px minmax(0, 1fr); gap: 14px; }
+
+    /* Am Telefon steht jede Kachel ohnehin allein in ihrer Zeile — ein
+       Rahmen darum trennt dann nichts mehr, er verschachtelt nur. Statt
+       Kästchen im Kästchen wird daraus ein Register: eine feine Linie
+       zwischen den Einträgen, sonst nichts. Das ist dieselbe Ordnung, die
+       die Schritte 01–03 schon nutzen. */
+    .raster,
+    .gegenueber {
+      gap: 0;
+      grid-template-columns: 1fr;
+    }
+    .raster .karte,
+    .gegenueber .karte {
+      border: 0;
+      border-top: 1px solid var(--kante);
+      border-radius: 0;
+      background: transparent;
+      padding: 20px 0 22px;
+    }
+    .raster .karte:first-child,
+    .gegenueber .karte:first-child { border-top: 0; padding-top: 4px; }
+    /* Die eigene Spalte behielt ihre rote Kante als Auszeichnung — links
+       an einer randlosen Zeile sähe die aber verloren aus. */
+    .gegenueber .karte:not(.andere) {
+      border-left: 0;
+      padding-left: 0;
+    }
+
+    /* Die Tarifkarten bleiben Karten: ein Preis braucht seine Fläche,
+       und drei nackte Zeilen wären keine Preistafel mehr. Nur enger. */
+    .tarife .karte.tarif { padding: 20px 18px; }
+  }
+
+  /* Bewegung ist Beiwerk — wer sie abbestellt, sieht den Bogen fertig. */
+  /* --- Auftritt beim Scrollen ---------------------------------------
+     Die Abschnitte setzen sich, wenn sie in den Blick kommen — dasselbe
+     Bild wie der Bogen oben, der sich zeilenweise schreibt. Nur opacity
+     und transform, damit es auf der GPU läuft und kein Layout neu
+     berechnet wird.
+
+     Der Anfangszustand steht bewusst in einer .beobachtet-Klasse, die das
+     Skript setzt: ohne JavaScript bleibt alles sichtbar, statt unsichtbar
+     zu verharren. */
+  .beobachtet { opacity: 0; transform: translateY(22px); }
+  .beobachtet.da {
+    opacity: 1;
+    transform: none;
+    transition: opacity 760ms cubic-bezier(0.32, 0.72, 0, 1),
+                transform 760ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  /* Innerhalb einer Karte folgen Kacheln und Schritte gestaffelt nach. */
+  .beobachtet.da > * { animation: nach-oben 640ms cubic-bezier(0.32,0.72,0,1) backwards; }
+  .beobachtet.da > *:nth-child(2) { animation-delay: 70ms; }
+  .beobachtet.da > *:nth-child(3) { animation-delay: 140ms; }
+  .beobachtet.da > *:nth-child(4) { animation-delay: 210ms; }
+  .beobachtet.da > *:nth-child(n+5) { animation-delay: 280ms; }
+  @keyframes nach-oben {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Nur die Animation abschalten. Die Neigung steht still und ist keine
+       Bewegung — sie hier zurückzunehmen nähme die Gestaltung ohne Grund. */
+    .bogen .satz i { animation: none; opacity: 1; transform: scaleX(1); }
+    .bogen .xml { animation: none; opacity: 1; transform: none; }
+    /* Auch der Scroll-Auftritt entfällt — sonst bleibt genau die
+       Bewegung übrig, die hier abbestellt wurde. */
+    .beobachtet, .beobachtet.da { opacity: 1; transform: none; transition: none; }
+    .beobachtet.da > * { animation: none; }
+  }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke">Rechnungsblatt</div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="auftakt">
+    <div>
+      <p class="vorlauf" data-i18n="heldVorlauf">Pflicht seit 2025 · B2B in Deutschland</p>
+      <h1 data-i18n="heldTitel">Ihr Briefbogen bleibt. Die Rechnung wird maschinenlesbar.</h1>
+      <p class="fuehrung" data-i18n="heldText">
+        Rechnungsblatt setzt die Rechnung in die freie Fläche Ihres eigenen
+        Briefpapiers und legt die Daten als XML hinein — beides in einem
+        Vorgang, aus derselben Quelle.
+      </p>
+      <div class="zeile">
+        <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
+        <a class="knopf leise" href="#ablauf" data-i18n="heldMehr">Wie es funktioniert</a>
+      </div>
+      <!-- Die Normen gleich beim Auftakt: wer weiß, wonach er sucht,
+           erkennt hier in einer Zeile, ob er richtig ist. -->
+      <p class="normen">
+        <span class="norm">PDF/A-3B</span> ·
+        <span class="norm">Factur-X</span> ·
+        <span class="norm">XRechnung</span> ·
+        <span class="norm">§ 14 UStG</span>
+      </p>
+    </div>
+
+    <!-- Der Bogen ist die Behauptung der Seite, als Bild statt als Satz:
+         Kopfband, Fußband, dazwischen wird gesetzt. -->
+    <div class="bogen-halter">
+      <div class="bogen" id="bogen" role="img"
+           aria-label="Ein Briefbogen mit Kopf- und Fußzeile; dazwischen entsteht eine Rechnung, darunter das eingebettete XML.">
+        <div class="band oben">
+          <strong>Muster &amp; Partner</strong>
+          <span class="punkt" aria-hidden="true"></span>
+        </div>
+        <div class="satz" aria-hidden="true">
+          <i class="titel" style="animation-delay:.30s"></i>
+          <i class="kurz"  style="animation-delay:.46s"></i>
+          <i class="lang"  style="animation-delay:.56s"></i>
+          <i class="mittel" style="animation-delay:.64s"></i>
+          <i class="lang"  style="animation-delay:.72s"></i>
+          <i class="mittel" style="animation-delay:.80s"></i>
+          <i class="lang"  style="animation-delay:.88s"></i>
+          <i class="kurz"  style="animation-delay:.96s"></i>
+          <i class="mittel" style="animation-delay:1.04s"></i>
+          <i class="lang"  style="animation-delay:1.12s"></i>
+          <i class="summe" style="animation-delay:1.36s"></i>
+        </div>
+        <!-- Das eingebettete XML. Erscheint zuletzt: erst schreibt sich
+             die Rechnung, dann zeigt sich, was gleichzeitig entstanden
+             ist. aria-hidden, weil der Alternativtext des Bogens es
+             bereits benennt. -->
+        <div class="xml" aria-hidden="true">
+          <span class="marke">factur-x.xml</span>
+          <b class="e1"></b>
+          <b class="e2"></b>
+          <b class="e3"></b>
+          <b class="e3 wert"></b>
+          <b class="e2"></b>
+        </div>
+        <div class="band unten">Bahnhofstr. 12 · 95119 Naila · USt-IdNr. DE123456789</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem -->
+  <section class="karte">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="problemTitel">Warum die Word-Vorlage nicht mehr reicht</h2>
+      <p data-i18n="problemText">
+        Eine E-Rechnung ist kein hübsches PDF, sondern ein PDF mit maschinen­lesbaren
+        Daten darin — beides muss zusammenpassen und beides muss vollständig sein.
+        Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst,
+        wenn der Steuerprüfer beim Kunden steht.
+      </p>
+    </div>
+    <div class="raster">
+      <div class="karte">
+        <strong data-i18n="problem1Titel">Pflichtangaben nach § 14 UStG</strong>
+        <p data-i18n="problem1Text">
+          Jede einzelne Pflichtangabe muss stimmen. Fehlt eine, ist die Rechnung
+          formal mangelhaft — und der Vorsteuerabzug Ihres Kunden wackelt.
+        </p>
+      </div>
+      <div class="karte">
+        <strong data-i18n="problem2Titel">PDF und XML müssen übereinstimmen</strong>
+        <p data-i18n="problem2Text">
+          Zwei Darstellungen derselben Rechnung, die auseinanderlaufen können.
+          Genau daran scheitern nachträglich angereicherte PDFs.
+        </p>
+      </div>
+      <div class="karte">
+        <strong data-i18n="problem3Titel">Ihr Briefbogen bleibt außen vor</strong>
+        <p data-i18n="problem3Text">
+          Die meisten Werkzeuge geben Ihnen ihr Layout. Ihr Logo, Ihre Farben
+          und Ihre Fußzeile fallen weg — oder kosten Enterprise-Aufpreis.
+        </p>
+      </div>
+      <div class="karte">
+        <strong data-i18n="problem4Titel">Einmal erteilt, nicht mehr geändert</strong>
+        <p data-i18n="problem4Text">
+          Eine verschickte Rechnung darf nicht nachträglich überschrieben
+          werden — sonst ist die fortlaufende Nummer wertlos. In einer
+          Word-Vorlage hält das niemanden auf.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ablauf -->
+  <section class="karte" id="ablauf">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="ablaufTitel">Einmal einrichten, dann nur noch schreiben</h2>
+      <p data-i18n="ablaufText">
+        Die Einrichtung machen Sie einmal. Danach ist die Startseite nach dem
+        Anmelden das Rechnungsformular — mehr braucht es nicht.
+      </p>
+    </div>
+    <ol class="schritte">
+      <li>
+        <div>
+          <strong data-i18n="schritt1Titel">Briefpapier hochladen</strong>
+          <p data-i18n="schritt1Text">
+            Sie laden Ihren Briefbogen als PDF hoch. Wir vereinheitlichen den
+            Farbraum und betten fehlende Schriften ein — der Schritt, an dem
+            PDF/A sonst scheitert. Sie sehen sofort an einer Ampel, ob der
+            Bogen taugt.
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong data-i18n="schritt2Titel">Schreibzone festlegen</strong>
+          <p data-i18n="schritt2Text">
+            Zwei Regler: wo Ihr Briefkopf endet und wo die Fußzeile beginnt. Dazwischen schreibt Rechnungsblatt. Kein Layout-Editor, keine Kästchen ziehen — dafür sechs fertige Blattlayouts und, wenn Sie mögen, Ihre eigene Akzentfarbe.
+          </p>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong data-i18n="schritt3Titel">Stammdaten hinterlegen</strong>
+          <p data-i18n="schritt3Text">
+            Firmierung, Anschrift, Steuernummer oder USt-IdNr., IBAN, Zahlungsziel. Einmal eingetragen, stehen sie auf jeder Rechnung. Kunden und wiederkehrende Leistungen merkt sich Rechnungsblatt nebenbei; ganze Positionslisten lassen sich als Vorlage sichern.
+          </p>
+        </div>
+      </li>
+      <li class="danach">
+        <div>
+          <strong data-i18n="schritt4Titel">Rechnung schreiben</strong>
+          <p data-i18n="schritt4Text">
+            Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Wird es lang, bricht der Beleg sauber um: mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Auf Wunsch trägt er einen GiroCode, den Ihr Kunde mit der Banking-App abscannt. Heraus kommt ein PDF/A-3B mit eingebettetem XML, dazu die XRechnung für Behördenkunden.
+          </p>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <!-- Abgrenzung -->
+  <section class="karte">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="andersTitel">Was Rechnungsblatt anders macht</h2>
+      <p data-i18n="andersText">
+        Der Markt ist voll von Werkzeugen, die ein fertiges PDF hochladen
+        lassen und die Daten per KI herauslesen. Das ist bequem — und genau
+        deshalb schwach.
+      </p>
+    </div>
+    <div class="gegenueber">
+      <div class="karte andere">
+        <strong data-i18n="andereTitel">PDF hochladen, KI liest aus</strong>
+        <ul>
+          <li data-i18n="andere1">Findet nur, was schon dasteht — fehlt eine Pflichtangabe, bleibt sie weg.</li>
+          <li data-i18n="andere2">Erzeugt im Zweifel eine technisch gültige Rechnung mit inhaltlichem Mangel.</li>
+          <li data-i18n="andere3">Ihr Briefbogen bleibt erhalten — versprochen wird das meist nur „in vielen Fällen“.</li>
+        </ul>
+      </div>
+      <div class="karte">
+        <strong data-i18n="unserTitel">Rechnungsblatt: aus Daten gebaut</strong>
+        <ul>
+          <li data-i18n="unser1">PDF und XML entstehen im selben Vorgang aus denselben Daten. Sie können nicht auseinanderlaufen.</li>
+          <li data-i18n="unser2">Die § 14-Prüfung blockiert, sie warnt nicht. Unvollständig heißt: keine Rechnung.</li>
+          <li data-i18n="unser3">Ihr Briefbogen ist die Unterlage, nicht eine Option. Für jeden, nicht erst ab Enterprise.</li>
+          <li data-i18n="unser4">Eine vergebene Nummer bleibt vergeben. Korrigiert wird per Gutschrift mit Bezug — die Reihe bleibt lückenlos.</li>
+          <li data-i18n="unser5">Kleinunternehmer, Reverse Charge und Ausfuhr werden geprüft, nicht nur angekreuzt. Auch die IBAN, mit echter Prüfsumme.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Preise -->
+  <!-- Funktionsspiegel -->
+  <section class="karte">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="koennenTitel">Was noch drin steckt</h2>
+      <p data-i18n="koennenText">
+        Nichts davon kostet extra, nichts ist ein Zusatzpaket.
+      </p>
+    </div>
+    <dl class="koennen">
+      <div><dt data-i18n="k1t">Storno und Korrektur</dt>
+        <dd data-i18n="k1">Gutschrift und Rechnungskorrektur mit Bezug zur Ursprungsrechnung — im XML nachvollziehbar.</dd></div>
+      <div><dt data-i18n="k2t">GiroCode</dt>
+        <dd data-i18n="k2">QR-Code auf dem Beleg; Ihr Kunde scannt ihn mit der Banking-App, Betrag und Zweck sind gefüllt.</dd></div>
+      <div><dt data-i18n="k3t">Mehrseitige Belege</dt>
+        <dd data-i18n="k3">Mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Der Summenblock wird nie getrennt.</dd></div>
+      <div><dt data-i18n="k4t">Sechs Layouts</dt>
+        <dd data-i18n="k4">Klassisch, kompakt, modern, zebra, luftig, doppelt — dazu wahlweise Ihre Akzentfarbe.</dd></div>
+      <div><dt data-i18n="k5t">Kunden und Artikel</dt>
+        <dd data-i18n="k5">Adressbuch und wiederkehrende Leistungen. Ganze Positionslisten lassen sich als Vorlage sichern.</dd></div>
+      <div><dt data-i18n="k6t">Kleinunternehmer</dt>
+        <dd data-i18n="k6">§ 19 UStG wird geprüft, nicht nur angekreuzt — in beide Richtungen, samt Pflichthinweis.</dd></div>
+      <div><dt data-i18n="k7t">Reverse Charge und Ausfuhr</dt>
+        <dd data-i18n="k7">Auch innergemeinschaftliche Lieferung. Die USt-IdNr. beider Seiten wird verlangt, wo sie nötig ist.</dd></div>
+      <div><dt data-i18n="k8t">XRechnung</dt>
+        <dd data-i18n="k8">Reines XML für Behördenkunden, mit Leitweg-ID — zusätzlich zum PDF/A-3B.</dd></div>
+      <div><dt data-i18n="k9t">Deutsch und Englisch</dt>
+        <dd data-i18n="k9">Die ganze Oberfläche, auch die Prüfbefunde.</dd></div>
+      <div><dt data-i18n="k10t">Aufs Handy legen</dt>
+        <dd data-i18n="k10">Lässt sich als App installieren und startet sofort. Geschrieben wird weiterhin online.</dd></div>
+      <div><dt data-i18n="k11t">Verschlüsselt abgelegt</dt>
+        <dd data-i18n="k11">Ihre Daten liegen mit Ihrem Passwort verschlüsselt — auch der Betreiber sieht sie nicht.</dd></div>
+      <div><dt data-i18n="k12t">Löschen heißt löschen</dt>
+        <dd data-i18n="k12">Konto weg, Daten weg. Ohne Papierkorb, ohne Rest.</dd></div>
+    </dl>
+  </section>
+
+  <section class="karte" id="preise">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="preiseTitel">Was es kostet</h2>
+      <p data-i18n="preiseText">
+        Sie fangen mit einem Probekontingent an — vollwertige Rechnungen, keine
+        Wasserzeichen, keine Zahlungsdaten. Erst danach entscheiden Sie.
+      </p>
+    </div>
+    <div class="tarife" id="tarife">
+      <p class="beschreibung" data-i18n="laedt">Einen Moment …</p>
+    </div>
+    <p class="beschreibung" style="margin-top: 14px;" data-i18n="preiseFuss">
+      Alle Preise verstehen sich zuzüglich Umsatzsteuer. Das Modell ist noch
+      nicht endgültig — solange kein Bezahlweg angebunden ist, schaltet der
+      Betreiber Kontingente von Hand frei.
+    </p>
+  </section>
+
+  <!-- Ehrlichkeit -->
+  <section class="karte kein-versprechen">
+    <div class="abschnitt-kopf">
+      <h2 data-i18n="nichtTitel">Was Rechnungsblatt ausdrücklich nicht ist</h2>
+      <p data-i18n="nichtText">
+        Damit niemand etwas erwartet, das nicht kommt:
+      </p>
+    </div>
+    <ul style="margin-top: 12px;">
+      <li data-i18n="nicht1">Keine Buchhaltung, kein Mahnwesen, keine Angebote.</li>
+      <li data-i18n="nicht2">Kein Versand aus dem Werkzeug heraus — Sie laden die Datei herunter und verschicken sie selbst.</li>
+      <li data-i18n="nicht3">Keine Eingangsrechnungen, kein Peppol-Zugang.</li>
+      <li data-i18n="nicht4">Eine Ablage ist vorhanden, aber kein zertifiziertes GoBD-Archiv. Die achtjährige Aufbewahrung bleibt Ihre Pflicht.</li>
+      <li data-i18n="nicht5">Keine Steuerberatung. Ob eine Angabe inhaltlich richtig ist, entscheiden Sie oder Ihr Berater.</li>
+      <li data-i18n="nicht6">Nicht offline. Rechnungsblatt lässt sich aufs Handy legen und startet sofort — aber die Rechnung entsteht auf dem Server, nicht im Browser. Ohne Netz gibt es eine klare Auskunft statt eines halben Belegs.</li>
+    </ul>
+  </section>
+
+  <section class="karte schluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p class="beschreibung" style="margin: 8px auto 16px; max-width: 46ch;" data-i18n="schlussText">
+      Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von
+      Hand freigeschaltet — das dauert in der Regel nicht lange.
+    </p>
+    <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      navAnmelden: "Anmelden",
+      heldVorlauf: "Pflicht seit 2025 · B2B in Deutschland",
+      heldTitel: "Ihr Briefbogen bleibt. Die Rechnung wird maschinenlesbar.",
+      bogenAlt: "Ein Briefbogen mit Kopf- und Fußzeile; dazwischen entsteht eine Rechnung, darunter das eingebettete XML.",
+      heldText: "Rechnungsblatt setzt die Rechnung in die freie Fläche Ihres eigenen Briefpapiers und legt die Daten als XML hinein — beides in einem Vorgang, aus derselben Quelle.",
+      heldKnopf: "Konto anlegen",
+      heldMehr: "Wie es funktioniert",
+      problemTitel: "Warum die Word-Vorlage nicht mehr reicht",
+      problemText: "Eine E-Rechnung ist kein hübsches PDF, sondern ein PDF mit maschinenlesbaren Daten darin — beides muss zusammenpassen und beides muss vollständig sein. Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst, wenn der Steuerprüfer beim Kunden steht.",
+      problem1Titel: "Pflichtangaben nach § 14 UStG",
+      problem1Text: "Jede einzelne Pflichtangabe muss stimmen. Fehlt eine, ist die Rechnung formal mangelhaft — und der Vorsteuerabzug Ihres Kunden wackelt.",
+      problem2Titel: "PDF und XML müssen übereinstimmen",
+      problem2Text: "Zwei Darstellungen derselben Rechnung, die auseinanderlaufen können. Genau daran scheitern nachträglich angereicherte PDFs.",
+      problem3Titel: "Ihr Briefbogen bleibt außen vor",
+      problem3Text: "Die meisten Werkzeuge geben Ihnen ihr Layout. Ihr Logo, Ihre Farben und Ihre Fußzeile fallen weg — oder kosten Enterprise-Aufpreis.",
+      problem4Titel: "Einmal erteilt, nicht mehr geändert",
+      problem4Text: "Eine verschickte Rechnung darf nicht nachträglich überschrieben werden — sonst ist die fortlaufende Nummer wertlos. In einer Word-Vorlage hält das niemanden auf.",
+      ablaufTitel: "Einmal einrichten, dann nur noch schreiben",
+      ablaufText: "Die Einrichtung machen Sie einmal. Danach ist die Startseite nach dem Anmelden das Rechnungsformular — mehr braucht es nicht.",
+      schritt1Titel: "Briefpapier hochladen",
+      schritt1Text: "Sie laden Ihren Briefbogen als PDF hoch. Wir vereinheitlichen den Farbraum und betten fehlende Schriften ein — der Schritt, an dem PDF/A sonst scheitert. Sie sehen sofort an einer Ampel, ob der Bogen taugt.",
+      schritt2Titel: "Schreibzone festlegen",
+      schritt2Text: "Zwei Regler: wo Ihr Briefkopf endet und wo die Fußzeile beginnt. Dazwischen schreibt Rechnungsblatt. Kein Layout-Editor, keine Kästchen ziehen — dafür sechs fertige Blattlayouts und, wenn Sie mögen, Ihre eigene Akzentfarbe.",
+      schritt3Titel: "Stammdaten hinterlegen",
+      schritt3Text: "Firmierung, Anschrift, Steuernummer oder USt-IdNr., IBAN, Zahlungsziel. Einmal eingetragen, stehen sie auf jeder Rechnung. Kunden und wiederkehrende Leistungen merkt sich Rechnungsblatt nebenbei; ganze Positionslisten lassen sich als Vorlage sichern.",
+      schritt4Titel: "Rechnung schreiben",
+      schritt4Text: "Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Wird es lang, bricht der Beleg sauber um: mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Auf Wunsch trägt er einen GiroCode, den Ihr Kunde mit der Banking-App abscannt. Heraus kommt ein PDF/A-3B mit eingebettetem XML, dazu die XRechnung für Behördenkunden.",
+      andersTitel: "Was Rechnungsblatt anders macht",
+      andersText: "Der Markt ist voll von Werkzeugen, die ein fertiges PDF hochladen lassen und die Daten per KI herauslesen. Das ist bequem — und genau deshalb schwach.",
+      andereTitel: "PDF hochladen, KI liest aus",
+      andere1: "Findet nur, was schon dasteht — fehlt eine Pflichtangabe, bleibt sie weg.",
+      andere2: "Erzeugt im Zweifel eine technisch gültige Rechnung mit inhaltlichem Mangel.",
+      andere3: "Ihr Briefbogen bleibt erhalten — versprochen wird das meist nur „in vielen Fällen“.",
+      unserTitel: "Rechnungsblatt: aus Daten gebaut",
+      unser1: "PDF und XML entstehen im selben Vorgang aus denselben Daten. Sie können nicht auseinanderlaufen.",
+      unser2: "Die § 14-Prüfung blockiert, sie warnt nicht. Unvollständig heißt: keine Rechnung.",
+      unser3: "Ihr Briefbogen ist die Unterlage, nicht eine Option. Für jeden, nicht erst ab Enterprise.",
+      unser4: "Eine vergebene Nummer bleibt vergeben. Korrigiert wird per Gutschrift mit Bezug — die Reihe bleibt lückenlos.",
+      unser5: "Kleinunternehmer, Reverse Charge und Ausfuhr werden geprüft, nicht nur angekreuzt. Auch die IBAN, mit echter Prüfsumme.",
+      unser4: "Eine vergebene Nummer bleibt vergeben. Korrigiert wird per Gutschrift mit Bezug — die Reihe bleibt lückenlos.",
+      unser5: "Kleinunternehmer, Reverse Charge und Ausfuhr werden geprüft, nicht nur angekreuzt. Auch die IBAN, mit echter Prüfsumme.",
+      koennenTitel: "Was noch drin steckt",
+      koennenText: "Nichts davon kostet extra, nichts ist ein Zusatzpaket.",
+      k1t: "Storno und Korrektur",
+      k1: "Gutschrift und Rechnungskorrektur mit Bezug zur Ursprungsrechnung — im XML nachvollziehbar.",
+      k2t: "GiroCode",
+      k2: "QR-Code auf dem Beleg; Ihr Kunde scannt ihn mit der Banking-App, Betrag und Zweck sind gefüllt.",
+      k3t: "Mehrseitige Belege",
+      k3: "Mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Der Summenblock wird nie getrennt.",
+      k4t: "Sechs Layouts",
+      k4: "Klassisch, kompakt, modern, zebra, luftig, doppelt — dazu wahlweise Ihre Akzentfarbe.",
+      k5t: "Kunden und Artikel",
+      k5: "Adressbuch und wiederkehrende Leistungen. Ganze Positionslisten lassen sich als Vorlage sichern.",
+      k6t: "Kleinunternehmer",
+      k6: "§ 19 UStG wird geprüft, nicht nur angekreuzt — in beide Richtungen, samt Pflichthinweis.",
+      k7t: "Reverse Charge und Ausfuhr",
+      k7: "Auch innergemeinschaftliche Lieferung. Die USt-IdNr. beider Seiten wird verlangt, wo sie nötig ist.",
+      k8t: "XRechnung",
+      k8: "Reines XML für Behördenkunden, mit Leitweg-ID — zusätzlich zum PDF/A-3B.",
+      k9t: "Deutsch und Englisch",
+      k9: "Die ganze Oberfläche, auch die Prüfbefunde.",
+      k10t: "Aufs Handy legen",
+      k10: "Lässt sich als App installieren und startet sofort. Geschrieben wird weiterhin online.",
+      k11t: "Verschlüsselt abgelegt",
+      k11: "Ihre Daten liegen mit Ihrem Passwort verschlüsselt — auch der Betreiber sieht sie nicht.",
+      k12t: "Löschen heißt löschen",
+      k12: "Konto weg, Daten weg. Ohne Papierkorb, ohne Rest.",
+      preiseTitel: "Was es kostet",
+      preiseText: "Sie fangen mit einem Probekontingent an — vollwertige Rechnungen, keine Wasserzeichen, keine Zahlungsdaten. Erst danach entscheiden Sie.",
+      preiseFuss: "Alle Preise verstehen sich zuzüglich Umsatzsteuer. Das Modell ist noch nicht endgültig — solange kein Bezahlweg angebunden ist, schaltet der Betreiber Kontingente von Hand frei.",
+      preisMonat: "je Monat",
+      preisRechnung: "je Rechnung",
+      preisKostenlos: "kostenlos", empfohlen: "Empfohlen",
+      inklusivEins: "Rechnung im Monat inklusive",
+      inklusivViele: "Rechnungen im Monat inklusive",
+      inklusivKeine: "Kein Inklusivkontingent",
+      inklusivUnbegrenzt: "Ohne Mengenbegrenzung",
+      weitere: "jede weitere",
+      nichtTitel: "Was Rechnungsblatt ausdrücklich nicht ist",
+      nichtText: "Damit niemand etwas erwartet, das nicht kommt:",
+      nicht1: "Keine Buchhaltung, kein Mahnwesen, keine Angebote.",
+      nicht2: "Kein Versand aus dem Werkzeug heraus — Sie laden die Datei herunter und verschicken sie selbst.",
+      nicht3: "Keine Eingangsrechnungen, kein Peppol-Zugang.",
+      nicht4: "Eine Ablage ist vorhanden, aber kein zertifiziertes GoBD-Archiv. Die achtjährige Aufbewahrung bleibt Ihre Pflicht.",
+      nicht5: "Keine Steuerberatung. Ob eine Angabe inhaltlich richtig ist, entscheiden Sie oder Ihr Berater.",
+      nicht6: "Nicht offline. Rechnungsblatt lässt sich aufs Handy legen und startet sofort — aber die Rechnung entsteht auf dem Server, nicht im Browser. Ohne Netz gibt es eine klare Auskunft statt eines halben Belegs.",
+      schlussTitel: "Einmal einrichten, dann steht es",
+      schlussText: "Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von Hand freigeschaltet — das dauert in der Regel nicht lange.",
+      fussHinweis: "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier."
+    },
+    en: {
+      navAnmelden: "Sign in",
+      heldVorlauf: "Mandatory since 2025 · B2B in Germany",
+      heldTitel: "Your letterhead stays. The invoice becomes machine-readable.",
+      bogenAlt: "A letterhead with header and footer; an invoice takes shape between them, with the embedded XML below.",
+      heldText: "Rechnungsblatt sets the invoice into the free area of your own letterhead and embeds the data as XML — both in one pass, from the same source.",
+      heldKnopf: "Create account",
+      heldMehr: "How it works",
+      problemTitel: "Why the Word template no longer does the job",
+      problemText: "An e-invoice is not a pretty PDF but a PDF with machine-readable data inside — the two must match and both must be complete. Build that by hand and you notice a missing mandatory field only once the tax auditor is at your customer’s desk.",
+      problem1Titel: "Mandatory fields under § 14 UStG",
+      problem1Text: "Every single mandatory entry has to be right. Miss one and the invoice is formally deficient — putting your customer’s input tax deduction at risk.",
+      problem2Titel: "PDF and XML have to agree",
+      problem2Text: "Two representations of one invoice that can drift apart. That is exactly where retrofitted PDFs fail.",
+      problem3Titel: "Your letterhead is left out",
+      problem3Text: "Most tools hand you their layout. Your logo, your colours and your footer fall away — or carry an enterprise surcharge.",
+      problem4Titel: "Once issued, never edited",
+      problem4Text: "An invoice you have sent must not be overwritten afterwards — otherwise the sequential number is worthless. A Word template stops nobody.",
+      ablaufTitel: "Set up once, then just write",
+      ablaufText: "You do the setup once. After that the landing page after signing in is the invoice form — nothing else needed.",
+      schritt1Titel: "Upload your letterhead",
+      schritt1Text: "Upload your letterhead as a PDF. We unify the colour space and embed missing fonts — the step where PDF/A otherwise fails. A traffic light tells you straight away whether the sheet works.",
+      schritt2Titel: "Set the writing zone",
+      schritt2Text: "Two sliders: where your header ends and where the footer begins. Rechnungsblatt writes in between. No layout editor, no dragging boxes — instead six ready-made sheet layouts and, if you like, your own accent colour.",
+      schritt3Titel: "Enter your master data",
+      schritt3Text: "Company name, address, tax number or VAT ID, IBAN, payment terms. Entered once, they appear on every invoice. Customers and recurring services are remembered along the way; whole line-item lists can be saved as a template.",
+      schritt4Titel: "Write the invoice",
+      schritt4Text: "Recipient, line items, tax rate — the form will not let you submit while a mandatory detail is missing. If it runs long, the document breaks cleanly: with a carry-over, a repeated table header and “Page 1 of 3”. On request it carries a GiroCode your customer scans with their banking app. Out comes a PDF/A-3B with embedded XML, plus the XRechnung for public-sector customers.",
+      andersTitel: "What Rechnungsblatt does differently",
+      andersText: "The market is full of tools that let you upload a finished PDF and have an AI read the data out of it. That is convenient — and precisely why it is weak.",
+      andereTitel: "Upload a PDF, let AI read it",
+      andere1: "Finds only what is already there — a missing mandatory field stays missing.",
+      andere2: "In case of doubt produces a technically valid invoice with a substantive defect.",
+      andere3: "Your letterhead survives — though that is usually promised only “in many cases”.",
+      unserTitel: "Rechnungsblatt: built from data",
+      unser1: "PDF and XML are produced in one operation from the same data. They cannot drift apart.",
+      unser2: "The § 14 check blocks, it does not warn. Incomplete means: no invoice.",
+      unser3: "Your letterhead is the substrate, not an option. For everyone, not from enterprise upwards.",
+      unser4: "A number once used stays used. Corrections go through a credit note that references it — the sequence stays unbroken.",
+      unser5: "Small-business status, reverse charge and export are checked, not just ticked. The IBAN too, with a real checksum.",
+      unser4: "A number once used stays used. Corrections go through a credit note that references it — the sequence stays unbroken.",
+      unser5: "Small-business status, reverse charge and export are checked, not just ticked. The IBAN too, with a real checksum.",
+      koennenTitel: "What else is in there",
+      koennenText: "None of it costs extra, none of it is an add-on package.",
+      k1t: "Cancellation and correction",
+      k1: "Credit note and invoice correction referencing the original — traceable in the XML.",
+      k2t: "GiroCode",
+      k2: "A QR code on the document; your customer scans it with their banking app, amount and reference prefilled.",
+      k3t: "Multi-page documents",
+      k3: "With carry-over, repeated table header and “Page 1 of 3”. The totals block is never split.",
+      k4t: "Six layouts",
+      k4: "Classic, compact, modern, zebra, airy, double — plus your accent colour if you want one.",
+      k5t: "Customers and items",
+      k5: "Address book and recurring services. Whole line-item lists can be saved as a template.",
+      k6t: "Small-business status",
+      k6: "§ 19 UStG is checked, not just ticked — in both directions, with the mandatory note.",
+      k7t: "Reverse charge and export",
+      k7: "Intra-community supply too. Both parties' VAT IDs are required where they are needed.",
+      k8t: "XRechnung",
+      k8: "Plain XML for public-sector customers, with Leitweg-ID — alongside the PDF/A-3B.",
+      k9t: "German and English",
+      k9: "The whole interface, including the validation findings.",
+      k10t: "Put it on your phone",
+      k10: "Installs as an app and starts instantly. Writing still happens online.",
+      k11t: "Stored encrypted",
+      k11: "Your data is encrypted with your password — not even the operator can read it.",
+      k12t: "Deleting means deleting",
+      k12: "Account gone, data gone. No recycle bin, no leftovers.",
+      preiseTitel: "What it costs",
+      preiseText: "You start with a trial allowance — full invoices, no watermarks, no payment details. Only then do you decide.",
+      preiseFuss: "All prices are exclusive of VAT. The model is not final — while no payment route is connected, the operator grants allowances by hand.",
+      preisMonat: "per month",
+      preisRechnung: "per invoice",
+      preisKostenlos: "free", empfohlen: "Recommended",
+      inklusivEins: "invoice per month included",
+      inklusivViele: "invoices per month included",
+      inklusivKeine: "No included allowance",
+      inklusivUnbegrenzt: "No volume limit",
+      weitere: "each further",
+      nichtTitel: "What Rechnungsblatt explicitly is not",
+      nichtText: "So that nobody expects something that will not come:",
+      nicht1: "No bookkeeping, no dunning, no quotations.",
+      nicht2: "No sending from within the tool — you download the file and send it yourself.",
+      nicht3: "No incoming invoices, no Peppol access.",
+      nicht4: "An archive is provided, but not a certified GoBD archive. The eight-year retention obligation remains yours.",
+      nicht5: "No tax advice. Whether an entry is substantively correct is for you or your adviser to decide.",
+      nicht6: "Not offline. Rechnungsblatt installs on your phone and starts instantly — but the invoice is built on the server, not in the browser. Without a connection you get a clear message rather than half a document.",
+      schlussTitel: "Set it up once, then it stands",
+      schlussText: "Create an account, upload your letterhead, get going. New accounts are activated by hand — usually not a long wait.",
+      fussHinweis: "Rechnungsblatt — e-invoicing on your own letterhead."
+    }
+  };
+
+  function euro(cent) {
+    return (cent / 100).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE", {
+      style: "currency", currency: "EUR"
+    });
+  }
+
+  var geladene = [];
+
+  function inklusivText(tarif) {
+    if (tarif.inklusiv_rechnungen === null) return RB.t("inklusivUnbegrenzt");
+    if (tarif.inklusiv_rechnungen === 0) return RB.t("inklusivKeine");
+    if (tarif.inklusiv_rechnungen === 1) return "1 " + RB.t("inklusivEins");
+    return tarif.inklusiv_rechnungen + " " + RB.t("inklusivViele");
+  }
+
+  function zeichneTarife() {
+    var ziel = document.getElementById("tarife");
+    ziel.textContent = "";
+    if (!geladene.length) {
+      var leer = document.createElement("p");
+      leer.className = "beschreibung";
+      leer.textContent = RB.t("preiseFuss");
+      ziel.appendChild(leer);
+      return;
+    }
+    geladene.forEach(function (tarif) {
+      var karte = document.createElement("div");
+      karte.className = "karte tarif" + (tarif.hervorheben ? " empfohlen" : "");
+
+      // Welcher Tarif empfohlen wird, entscheidet der Adminbereich —
+      // nicht der Code. Keiner hervorgehoben ist ein gueltiger Zustand.
+      if (tarif.hervorheben) {
+        var marke = document.createElement("span");
+        marke.className = "marke-empfohlen";
+        marke.textContent = RB.t("empfohlen");
+        karte.appendChild(marke);
+      }
+
+      var name = document.createElement("strong");
+      name.textContent = tarif.name;
+      karte.appendChild(name);
+
+      var preis = document.createElement("div");
+      preis.className = "preis";
+      if (tarif.monatsbeitrag_cent > 0) {
+        preis.textContent = euro(tarif.monatsbeitrag_cent);
+        var einheit = document.createElement("span");
+        einheit.className = "einheit";
+        einheit.textContent = " " + RB.t("preisMonat");
+        preis.appendChild(einheit);
+      } else if (tarif.inklusiv_rechnungen === 0 && tarif.preis_je_rechnung_cent > 0) {
+        preis.textContent = euro(tarif.preis_je_rechnung_cent);
+        var je = document.createElement("span");
+        je.className = "einheit";
+        je.textContent = " " + RB.t("preisRechnung");
+        preis.appendChild(je);
+      } else {
+        preis.textContent = RB.t("preisKostenlos");
+      }
+      karte.appendChild(preis);
+
+      var beschreibung = document.createElement("p");
+      beschreibung.className = "beschreibung";
+      beschreibung.textContent = tarif.beschreibung;
+      karte.appendChild(beschreibung);
+
+      var merkmal = document.createElement("div");
+      merkmal.className = "merkmal";
+      var stark = document.createElement("strong");
+      stark.textContent = inklusivText(tarif);
+      merkmal.appendChild(stark);
+      karte.appendChild(merkmal);
+
+      if (tarif.preis_je_rechnung_cent > 0 && tarif.inklusiv_rechnungen !== 0) {
+        var weitere = document.createElement("div");
+        weitere.className = "merkmal";
+        weitere.textContent = RB.t("weitere") + ": " + euro(tarif.preis_je_rechnung_cent);
+        karte.appendChild(weitere);
+      }
+      ziel.appendChild(karte);
+    });
+  }
+
+  // Der Bogen ist ein Bild — sein Alternativtext braucht die Sprache,
+  // trägt aber kein data-i18n (das gilt nur für Textinhalte).
+  function bogenBeschriften() {
+    var bogen = document.getElementById("bogen");
+    if (bogen) bogen.setAttribute("aria-label", RB.t("bogenAlt"));
+  }
+
+  RB.starte(texte);
+  RB.beiSprachwechsel(zeichneTarife);
+  RB.beiSprachwechsel(bogenBeschriften);
+  bogenBeschriften();
+
+  RB.api("/api/tarife").then(function (antwort) {
+    geladene = (antwort.ok && antwort.daten) || [];
+    zeichneTarife();
+  });
+
+  // --- Auftritt beim Scrollen ------------------------------------------
+  // IntersectionObserver statt scroll-Ereignis: das feuert nur, wenn ein
+  // Abschnitt die Schwelle kreuzt, statt bei jedem Pixel — auf dem Telefon
+  // ist das der Unterschied zwischen flüssig und zäh.
+  //
+  // Die Klasse .beobachtet wird HIER gesetzt, nicht im HTML: ohne
+  // JavaScript bliebe die Seite sonst unsichtbar.
+  (function auftritt() {
+    var bewegungAus = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (bewegungAus || !("IntersectionObserver" in window)) return;
+
+    // Der Auftakt nicht: der hat seine eigene Animation (der Bogen, der
+    // sich schreibt) und steht ohnehin schon im Blick.
+    var abschnitte = document.querySelectorAll(".buehne > section:not(.auftakt)");
+    for (var i = 0; i < abschnitte.length; i++) {
+      abschnitte[i].classList.add("beobachtet");
+    }
+
+    var beobachter = new IntersectionObserver(function (eintraege) {
+      for (var j = 0; j < eintraege.length; j++) {
+        if (!eintraege[j].isIntersecting) continue;
+        eintraege[j].target.classList.add("da");
+        // Einmal gezeigt, bleibt gezeigt — ein Abschnitt, der beim
+        // Zurückscrollen wieder verblasst, wirkt kaputt, nicht lebendig.
+        beobachter.unobserve(eintraege[j].target);
+      }
+    }, {
+      // Erst auslösen, wenn der Abschnitt ein Stück im Bild ist; sonst
+      // ist die Bewegung vorbei, bevor man hinsieht.
+      rootMargin: "0px 0px -12% 0px",
+      threshold: 0.08
+    });
+
+    for (var k = 0; k < abschnitte.length; k++) beobachter.observe(abschnitte[k]);
+
+    // Sprung auf einen Anker (#preise, #ablauf): alles davor wird nie
+    // gekreuzt und bliebe unsichtbar stehen. Deshalb zeigt ein Anker
+    // sofort alles oberhalb des Ziels.
+    if (window.location.hash) {
+      var ziel = document.querySelector(window.location.hash);
+      if (ziel) {
+        for (var m = 0; m < abschnitte.length; m++) {
+          var a = abschnitte[m];
+          if (a.compareDocumentPosition(ziel) & Node.DOCUMENT_POSITION_FOLLOWING) continue;
+          a.classList.add("da");
+          beobachter.unobserve(a);
+        }
+      }
+    }
+  })();
+})();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
+</script>
+</body>
+</html>

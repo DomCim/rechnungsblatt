@@ -1,0 +1,778 @@
+/* Rechnungsblatt — gemeinsame Designsprache der Web-Schicht.
+   Gleiche Token wie der Schreibzonen-Editor. */
+
+:root {
+  /* Papierton statt Bildschirmgrau: gearbeitet wird auf dem Bogen. */
+  --grund: #f2efe8;
+  --flaeche: #fbf9f4;
+  --tinte: #1f1c18;
+  --tinte-2: #6b6459;
+  --linie: #ddd7cb;
+  --akzent: #b23c26;          /* Stempelrot, dunkler als auf der Startseite:
+                                 im Hellen muss es 4.5:1 gegen Papier halten */
+  --akzent-tinte: #8f2f1e;
+  --akzent-schleier: rgba(178, 60, 38, 0.07);
+  --gut: #4a7c52;
+  --warn: #a3591b;
+  --schatten: 0 10px 34px rgba(31, 28, 24, 0.10);
+  --radius: 8px;
+  --feld: #ffffff;
+
+  /* Bewegung — überall dieselben zwei Kurven, damit die Oberfläche eine
+     Handschrift hat statt sechs. Die erste hat Masse: schnell heraus,
+     lange ausschwingend, wie ein Blatt das sich legt. Die zweite ist für
+     kurze Wege (Fokus, Farbe), wo Nachschwingen albern wirkte. */
+  --kurve: cubic-bezier(0.32, 0.72, 0, 1);
+  --kurve-kurz: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Doppelrand: die Schale ist getönt, der Kern liegt hell darin. Damit
+     sitzt eine Karte im Papier statt darauf. Der Innenradius ist der
+     äußere minus Fugenbreite — sonst laufen die Rundungen nicht parallel. */
+  --fuge: 5px;
+  --radius-aussen: 14px;
+  --radius-innen: 9px;      /* radius-aussen − fuge */
+  --schale: rgba(31, 28, 24, 0.045);
+  --schale-kante: rgba(31, 28, 24, 0.07);
+  --kern-glanz: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --grund: #1f1c18;
+    /* Nur eine Spur heller als der Grund. Vorher #2b2721 —
+       flächig über die ganze Seite ergab das den milchigen
+       Braunton, der neben der Startseite fremd wirkte. Die
+       trennt ihre Abschnitte nur mit einer Linie; hier bleibt
+       eine Fläche nötig (Formularfelder brauchen einen Rahmen,
+       in dem sie sitzen), aber sie tritt zurück. */
+    --flaeche: #24211c;
+    --feld: #191612;
+    --tinte: #f3f0e9;
+    --tinte-2: #a49c8d;
+    --linie: #35302a;
+    /* Dasselbe Stempelrot wie auf der Startseite: als Flaeche traegt es
+       weisse Schrift mit 4.8:1. Fuer Text auf dem Grund ist es zu dunkel
+       (3.5:1) -- dafuer gibt es --akzent-tinte, aufgehellt auf 5.1:1.
+       Eine einzige Farbe kann beides nicht: die Anforderungen ziehen in
+       entgegengesetzte Richtungen. */
+    --akzent: #c8452d;
+    --akzent-tinte: #e2694c;
+    --akzent-schleier: rgba(217, 86, 58, 0.12);
+    --gut: #7fb98a;
+    --warn: #d9954f;
+    --schatten: 0 12px 40px rgba(0, 0, 0, 0.5);
+    /* Im Dunkeln liegt die Karte in einer Vertiefung: die Schale wird
+       dunkler als der Grund, nur die Kante fängt Licht. */
+    --schale: rgba(0, 0, 0, 0.22);
+    --schale-kante: rgba(243, 240, 233, 0.07);
+    --kern-glanz: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+}
+:root[data-theme="dark"] {
+  --grund: #1f1c18;
+  /* Nur eine Spur heller als der Grund. Vorher #2b2721 —
+     flächig über die ganze Seite ergab das den milchigen
+     Braunton, der neben der Startseite fremd wirkte. Die
+     trennt ihre Abschnitte nur mit einer Linie; hier bleibt
+     eine Fläche nötig (Formularfelder brauchen einen Rahmen,
+     in dem sie sitzen), aber sie tritt zurück. */
+  --flaeche: #24211c;
+  --feld: #191612;
+  --tinte: #f3f0e9;
+  --tinte-2: #a49c8d;
+  --linie: #35302a;
+  --akzent: #c8452d;
+  --akzent-tinte: #e2694c;
+  --akzent-schleier: rgba(217, 86, 58, 0.12);
+  --gut: #7fb98a;
+  --warn: #d9954f;
+  --schatten: 0 12px 40px rgba(0, 0, 0, 0.5);
+  /* Im Dunkeln liegt die Karte in einer Vertiefung: die Schale wird
+     dunkler als der Grund, nur die Kante fängt Licht. */
+  --schale: rgba(0, 0, 0, 0.22);
+  --schale-kante: rgba(243, 240, 233, 0.07);
+  --kern-glanz: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+* { box-sizing: border-box; margin: 0; }
+body {
+  background: var(--grund);
+  color: var(--tinte);
+  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.buehne {
+  max-width: 1060px;
+  margin: 0 auto;
+  /* Sichere Fläche berücksichtigen: iPhones mit abgerundeten Ecken
+     reservieren links/rechts Platz, je nach Ausrichtung unterschiedlich.
+     Ohne env() wirkt der Inhalt dort einseitig gedrängt. Auf Geräten ohne
+     Notch sind die Werte 0. */
+  padding: calc(24px + env(safe-area-inset-top, 0px))
+           calc(clamp(16px, 5vw, 28px) + env(safe-area-inset-right, 0px))
+           calc(56px + env(safe-area-inset-bottom, 0px))
+           calc(clamp(16px, 5vw, 28px) + env(safe-area-inset-left, 0px));
+  display: flex;
+  flex-direction: column;
+  /* Großzügiger als nötig: die Schalen der Karten ragen je 5px heraus,
+     ohne Zuschlag stoßen zwei Karten fast aneinander. */
+  gap: 30px;
+}
+
+/* Kopfleiste mit Navigation */
+header.kopf {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  min-width: 0;      /* damit die Navigation darin schrumpfen darf */
+}
+.marke {
+  /* Wie auf der Startseite: Name statt Versalienband. */
+  font-family: "Fraunces", Georgia, serif;
+  font-variation-settings: "opsz" 40, "SOFT" 20;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.015em;
+  text-transform: none;
+  color: var(--tinte);
+}
+h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-variation-settings: "opsz" 96, "SOFT" 30;
+  font-weight: 700;
+  font-size: clamp(24px, 4vw, 33px);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+  margin-top: 2px;
+}
+h2 {
+  font-family: "Fraunces", Georgia, serif;
+  font-variation-settings: "opsz" 60, "SOFT" 25;
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+}
+.untertitel { color: var(--tinte-2); max-width: 58ch; margin-top: 6px; }
+
+nav.reiter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+nav.reiter a {
+  color: var(--tinte-2);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+nav.reiter a { transition: color 260ms var(--kurve-kurz), background 260ms var(--kurve-kurz), border-color 260ms var(--kurve-kurz); }
+/* --akzent-tinte statt --akzent: als Text auf dem Grund braucht es die
+   aufgehellte Fassung, sonst nur 3,5:1 im Dunkeln. */
+nav.reiter a:hover { color: var(--akzent-tinte); }
+nav.reiter a[aria-current="page"] {
+  color: var(--akzent-tinte);
+  background: var(--akzent-schleier);
+  border-color: color-mix(in srgb, var(--akzent) 30%, transparent);
+}
+
+.sprachen {
+  display: inline-flex;
+  border: 1px solid var(--linie);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--flaeche);
+  flex: none;
+}
+.sprachen button {
+  all: unset;
+  cursor: pointer;
+  padding: 6px 14px;
+  font: 600 12px/1 "Instrument Sans", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  color: var(--tinte-2);
+}
+/* Weiss, nicht --flaeche: die ist jetzt fast so dunkel wie der Grund
+   und waere auf dem roten Knopf nicht mehr zu lesen. */
+.sprachen button[aria-pressed="true"] { background: var(--akzent); color: #fff; }
+.sprachen button:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
+
+/* --- Navigation ----------------------------------------------------
+   Drei Formen für drei Lagen, alle aus demselben Markup:
+
+     Rechner       Hamburger, der eine Überblende öffnet
+     Handy/Browser dasselbe, dazu eine schmale Kopfleiste
+     Handy/App     zusätzlich eine Leiste am unteren Rand
+
+   Die Reiter lagen bisher offen nebeneinander und liefen am Telefon
+   rechts aus dem Bild — Ablage und Konto waren nur über seitliches
+   Schieben erreichbar. */
+
+/* Der Knopf selbst: drei Striche, die sich beim Öffnen zum X drehen. */
+.menue-knopf {
+  all: unset;
+  cursor: pointer;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  border: 1px solid var(--linie);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  position: relative;
+  transition: border-color 260ms var(--kurve-kurz);
+}
+.menue-knopf:hover { border-color: var(--akzent); }
+.menue-knopf:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+.menue-knopf i {
+  position: absolute;
+  left: 12px;
+  width: 18px;
+  height: 1.5px;
+  background: var(--tinte);
+  border-radius: 2px;
+  transition: transform 420ms var(--kurve), opacity 200ms var(--kurve-kurz);
+}
+.menue-knopf i:nth-child(1) { transform: translateY(-5px); }
+.menue-knopf i:nth-child(3) { transform: translateY(5px); }
+/* Zum X: der mittlere Strich verschwindet, die äußeren kreuzen sich. */
+.menue-knopf[aria-expanded="true"] i:nth-child(1) { transform: rotate(45deg); }
+.menue-knopf[aria-expanded="true"] i:nth-child(2) { opacity: 0; }
+.menue-knopf[aria-expanded="true"] i:nth-child(3) { transform: rotate(-45deg); }
+
+/* Die Überblende. backdrop-filter nur hier — sie ist fest positioniert
+   und scrollt nicht mit, sonst kostete der Filter bei jedem Bildaufbau. */
+.menue-schicht {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: clamp(24px, 6vw, 64px);
+  background: color-mix(in srgb, var(--grund) 88%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 320ms var(--kurve), visibility 320ms;
+}
+.menue-schicht.offen { opacity: 1; visibility: visible; }
+.menue-schicht a {
+  font-family: "Fraunces", Georgia, serif;
+  font-variation-settings: "opsz" 96, "SOFT" 30;
+  font-weight: 600;
+  font-size: clamp(26px, 6vw, 40px);
+  letter-spacing: -0.02em;
+  color: var(--tinte);
+  text-decoration: none;
+  padding: 10px 0;
+  /* Gestaffelt hereinlaufen — erst wenn die Schicht offen ist. */
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 420ms var(--kurve), transform 420ms var(--kurve),
+              color 200ms var(--kurve-kurz);
+}
+.menue-schicht.offen a { opacity: 1; transform: none; }
+.menue-schicht.offen a:nth-child(1) { transition-delay: 60ms; }
+.menue-schicht.offen a:nth-child(2) { transition-delay: 110ms; }
+.menue-schicht.offen a:nth-child(3) { transition-delay: 160ms; }
+.menue-schicht.offen a:nth-child(4) { transition-delay: 210ms; }
+.menue-schicht.offen a:nth-child(5) { transition-delay: 260ms; }
+.menue-schicht.offen a:nth-child(n+6) { transition-delay: 310ms; }
+.menue-schicht a:hover { color: var(--akzent-tinte); }
+.menue-schicht a[aria-current="page"] { color: var(--akzent-tinte); }
+/* Der laufende Eintrag bekommt einen Punkt statt einer Fläche — auf
+   dieser Größe wäre ein Kasten laut. */
+.menue-schicht a[aria-current="page"]::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--akzent);
+  margin-right: 12px;
+  vertical-align: middle;
+}
+
+/* Die offenen Reiter entfallen — überall, auch am Rechner. */
+nav.reiter { display: none; }
+
+/* --- Schmale Kopfleiste (nur Handy) --------------------------------- */
+.kopfleiste { display: none; }
+
+@media (max-width: 700px) {
+  .kopfleiste {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--linie);
+  }
+  /* Statt des Schriftzugs steht hier das Zeichen — der Seitenname braucht
+     den Platz dringender. Damit entfällt auch die Überlappung, die der
+     mittig gesetzte Name vorher erzeugte. */
+  .kopfleiste .zeichen {
+    flex: none;
+    display: inline-flex;
+    width: 26px;
+    height: 26px;
+    color: var(--tinte);
+    text-decoration: none;
+    transition: opacity 200ms var(--kurve-kurz);
+  }
+  .kopfleiste .zeichen:hover { opacity: 0.7; }
+  .kopfleiste .zeichen svg { width: 100%; height: 100%; }
+  .kopfleiste .wo {
+    font-family: "Fraunces", Georgia, serif;
+    font-variation-settings: "opsz" 60, "SOFT" 25;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.015em;
+    color: var(--tinte-2);
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    /* Kein Trennstrich mehr: Zeichen und Name sind ohnehin klar
+       unterschieden. */
+    padding-left: 2px;
+    color: var(--tinte);
+  }
+
+  /* Titel und Untertitel weg: Der Seitenname steht jetzt oben in der
+     Leiste, und der Untertitel erklärt beim zweiten Besuch nichts mehr,
+     kostet aber ein Drittel des Bildschirms. */
+  header.kopf > div:first-child { display: none; }
+  /* Die Sprachumschaltung wandert in die Kopfleiste — als eigene Zeile
+     darunter stand sie verloren da. */
+  header.kopf { display: none; }
+  .kopfleiste .sprachen { flex: none; }
+}
+
+/* --- Leiste unten (nur in der installierten App) --------------------- */
+/* display-mode: standalone trifft genau dann zu, wenn die Seite als App
+   läuft — im Browser gibt es unten schon eine Leiste, eine zweite wäre
+   im Weg. */
+.tableiste { display: none; }
+
+@media (display-mode: standalone) and (max-width: 700px) {
+  .tableiste {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    justify-content: space-around;
+    align-items: stretch;
+    background: color-mix(in srgb, var(--grund) 92%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: 1px solid var(--linie);
+    /* Über der Home-Anzeige des Telefons bleiben, nicht darunter. */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .tableiste a {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 9px 2px 7px;
+    text-decoration: none;
+    color: var(--tinte-2);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    transition: color 200ms var(--kurve-kurz);
+  }
+  .tableiste a[aria-current="page"] { color: var(--akzent-tinte); }
+  .tableiste svg { width: 21px; height: 21px; stroke-width: 1.4; }
+
+  /* Platz schaffen, damit die Leiste nichts verdeckt. */
+  .buehne { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  /* In der App ist der Hamburger überflüssig — unten steht alles. */
+  .kopfleiste .menue-knopf { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menue-schicht, .menue-schicht a, .menue-knopf i { transition: none !important; }
+}
+
+/* Karten und Formulare
+   Doppelrand statt einfacher Linie: die Karte bekommt über ein Pseudo-
+   element eine getönte Schale, in der sie liegt — wie ein Blatt in einer
+   Mappe. Der Kern trägt oben eine feine Lichtkante, damit er sich hebt.
+   Über ::before statt eines Wrapper-Divs, weil sonst jede der neun Seiten
+   umgebaut werden müsste. */
+.karte {
+  position: relative;
+  background: var(--flaeche);
+  border: 1px solid var(--linie);
+  border-radius: var(--radius-innen);
+  padding: 22px;
+  box-shadow: var(--kern-glanz);
+}
+.karte::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--fuge) * -1);
+  border: 1px solid var(--schale-kante);
+  background: var(--schale);
+  border-radius: var(--radius-aussen);
+  z-index: -1;
+  pointer-events: none;
+}
+/* Der Stapelkontext muss stehen, sonst verschwindet die Schale hinter
+   dem Seitenhintergrund statt hinter der Karte. */
+.buehne > * { position: relative; z-index: 0; }
+
+/* Das Formular ist selbst ein Stapel von Karten — damit es denselben
+   Rhythmus bekommt wie die Buehne, statt seine Karten aneinanderzukleben.
+   Ersetzt die frueheren margin-top:20px an den einzelnen Karten. */
+.buehne > form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Kennungen — Rechnungsnummern, Befundcodes, Normbezüge. Keine Prosa,
+   deshalb Mono. Gleiche Rolle wie auf der Startseite. */
+.kennung {
+  font-family: "Spline Sans Mono", ui-monospace, monospace;
+  font-size: 0.92em;
+  letter-spacing: 0.01em;
+}
+.karte > h2 { margin-bottom: 4px; }
+.karte .beschreibung { color: var(--tinte-2); font-size: 13.5px; margin-bottom: 14px; }
+
+.felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
+.feld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.feld.breit { grid-column: 1 / -1; }
+.feld label {
+  font-family: "Spline Sans Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tinte-2);
+}
+.feld input, .feld select, .feld textarea {
+  /* Eigener Ton statt --grund: auf der zurückgenommenen Fläche wäre ein
+     Feld sonst kaum vom Untergrund zu unterscheiden. */
+  background: var(--feld);
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  color: var(--tinte);
+  font: 500 15px/1.4 "Instrument Sans", system-ui, sans-serif;
+  padding: 9px 11px;
+  width: 100%;
+  /* Safari auf iOS gibt Datums- und Auswahlfeldern eine eigene Darstellung
+     mit eingebautem Innenabstand — sie werden dadurch breiter als ihr
+     Container und der Text rückt in die Mitte. */
+  -webkit-appearance: none;
+  appearance: none;
+  max-width: 100%;
+  min-width: 0;
+}
+/* Datumsfelder auf iOS: Der Wert wird zentriert, und ein LEERES Feld
+   verliert durch appearance:none seine Zeilenhöhe — es steht dann flacher
+   da als alle anderen. Beides hier geradeziehen. */
+.feld input[type="date"] {
+  text-align: left;
+  -webkit-text-align: left;
+  min-height: 40px;          /* Höhe eines gefüllten Feldes */
+  line-height: 1.4;
+}
+/* Safari braucht zusätzlich eine Höhe für den inneren Textbereich. */
+.feld input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-height: 21px;
+}
+/* Der eigene Pfeil fehlt nach appearance:none — wieder zeichnen. */
+.feld select {
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+                    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 16px) calc(50% + 1px),
+                       calc(100% - 11px) calc(50% + 1px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+.feld input, .feld select, .feld textarea {
+  transition: border-color 260ms var(--kurve-kurz),
+              box-shadow 260ms var(--kurve-kurz);
+}
+.feld input:focus-visible, .feld select:focus-visible, .feld textarea:focus-visible {
+  outline: 2px solid var(--akzent);
+  outline-offset: -1px;
+  /* Der Schleier legt sich um das Feld statt es zu umranden — eine
+     Lupe über dem Papier, kein zweiter Rahmen. */
+  box-shadow: 0 0 0 4px var(--akzent-schleier);
+}
+.feld .fehler {
+  display: none;
+  color: var(--warn);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.feld.hat-fehler input, .feld.hat-fehler select { border-color: var(--warn); }
+.feld.hat-fehler .fehler { display: block; }
+
+.zeile { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+/* Knöpfe */
+.knopf {
+  all: unset;
+  cursor: pointer;
+  text-align: center;
+  background: var(--akzent);
+  color: #fff;
+  font-weight: 600;
+  padding: 11px 18px;
+  border-radius: 999px;
+  transition: transform 420ms var(--kurve), box-shadow 420ms var(--kurve),
+              filter 180ms var(--kurve-kurz);
+  box-shadow: 0 1px 2px rgba(31, 28, 24, 0.16),
+              inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.knopf:hover { filter: brightness(1.06); box-shadow: 0 6px 18px rgba(31, 28, 24, 0.20), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+/* Eindrücken statt Aufblitzen: der Knopf hat Masse. */
+.knopf:active { transform: scale(0.975); }
+.knopf:focus-visible { outline: 3px solid color-mix(in srgb, var(--akzent) 40%, transparent); }
+.knopf[disabled] { opacity: 0.45; cursor: not-allowed; }
+.knopf.leise {
+  background: transparent;
+  color: var(--akzent-tinte);
+  border: 1px solid color-mix(in srgb, var(--akzent) 40%, transparent);
+}
+.knopf.leise:hover { background: var(--akzent-schleier); filter: none; }
+
+/* Statusmarken */
+.ampel {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 13px;
+  padding: 5px 12px;
+  border-radius: 999px;
+}
+.ampel::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+.ampel.gruen { color: var(--gut); background: color-mix(in srgb, var(--gut) 12%, transparent); }
+.ampel.gelb { color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.ampel.offen { color: var(--tinte-2); background: color-mix(in srgb, var(--tinte-2) 12%, transparent); }
+
+.hinweis {
+  border-left: 3px solid var(--warn);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--tinte);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 13.5px;
+}
+.hinweis.gut { border-left-color: var(--gut); background: color-mix(in srgb, var(--gut) 8%, transparent); }
+
+/* Tabellen (Positionen, Ablage) */
+.tabelle-rolle {
+  overflow-x: auto;
+  /* Ohne diese Zeile wächst der Container mit der Tabelle und schiebt die
+     ganze Seite seitlich auf, statt selbst zu scrollen. */
+  max-width: 100%;
+}
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tinte-2);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--linie);
+}
+td { padding: 7px 8px; border-bottom: 1px solid var(--linie); vertical-align: top; }
+td input, td select {
+  background: var(--feld);
+  border: 1px solid var(--linie);
+  border-radius: 7px;
+  color: var(--tinte);
+  font: 500 14px/1.3 "Instrument Sans", system-ui, sans-serif;
+  padding: 7px 9px;
+  width: 100%;
+  min-width: 70px;
+}
+td input:focus-visible, td select:focus-visible { outline: 2px solid var(--akzent); outline-offset: -1px; }
+td.zahl input { text-align: right; font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.betrag { font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+
+.entfernen {
+  all: unset;
+  cursor: pointer;
+  color: var(--tinte-2);
+  font-size: 17px;
+  line-height: 1;
+  padding: 6px;
+  border-radius: 6px;
+}
+.entfernen { transition: color 220ms var(--kurve-kurz), transform 380ms var(--kurve); }
+.entfernen:hover { color: var(--warn); transform: scale(1.12); }
+.entfernen:active { transform: scale(0.94); }
+.entfernen:focus-visible { outline: 2px solid var(--akzent); }
+
+/* Summenblock */
+.summen { margin-left: auto; max-width: 330px; display: flex; flex-direction: column; gap: 4px; }
+.summen .posten { display: flex; justify-content: space-between; gap: 18px; color: var(--tinte-2); }
+.summen .posten.gesamt {
+  color: var(--tinte);
+  font-weight: 700;
+  border-top: 1px solid var(--linie);
+  padding-top: 6px;
+  margin-top: 4px;
+}
+
+a.verweis { color: var(--akzent-tinte); font-weight: 600; }
+
+/* Schalter — Ja/Nein-Einstellungen. Das eigentliche Kästchen bleibt im
+   Baum (Tastatur, Vorlesen, Formular), wird aber unsichtbar gemacht und
+   durch den Kipphebel dahinter dargestellt. */
+.schalter {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  /* Die Vererbung von .feld label zurücknehmen (Versalien, Sperrung). */
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--tinte);
+  line-height: 1.4;
+}
+.schalter input {
+  /* Nicht display:none — das nähme dem Feld den Tastaturfokus. */
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+}
+.schalter .hebel {
+  position: relative;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 22px;
+  margin-top: 1px;          /* auf die erste Textzeile ausrichten */
+  border-radius: 999px;
+  background: var(--linie);
+  transition: background 280ms var(--kurve);
+}
+.schalter .hebel::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--flaeche);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 380ms var(--kurve);
+}
+.schalter input:checked + .hebel { background: var(--akzent); }
+.schalter input:checked + .hebel::after { transform: translateX(16px); }
+.schalter input:focus-visible + .hebel {
+  outline: 2px solid var(--akzent);
+  outline-offset: 2px;
+}
+.schalter input:disabled + .hebel { opacity: 0.45; }
+.schalter:has(input:disabled) { cursor: default; color: var(--tinte-2); }
+
+/* --- Schmale Geräte ------------------------------------------------
+   Rechnungen werden auch unterwegs geschrieben; das Formular muss auf
+   einem Telefon ohne seitliches Schieben bedienbar sein. */
+@media (max-width: 700px) {
+  /* Eine Spalte: 190px erzwang zwei Spalten, die dann beide zu eng waren. */
+  .felder { grid-template-columns: 1fr; gap: 10px; }
+
+  /* Auf dem Telefon ist Breite kostbar: die Fuge wird schmaler, damit
+     die Schale nicht am Bildschirmrand klebt, der Doppelrand aber
+     erhalten bleibt. Innenradius entsprechend nachziehen. */
+  :root { --fuge: 3px; --radius-innen: 11px; }
+  .karte { padding: 16px 13px; }
+  .buehne, .buehne > form { gap: 22px; }
+  h1 { font-size: clamp(22px, 6vw, 27px); }
+
+  /* Navigation rollt seitlich, statt in vier Reihen umzubrechen.
+     max-width ist entscheidend: ohne sie wächst die Leiste mit ihrem
+     Inhalt und schiebt die ganze Seite auf, statt selbst zu rollen. */
+  /* Die Kette muss vollständig begrenzt sein: die Leiste steckt in einem
+     .zeile-Flexkasten, der sonst mit ihr wächst — dann rollt nichts,
+     sondern die Seite schiebt sich auf. */
+  header.kopf > .zeile { min-width: 0; max-width: 100%; }
+  nav.reiter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    max-width: 100%;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  nav.reiter::-webkit-scrollbar { display: none; }
+  nav.reiter a { flex: none; }
+
+  /* Knöpfe über die volle Breite: leichter zu treffen. */
+  .zeile > .knopf { flex: 1 1 auto; min-width: 140px; }
+
+  .summen { max-width: none; margin-left: 0; }
+}
+
+/* Sehr schmal (kleine Telefone hochkant) */
+@media (max-width: 380px) {
+  .buehne {
+    padding-left: calc(12px + env(safe-area-inset-left, 0px));
+    padding-right: calc(12px + env(safe-area-inset-right, 0px));
+    /* oben/unten bleiben aus der Grundregel — nur die Seiten werden hier
+       enger, der Abstand zur Statusleiste nicht. */
+  }
+  .karte { padding: 14px 11px; }
+}
+
+/* --- Auftritt ------------------------------------------------------
+   Karten setzen sich beim Laden, statt fertig dazustehen — dasselbe
+   Bild wie auf der Startseite, wo sich die Rechnung zeilenweise setzt.
+   Gestaffelt über nth-child, damit kein JavaScript nötig ist.
+
+   Nur transform und opacity: beides läuft auf der GPU und löst kein
+   Neuberechnen des Layouts aus. */
+@keyframes blatt-legt-sich {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+.buehne > .karte,
+.buehne > header.kopf,
+.buehne > form > .karte {
+  animation: blatt-legt-sich 620ms var(--kurve) backwards;
+}
+.buehne > header.kopf { animation-delay: 0ms; }
+.buehne > .karte:nth-of-type(1), .buehne > form > .karte:nth-of-type(1) { animation-delay: 60ms; }
+.buehne > .karte:nth-of-type(2), .buehne > form > .karte:nth-of-type(2) { animation-delay: 120ms; }
+.buehne > .karte:nth-of-type(3), .buehne > form > .karte:nth-of-type(3) { animation-delay: 180ms; }
+.buehne > .karte:nth-of-type(n+4), .buehne > form > .karte:nth-of-type(n+4) { animation-delay: 240ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+  /* Auch der Auftritt entfällt — sonst bleibt genau die Bewegung
+     übrig, die hier abbestellt wurde. */
+  .buehne > .karte,
+  .buehne > header.kopf,
+  .buehne > form > .karte { animation: none !important; }
+}

@@ -1,0 +1,12 @@
+.git/
+.github/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+referenzfaelle/
+validator.jar
+*.class
+docs/
+prototyp/
+scripts/
+validator/

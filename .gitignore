@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.venv/
+venv/
+
+# Validator (wird in der CI geladen bzw. gecacht)
+validator.jar
+*.class
+
+# erzeugte Referenzfälle
+/referenzfaelle/
+
+# Editoren
+.idea/
+.vscode/
+*.swp
+.DS_Store
+*.code-workspace
+.mcp.json

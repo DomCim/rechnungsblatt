@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rechnungsblatt-kern"
+version = "0.1.0"
+description = "Rechnungskern von Rechnungsblatt: Datenmodell, §14-Prüfung, CII-XML (EN 16931), Briefpapier-Normalisierung und PDF/A-3B-Zusammenbau (ZUGFeRD/Factur-X)."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pikepdf>=8.0",
+    "reportlab>=4.0",
+    "qrcode>=7.4",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

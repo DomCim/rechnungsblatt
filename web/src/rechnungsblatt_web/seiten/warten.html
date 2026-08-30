@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — Konto wird geprüft</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
+<style>
+  .buehne { max-width: 640px; }
+  .karte { text-align: center; }
+  .karte .beschreibung { max-width: 46ch; margin: 8px auto 16px; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Ihr Konto wird geprüft</h1>
+    </div>
+    <div class="sprachen" role="group" aria-label="Sprache / Language">
+      <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+      <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <section class="karte">
+    <p class="ampel offen" id="stand" data-i18n="standWartet">Wartet auf Freigabe</p>
+    <p class="beschreibung" id="text" data-i18n="textWartet">
+      Ihr Konto ist angelegt. Sobald der Betreiber es freischaltet, steht Ihnen
+      der Arbeitsbereich offen — laden Sie diese Seite dann einfach neu.
+    </p>
+    <div class="zeile" style="justify-content: center;">
+      <button class="knopf leise" type="button" id="neuLaden" data-i18n="neuLaden">Erneut prüfen</button>
+      <button class="knopf leise" type="button" id="abmelden" data-i18n="abmelden">Abmelden</button>
+    </div>
+  </section>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      titel: "Ihr Konto wird geprüft",
+      standWartet: "Wartet auf Freigabe",
+      standGesperrt: "Gesperrt",
+      textWartet: "Ihr Konto ist angelegt. Sobald der Betreiber es freischaltet, steht Ihnen der Arbeitsbereich offen — laden Sie diese Seite dann einfach neu.",
+      textGesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber.",
+      neuLaden: "Erneut prüfen"
+    },
+    en: {
+      titel: "Your account is being reviewed",
+      standWartet: "Awaiting activation",
+      standGesperrt: "Blocked",
+      textWartet: "Your account has been created. As soon as the operator activates it the workspace opens up — just reload this page then.",
+      textGesperrt: "Your account is blocked. Please contact the operator.",
+      neuLaden: "Check again"
+    }
+  };
+
+  function el(kennung) { return document.getElementById(kennung); }
+
+  async function pruefe() {
+    var antwort = await RB.api("/api/ich");
+    if (!antwort.ok) { window.location.href = "/anmelden"; return; }
+    var person = antwort.daten;
+    if (person.status === "frei") { window.location.href = "/app"; return; }
+    var gesperrt = person.status === "gesperrt";
+    el("stand").className = "ampel " + (gesperrt ? "gelb" : "offen");
+    el("stand").setAttribute("data-i18n", gesperrt ? "standGesperrt" : "standWartet");
+    el("text").setAttribute("data-i18n", gesperrt ? "textGesperrt" : "textWartet");
+    el("stand").textContent = RB.t(gesperrt ? "standGesperrt" : "standWartet");
+    el("text").textContent = RB.t(gesperrt ? "textGesperrt" : "textWartet");
+  }
+
+  el("neuLaden").addEventListener("click", pruefe);
+  el("abmelden").addEventListener("click", async function () {
+    await RB.api("/api/abmelden", { method: "POST" });
+    window.location.href = "/";
+  });
+
+  RB.starte(texte);
+  pruefe();
+})();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
+</script>
+</body>
+</html>

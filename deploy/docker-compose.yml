@@ -1,0 +1,117 @@
+# Rechnungsblatt als Portainer-Stack.
+#
+# Voraussetzungen im Zielsystem:
+#   - Traefik läuft und hängt im externen Docker-Netz "edge". Davor steht
+#     der Nginx Proxy Manager als Eintrittspunkt: Er hält das Zertifikat
+#     und reicht per HTTP an Traefik weiter, der auf die Container verteilt
+#     (eine Docker-Sock für alle Stacks). Deshalb hat der Router hier kein
+#     TLS-Label — verschlüsselt wird eine Schicht davor.
+#   - Zugriff auf ghcr.io/domcim/rechnungsblatt: Ist das Paket privat,
+#     braucht Portainer eine Registry-Anmeldung (GitHub-Benutzer +
+#     Personal Access Token mit read:packages). Alternativ das Paket in
+#     GitHub auf öffentlich stellen.
+#   - Stack-Umgebungsvariablen sind gesetzt:
+#       RECHNUNGSBLATT_DOMAIN   z. B. rechnungsblatt.example.de
+#       DB_PASSWORT             Passwort der Datenbank — nur Buchstaben und
+#                               Ziffern, keine Sonderzeichen: der Wert steht
+#                               in DATENBANK_URL, wo @ : / # % die URL
+#                               zerlegen würden. Länge statt Sonderzeichen.
+#       ADMIN_EMAIL             Anmeldung des ersten Admins
+#       ADMIN_PASSWORT          dessen Startpasswort — nach der ersten
+#                               Anmeldung unter „Konto“ ändern
+#
+# Die App bringt seit dem Mandantenumbau eine eigene Anmeldung mit; die
+# frühere BasicAuth-Notlösung vor Traefik ist damit hinfällig. Öffentlich
+# erreichbar ist nur noch die Startseite und die Anmeldung, alles unter
+# /app und /api verlangt ein freigeschaltetes Konto.
+#
+# Neue Registrierungen stehen auf „wartet“ und müssen im Adminbereich
+# (/app/verwaltung) freigeschaltet werden.
+
+services:
+  datenbank:
+    image: postgres:16-alpine
+    container_name: rechnungsblatt-db
+    restart: unless-stopped
+    networks:
+      - intern
+    environment:
+      POSTGRES_USER: rechnungsblatt
+      POSTGRES_DB: rechnungsblatt
+      POSTGRES_PASSWORD: ${DB_PASSWORT:?DB_PASSWORT muss im Stack gesetzt sein}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rechnungsblatt -d rechnungsblatt"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  rechnungsblatt:
+    # Fertiges Image aus der Registry — gebaut vom Workflow
+    # „Veröffentlichen" bei jedem Push auf main. RECHNUNGSBLATT_VERSION
+    # setzen, um auf einen bestimmten Stand festzunageln (Marke oder
+    # sha-<commit>); ohne Angabe läuft der jeweils letzte main-Stand.
+    image: ghcr.io/domcim/rechnungsblatt:${RECHNUNGSBLATT_VERSION:-latest}
+    pull_policy: always
+    container_name: rechnungsblatt
+    restart: unless-stopped
+    depends_on:
+      datenbank:
+        condition: service_healthy
+    networks:
+      - edge
+      - intern
+    volumes:
+      - daten:/daten
+    environment:
+      DATENBANK_URL: postgresql://rechnungsblatt:${DB_PASSWORT}@datenbank:5432/rechnungsblatt
+      # Beim ersten Start wird dieses Konto als Admin angelegt und
+      # freigeschaltet. Existiert es bereits, bleibt sein Passwort
+      # unangetastet — ein Neustart dreht eine Änderung also nicht zurück.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL muss im Stack gesetzt sein}
+      ADMIN_PASSWORT: ${ADMIN_PASSWORT:?ADMIN_PASSWORT muss im Stack gesetzt sein (mind. 10 Zeichen)}
+      # Verschlüsselt Betriebsgeheimnisse in der Datenbank — derzeit das
+      # SMTP-Passwort. Einmal setzen und NIE ändern: mit einem neuen
+      # Schlüssel ist der alte Wert nicht mehr lesbar und muss neu
+      # eingetragen werden. Lange Zufallskette, etwa aus
+      #   openssl rand -base64 32
+      RECHNUNGSBLATT_SCHLUESSEL: ${RECHNUNGSBLATT_SCHLUESSEL:?RECHNUNGSBLATT_SCHLUESSEL muss im Stack gesetzt sein}
+      # Plausible: Skript wird nur eingebunden, wenn beide Werte gesetzt sind.
+      # Hinweis: Läuft die Seite über HTTPS, muss auch Plausible über HTTPS
+      # erreichbar sein (Mixed Content) — dann hier die HTTPS-Adresse eintragen.
+      # Ohne Wert wird gar kein Skript eingebunden. Vorher stand hier eine
+      # LAN-Adresse als Vorgabe — die ist vom Server aus nicht erreichbar
+      # und lieferte auf jeder Seite einen toten Skriptverweis.
+      PLAUSIBLE_URL: ${PLAUSIBLE_URL:-}
+      PLAUSIBLE_DOMAIN: ${RECHNUNGSBLATT_DOMAIN:-}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: edge
+      traefik.http.routers.rechnungsblatt.rule: Host(`${RECHNUNGSBLATT_DOMAIN}`)
+      # Eintrittspunkt `web`, nicht `websecure`: Vor Traefik steht der Nginx
+      # Proxy Manager, der das Zertifikat hält und intern per HTTP
+      # weiterreicht. Ein TLS-Label hier verlangte ein zweites Zertifikat
+      # für eine Strecke, die den Rechner nie verlässt.
+      #
+      # Gleiche Schreibweise wie in den Stacks DiD0m-Verwaltung und
+      # vh-website — wer die Kette einmal umbaut, setzt TRAEFIK_ENTRYPOINT
+      # und muss keine Datei anfassen.
+      traefik.http.routers.rechnungsblatt.entrypoints: ${TRAEFIK_ENTRYPOINT:-web}
+      # Priorität ausdrücklich setzen, nicht Traefik raten lassen.
+      #
+      # Ohne Angabe vergibt Traefik sie nach der LÄNGE der Regel — eine
+      # Host-Regel kommt damit auf etwa 20-30. Ein übriggebliebener
+      # Container aus einem vorigen Stack bediente dann womöglich weiter
+      # alles, und man sähe den alten Stand ohne jede Fehlermeldung.
+      traefik.http.routers.rechnungsblatt.priority: "100"
+      traefik.http.services.rechnungsblatt.loadbalancer.server.port: "8000"
+
+volumes:
+  daten:
+  db:
+
+networks:
+  edge:
+    external: true
+  intern:

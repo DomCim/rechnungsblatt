@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — Stammdaten</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
+<style>
+  /* Einträge als Karten statt Tabelle: auf dem Telefon bedienbar, und
+     ein Kunde hat ohnehin mehr Felder, als in eine Zeile passen. */
+  .eintraege { display: grid; gap: 10px; }
+  .eintrag {
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    padding: 14px;
+    background: var(--grund);
+  }
+  .eintrag-kopf {
+    display: flex; align-items: baseline; gap: 10px;
+    justify-content: space-between; margin-bottom: 10px;
+  }
+  .eintrag-kopf strong { font-size: 15.5px; }
+  .eintrag-kopf .kennung { color: var(--tinte-2); font-size: 12.5px; }
+  .weg {
+    all: unset; cursor: pointer; color: var(--tinte-2);
+    font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px;
+  }
+  .weg:hover { color: var(--akzent); }
+  .weg:focus-visible { outline: 2px solid var(--akzent); outline-offset: 2px; }
+
+  .leer {
+    color: var(--tinte-2); padding: 18px 0; line-height: 1.55;
+    max-width: 56ch;
+  }
+  .fuss-zeile {
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .stand { color: var(--tinte-2); font-size: 13px; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Stammdaten</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Kunden und wiederkehrende Leistungen. Beides lässt sich beim
+        Schreiben einer Rechnung übernehmen, statt es jedes Mal einzutippen.
+      </p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/stamm" aria-current="page" data-i18n="navStamm">Stammdaten</a>
+        <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" data-i18n="navKonto">Konto</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Adressbuch -->
+  <section class="karte">
+    <h2 data-i18n="kundenTitel">Adressbuch</h2>
+    <p class="beschreibung" data-i18n="kundenText">
+      Jeder Empfänger einer erzeugten Rechnung landet hier von selbst. Für
+      Behördenkunden lohnt es sich, die Leitweg-ID vorab einzutragen.
+    </p>
+    <div class="eintraege" id="kunden"></div>
+    <p class="leer" id="kundenLeer" hidden data-i18n="kundenLeer">
+      Noch keine Kunden. Legen Sie einen an oder schreiben Sie eine Rechnung —
+      der Empfänger wird dann übernommen.
+    </p>
+    <div class="fuss-zeile">
+      <button type="button" class="knopf leise" id="kundeNeu" data-i18n="kundeNeu">+ Kunde</button>
+      <button type="button" class="knopf" id="kundenSichern" data-i18n="sichern">Sichern</button>
+      <span class="stand" id="kundenStand"></span>
+    </div>
+  </section>
+
+  <!-- Artikel -->
+  <section class="karte">
+    <h2 data-i18n="artikelTitel">Artikel und Leistungen</h2>
+    <p class="beschreibung" data-i18n="artikelText">
+      Was Sie immer wieder abrechnen. Beim Schreiben einer Rechnung genügt
+      dann die Auswahl — Bezeichnung, Einheit, Preis und Steuersatz kommen mit.
+    </p>
+    <div class="eintraege" id="artikel"></div>
+    <p class="leer" id="artikelLeer" hidden data-i18n="artikelLeer">
+      Noch keine Artikel. Legen Sie an, was regelmäßig auf Ihren Rechnungen
+      steht — eine Arbeitsstunde, eine Anfahrt, ein Materialposten.
+    </p>
+    <div class="fuss-zeile">
+      <button type="button" class="knopf leise" id="artikelNeu" data-i18n="artikelNeu">+ Artikel</button>
+      <button type="button" class="knopf" id="artikelSichern" data-i18n="sichern">Sichern</button>
+      <span class="stand" id="artikelStand"></span>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  var el = function (id) { return document.getElementById(id); };
+
+  var texte = {
+    de: {
+      titel: "Stammdaten",
+      untertitel: "Kunden und wiederkehrende Leistungen. Beides lässt sich beim Schreiben einer Rechnung übernehmen, statt es jedes Mal einzutippen.",
+      kundenTitel: "Adressbuch",
+      kundenText: "Jeder Empfänger einer erzeugten Rechnung landet hier von selbst. Für Behördenkunden lohnt es sich, die Leitweg-ID vorab einzutragen.",
+      kundenLeer: "Noch keine Kunden. Legen Sie einen an oder schreiben Sie eine Rechnung — der Empfänger wird dann übernommen.",
+      kundeNeu: "+ Kunde",
+      artikelTitel: "Artikel und Leistungen",
+      artikelText: "Was Sie immer wieder abrechnen. Beim Schreiben einer Rechnung genügt dann die Auswahl — Bezeichnung, Einheit, Preis und Steuersatz kommen mit.",
+      artikelLeer: "Noch keine Artikel. Legen Sie an, was regelmäßig auf Ihren Rechnungen steht — eine Arbeitsstunde, eine Anfahrt, ein Materialposten.",
+      artikelNeu: "+ Artikel",
+      sichern: "Sichern",
+      gesichert: "Gesichert ✓",
+      fName: "Name / Firma", fStrasse: "Straße und Hausnummer", fPlz: "PLZ",
+      fOrt: "Ort", fUst: "USt-IdNr.", fEmail: "E-Mail", fLeitweg: "Leitweg-ID",
+      fNummer: "Art.-Nr.", fBezeichnung: "Bezeichnung", fBeschreibung: "Beschreibung",
+      fEinheit: "Einheit", fPreis: "Einzelpreis €", fSteuer: "Steuer",
+      entfernen: "Entfernen",
+      neuerKunde: "Neuer Kunde", neuerArtikel: "Neuer Artikel",
+      fussHinweis: "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier."
+    },
+    en: {
+      titel: "Master data",
+      untertitel: "Customers and recurring services. Both can be pulled into an invoice instead of typing them each time.",
+      kundenTitel: "Address book",
+      kundenText: "Every recipient of an issued invoice appears here automatically. For public-sector customers it pays to enter the Leitweg-ID in advance.",
+      kundenLeer: "No customers yet. Add one, or write an invoice — the recipient is picked up automatically.",
+      kundeNeu: "+ Customer",
+      artikelTitel: "Items and services",
+      artikelText: "What you bill again and again. When writing an invoice, one selection brings along name, unit, price and tax rate.",
+      artikelLeer: "No items yet. Add what appears on your invoices regularly — an hour of work, a call-out charge, a material item.",
+      artikelNeu: "+ Item",
+      sichern: "Save",
+      gesichert: "Saved ✓",
+      fName: "Name / company", fStrasse: "Street and number", fPlz: "Postcode",
+      fOrt: "Town", fUst: "VAT ID", fEmail: "E-mail", fLeitweg: "Leitweg-ID",
+      fNummer: "Item no.", fBezeichnung: "Name", fBeschreibung: "Description",
+      fEinheit: "Unit", fPreis: "Unit price €", fSteuer: "Tax",
+      entfernen: "Remove",
+      neuerKunde: "New customer", neuerArtikel: "New item",
+      fussHinweis: "Rechnungsblatt — e-invoices on your own letterhead."
+    }
+  };
+
+  var EINHEITEN = { C62: "Stück", HUR: "Stunde", DAY: "Tag", MTR: "Meter",
+                    MTK: "m²", KGM: "kg", LTR: "Liter", PCE: "Pauschale" };
+  var STEUERN = { UST_19: "19 %", UST_7: "7 %", KLEINUNTERNEHMER: "§ 19 UStG",
+                  REVERSE_CHARGE: "Reverse Charge", INNERGEMEINSCHAFTLICH: "innergem." };
+
+  function feld(name, wert, klasse, breit) {
+    return '<div class="feld' + (breit ? " breit" : "") + '">' +
+      "<label>" + name + "</label>" +
+      '<input class="' + klasse + '" value="' + (wert || "").replace(/"/g, "&quot;") + '">' +
+      "</div>";
+  }
+
+  function auswahl(name, wert, klasse, optionen) {
+    var teile = [];
+    for (var k in optionen) {
+      teile.push('<option value="' + k + '"' + (k === wert ? " selected" : "") +
+                 ">" + optionen[k] + "</option>");
+    }
+    return '<div class="feld"><label>' + name + "</label>" +
+      '<select class="' + klasse + '">' + teile.join("") + "</select></div>";
+  }
+
+  // ---------- Adressbuch ----------
+  function zeichneKunden(liste) {
+    var w = texte[RB.sprache()];
+    el("kundenLeer").hidden = liste.length > 0;
+    el("kunden").innerHTML = liste.map(function (k, i) {
+      var a = k.anschrift || {};
+      return '<div class="eintrag" data-nr="' + i + '">' +
+        '<div class="eintrag-kopf"><strong>' +
+          (k.name || w.neuerKunde) + "</strong>" +
+          '<button type="button" class="weg k-weg" aria-label="' + w.entfernen + '">×</button>' +
+        "</div>" +
+        '<div class="felder">' +
+          feld(w.fName, k.name, "k-name", true) +
+          feld(w.fStrasse, a.strasse, "k-strasse", true) +
+          feld(w.fPlz, a.plz, "k-plz") +
+          feld(w.fOrt, a.ort, "k-ort") +
+          feld(w.fUst, k.ust_idnr, "k-ust") +
+          feld(w.fEmail, k.email, "k-email") +
+          feld(w.fLeitweg, k.leitweg_id, "k-leitweg", true) +
+        "</div></div>";
+    }).join("");
+  }
+
+  function leseKunden() {
+    return Array.prototype.map.call(
+      el("kunden").querySelectorAll(".eintrag"),
+      function (e) {
+        var v = function (k) { return e.querySelector("." + k).value.trim(); };
+        return {
+          name: v("k-name"),
+          anschrift: { strasse: v("k-strasse"), plz: v("k-plz"),
+                       ort: v("k-ort"), land: "DE" },
+          ust_idnr: v("k-ust"), email: v("k-email"), leitweg_id: v("k-leitweg")
+        };
+      }
+    );
+  }
+
+  // ---------- Artikel ----------
+  function zeichneArtikel(liste) {
+    var w = texte[RB.sprache()];
+    el("artikelLeer").hidden = liste.length > 0;
+    el("artikel").innerHTML = liste.map(function (a, i) {
+      return '<div class="eintrag" data-nr="' + i + '">' +
+        '<div class="eintrag-kopf"><strong>' +
+          (a.bezeichnung || w.neuerArtikel) + "</strong>" +
+          (a.artikelnummer ? '<span class="kennung">' + a.artikelnummer + "</span>" : "") +
+          '<button type="button" class="weg a-weg" aria-label="' + w.entfernen + '">×</button>' +
+        "</div>" +
+        '<div class="felder">' +
+          feld(w.fNummer, a.artikelnummer, "a-nummer") +
+          feld(w.fBezeichnung, a.bezeichnung, "a-bezeichnung", true) +
+          feld(w.fBeschreibung, a.beschreibung, "a-beschreibung", true) +
+          auswahl(w.fEinheit, a.einheit || "C62", "a-einheit", EINHEITEN) +
+          feld(w.fPreis, String(a.einzelpreis || "").replace(".", ","), "a-preis") +
+          auswahl(w.fSteuer, a.steuer || "UST_19", "a-steuer", STEUERN) +
+        "</div></div>";
+    }).join("");
+  }
+
+  function leseArtikel() {
+    return Array.prototype.map.call(
+      el("artikel").querySelectorAll(".eintrag"),
+      function (e) {
+        var v = function (k) { return e.querySelector("." + k).value.trim(); };
+        return {
+          artikelnummer: v("a-nummer"),
+          bezeichnung: v("a-bezeichnung"),
+          beschreibung: v("a-beschreibung"),
+          einheit: v("a-einheit"),
+          einzelpreis: v("a-preis").replace(",", "."),
+          steuer: v("a-steuer")
+        };
+      }
+    );
+  }
+
+  // ---------- Sichern ----------
+  async function sichern(pfad, daten, standFeld, zeichnen) {
+    var antwort = await RB.api(pfad, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(daten)
+    });
+    var stand = el(standFeld);
+    if (antwort.ok) {
+      stand.textContent = RB.t("gesichert");
+      zeichnen(antwort.daten || []);
+      setTimeout(function () { stand.textContent = ""; }, 2500);
+    } else {
+      stand.textContent = (antwort.daten && antwort.daten.detail &&
+        antwort.daten.detail.grund) || RB.t("fehlerAllgemein");
+    }
+  }
+
+  el("kundenSichern").addEventListener("click", function () {
+    sichern("/api/kunden", leseKunden(), "kundenStand", zeichneKunden);
+  });
+  el("artikelSichern").addEventListener("click", function () {
+    sichern("/api/artikel", leseArtikel(), "artikelStand", zeichneArtikel);
+  });
+
+  el("kundeNeu").addEventListener("click", function () {
+    zeichneKunden(leseKunden().concat([{ anschrift: {} }]));
+  });
+  el("artikelNeu").addEventListener("click", function () {
+    zeichneArtikel(leseArtikel().concat([{ einheit: "C62", steuer: "UST_19" }]));
+  });
+
+  el("kunden").addEventListener("click", function (e) {
+    if (!e.target.closest(".k-weg")) return;
+    var nr = Number(e.target.closest(".eintrag").dataset.nr);
+    zeichneKunden(leseKunden().filter(function (_, i) { return i !== nr; }));
+  });
+  el("artikel").addEventListener("click", function (e) {
+    if (!e.target.closest(".a-weg")) return;
+    var nr = Number(e.target.closest(".eintrag").dataset.nr);
+    zeichneArtikel(leseArtikel().filter(function (_, i) { return i !== nr; }));
+  });
+
+  // Sprachwechsel: neu zeichnen, eingegebene Werte behalten.
+  RB.beiSprachwechsel(function () {
+    zeichneKunden(leseKunden());
+    zeichneArtikel(leseArtikel());
+  });
+
+  RB.starte(texte);
+  RB.kopfKonto();
+
+  RB.api("/api/kunden").then(function (a) {
+    zeichneKunden((a.ok && a.daten) || []);
+  });
+  RB.api("/api/artikel").then(function (a) {
+    zeichneArtikel((a.ok && a.daten) || []);
+  });
+})();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
+</script>
+</body>
+</html>

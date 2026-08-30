@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — Ablage</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
+<style>
+  .nummer { font-family: "Spline Sans Mono", ui-monospace, monospace; font-weight: 600; }
+  td .zeile { gap: 8px; }
+  .suche { max-width: 280px; }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Ablage</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Alle erzeugten Belege dieses Kontos, samt PDF und XML. Die
+        Aufbewahrungspflicht bleibt bei Ihnen — laden Sie die Dateien
+        zusätzlich in Ihre eigene Sicherung.
+      </p>
+    </div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
+        <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/stamm" data-i18n="navStamm">Stammdaten</a>
+        <a href="/app/ablage" aria-current="page" data-i18n="navAblage">Ablage</a>
+        <a href="/app/konto" data-i18n="navKonto">Konto</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="karte">
+    <div class="zeile" style="justify-content: space-between; margin-bottom: 12px;">
+      <div class="feld suche" style="flex: 1;">
+        <label for="suche" data-i18n="suche">Suchen</label>
+        <input id="suche" type="search" data-i18n-platzhalter="suchePlatz" placeholder="Nummer oder Empfänger">
+      </div>
+      <a class="knopf" href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+    </div>
+    <div class="tabelle-rolle">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="spNummer">Nummer</th>
+            <th data-i18n="spTyp">Typ</th>
+            <th data-i18n="spDatum">Datum</th>
+            <th data-i18n="spEmpfaenger">Empfänger</th>
+            <th data-i18n="spDateien">Dateien</th>
+          </tr>
+        </thead>
+        <tbody id="koerper"></tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      titel: "Ablage",
+      untertitel: "Alle erzeugten Belege dieses Kontos, samt PDF und XML. Die Aufbewahrungspflicht bleibt bei Ihnen — laden Sie die Dateien zusätzlich in Ihre eigene Sicherung.",
+      suche: "Suchen",
+      suchePlatz: "Nummer oder Empfänger",
+      spNummer: "Nummer",
+      spTyp: "Typ",
+      spDatum: "Datum",
+      spEmpfaenger: "Empfänger",
+      spDateien: "Dateien",
+      keine: "Noch keine Rechnung erzeugt.",
+      keinTreffer: "Kein Beleg passt zur Suche.",
+      typRechnung: "Rechnung",
+      typGutschrift: "Gutschrift",
+      typKorrektur: "Korrektur"
+    },
+    en: {
+      titel: "Archive",
+      untertitel: "Every document produced on this account, with PDF and XML. The retention obligation stays with you — keep a copy in your own backup as well.",
+      suche: "Search",
+      suchePlatz: "Number or recipient",
+      spNummer: "Number",
+      spTyp: "Type",
+      spDatum: "Date",
+      spEmpfaenger: "Recipient",
+      spDateien: "Files",
+      keine: "No invoice produced yet.",
+      keinTreffer: "No document matches the search.",
+      typRechnung: "Invoice",
+      typGutschrift: "Credit note",
+      typKorrektur: "Correction"
+    }
+  };
+
+  function el(kennung) { return document.getElementById(kennung); }
+
+  var belege = [];
+
+  function typText(typ) {
+    if (typ === "GUTSCHRIFT") return RB.t("typGutschrift");
+    if (typ === "KORREKTUR") return RB.t("typKorrektur");
+    return RB.t("typRechnung");
+  }
+
+  function datumText(roh) {
+    if (!roh) return "—";
+    var teile = String(roh).split("-");
+    if (teile.length !== 3) return roh;
+    return RB.sprache() === "en" ? roh : teile[2] + "." + teile[1] + "." + teile[0];
+  }
+
+  function zeichne() {
+    var koerper = el("koerper");
+    var suchbegriff = el("suche").value.trim().toLowerCase();
+    koerper.textContent = "";
+
+    var gefiltert = belege.filter(function (beleg) {
+      if (!suchbegriff) return true;
+      return (beleg.nummer || "").toLowerCase().indexOf(suchbegriff) >= 0
+          || (beleg.empfaenger || "").toLowerCase().indexOf(suchbegriff) >= 0;
+    });
+
+    if (!gefiltert.length) {
+      var zeile = koerper.insertRow();
+      var zelle = zeile.insertCell();
+      zelle.colSpan = 5;
+      zelle.textContent = belege.length ? RB.t("keinTreffer") : RB.t("keine");
+      return;
+    }
+
+    gefiltert.forEach(function (beleg) {
+      var zeile = koerper.insertRow();
+      var nummer = zeile.insertCell();
+      nummer.className = "nummer";
+      nummer.textContent = beleg.nummer;
+      zeile.insertCell().textContent = typText(beleg.typ);
+      zeile.insertCell().textContent = datumText(beleg.rechnungsdatum);
+      zeile.insertCell().textContent = beleg.empfaenger || "—";
+
+      var dateien = zeile.insertCell();
+      var kasten = document.createElement("div");
+      kasten.className = "zeile";
+      var pdf = document.createElement("a");
+      pdf.className = "verweis";
+      pdf.href = beleg.pdf;
+      pdf.target = "_blank";
+      pdf.rel = "noopener";
+      pdf.textContent = "PDF";
+      var xml = document.createElement("a");
+      xml.className = "verweis";
+      xml.href = beleg.xml;
+      xml.textContent = "XML";
+      kasten.appendChild(pdf);
+      kasten.appendChild(xml);
+      dateien.appendChild(kasten);
+    });
+  }
+
+  async function lade() {
+    var person = await RB.kopfKonto();
+    if (!person) { window.location.href = "/anmelden"; return; }
+    var antwort = await RB.api("/api/ablage");
+    belege = (antwort.ok && antwort.daten) || [];
+    zeichne();
+  }
+
+  el("suche").addEventListener("input", zeichne);
+
+  RB.starte(texte);
+  RB.beiSprachwechsel(zeichne);
+  lade();
+})();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
+</script>
+</body>
+</html>

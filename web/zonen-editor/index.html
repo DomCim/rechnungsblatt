@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Schreibzone</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --grund: #f2efe8;
+    --flaeche: #fbf9f4;
+    --tinte: #1f1c18;
+    --tinte-2: #6b6459;
+    --linie: #ddd7cb;
+--feld: #ffffff;
+    --akzent: #b23c26;
+    --akzent-tinte: #8f2f1e;
+    --akzent-schleier: rgba(178, 60, 38, 0.07);
+    --scrim: rgba(22, 35, 46, 0.42);
+    --warn: #a3591b;
+    --schatten: 0 12px 40px rgba(22, 35, 46, 0.14);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --grund: #1f1c18;
+      --flaeche: #24211c;
+      --feld: #191612;
+      --tinte: #f3f0e9;
+      --tinte-2: #a49c8d;
+      --linie: #35302a;
+      --akzent: #e2694c;
+      --akzent-tinte: #e87a5e;
+      --akzent-schleier: rgba(217, 86, 58, 0.12);
+      --scrim: rgba(6, 12, 18, 0.55);
+      --warn: #d9954f;
+      --schatten: 0 12px 40px rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --grund: #1f1c18;
+    --flaeche: #24211c;
+    --feld: #191612;
+    --tinte: #f3f0e9;
+    --tinte-2: #a49c8d;
+    --linie: #35302a;
+    --akzent: #e2694c;
+    --akzent-tinte: #e87a5e;
+    --akzent-schleier: rgba(217, 86, 58, 0.12);
+    --scrim: rgba(6, 12, 18, 0.55);
+    --warn: #d9954f;
+    --schatten: 0 12px 40px rgba(0, 0, 0, 0.45);
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--grund);
+    color: var(--tinte);
+    font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .buehne {
+    max-width: 1060px;
+    margin: 0 auto;
+    padding: 28px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  header.kopf {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .marke {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--akzent);
+  }
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(24px, 4vw, 32px);
+    line-height: 1.15;
+    text-wrap: balance;
+    margin-top: 2px;
+  }
+  .untertitel {
+    color: var(--tinte-2);
+    max-width: 52ch;
+    margin-top: 6px;
+  }
+
+  .sprachen {
+    display: inline-flex;
+    border: 1px solid var(--linie);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--flaeche);
+    flex: none;
+  }
+  .sprachen button {
+    all: unset;
+    cursor: pointer;
+    padding: 6px 14px;
+    font: 600 12px/1 "Instrument Sans", system-ui, sans-serif;
+    letter-spacing: 0.06em;
+    color: var(--tinte-2);
+  }
+  .sprachen button[aria-pressed="true"] {
+    background: var(--akzent);
+    color: var(--flaeche);
+  }
+  .sprachen button:focus-visible { outline: 2px solid var(--akzent); outline-offset: -2px; }
+
+  .werkbank {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 26px;
+    align-items: start;
+  }
+  @media (max-width: 780px) {
+    .werkbank { grid-template-columns: 1fr; }
+  }
+
+  /* ---------- das Blatt ---------- */
+  .blatt-rahmen {
+    background:
+      radial-gradient(ellipse at 50% 0%, var(--akzent-schleier), transparent 65%),
+      var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    padding: clamp(14px, 3vw, 30px);
+    display: flex;
+    justify-content: center;
+  }
+  .blatt {
+    position: relative;
+    width: min(100%, 480px);
+    aspect-ratio: 210 / 297;
+    background: #fff;
+    box-shadow: var(--schatten);
+    user-select: none;
+    touch-action: none;
+  }
+  .blatt img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .platzhalter {
+    position: absolute;
+    inset: 0;
+    display: none;
+    background: #fff;
+  }
+  .platzhalter .ph-kopf {
+    position: absolute; inset: 0 0 auto 0; height: 15%;
+    background: linear-gradient(120deg, #1d5f74, #2c8ba3);
+  }
+  .platzhalter .ph-fuss {
+    position: absolute; inset: auto 0 0 0; height: 7.5%;
+    background: #1d5f74;
+  }
+  .platzhalter .ph-text {
+    position: absolute; top: 5%; left: 7%;
+    color: #fff; font-family: "Fraunces", Georgia, serif;
+    font-weight: 700; font-size: clamp(12px, 2.4vw, 19px);
+  }
+  .blatt.ohne-bild img { display: none; }
+  .blatt.ohne-bild .platzhalter { display: block; }
+
+  .zone-kopf, .zone-fuss {
+    position: absolute;
+    left: 0; right: 0;
+    background: var(--scrim);
+    pointer-events: none;
+  }
+  .zone-kopf { top: 0; }
+  .zone-fuss { bottom: 0; }
+
+  .zone-frei {
+    position: absolute;
+    left: 0; right: 0;
+    background: var(--akzent-schleier);
+    outline: 1.5px dashed color-mix(in srgb, var(--akzent) 55%, transparent);
+    outline-offset: -1.5px;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .zone-frei .zonen-etikett {
+    font: 600 11px/1 "Spline Sans Mono", ui-monospace, monospace;
+    letter-spacing: 0.08em;
+    color: var(--akzent-tinte);
+    background: color-mix(in srgb, var(--flaeche) 88%, transparent);
+    border: 1px solid color-mix(in srgb, var(--akzent) 30%, transparent);
+    padding: 5px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .griff {
+    position: absolute;
+    left: 0; right: 0;
+    height: 28px;
+    margin-top: -14px;
+    cursor: grab;
+    display: flex;
+    align-items: center;
+  }
+  .griff:active { cursor: grabbing; }
+  .griff::before {
+    content: "";
+    position: absolute;
+    left: 0; right: 0;
+    top: 50%;
+    height: 2px;
+    margin-top: -1px;
+    background: var(--akzent);
+  }
+  .griff .marke-mm {
+    position: relative;
+    margin-left: auto;
+    margin-right: -14px;
+    background: var(--akzent);
+    color: #fff;
+    font: 600 11px/1 "Spline Sans Mono", ui-monospace, monospace;
+    padding: 5px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .griff .marke-mm::after {  /* Griffrillen */
+    content: "";
+    display: inline-block;
+    width: 10px; height: 8px;
+    margin-left: 7px;
+    background:
+      linear-gradient(#fff 0 1.5px, transparent 1.5px 3.25px) 0 0 / 100% 3.25px repeat-y;
+    opacity: 0.85;
+  }
+  .griff:focus-visible { outline: none; }
+  .griff:focus-visible::before {
+    height: 4px; margin-top: -2px;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--akzent) 35%, transparent);
+  }
+
+  /* ---------- Steuerleiste ---------- */
+  .leiste { display: flex; flex-direction: column; gap: 14px; }
+  .karte {
+    background: var(--flaeche);
+    border: 1px solid var(--linie);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .karte .etikett {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--tinte-2);
+  }
+  .wert-zeile {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .wert-zeile input {
+    width: 76px;
+    background: var(--grund);
+    border: 1px solid var(--linie);
+    border-radius: 8px;
+    color: var(--tinte);
+    font: 600 18px/1.2 "Spline Sans Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    padding: 8px 10px;
+    text-align: right;
+  }
+  .wert-zeile input:focus-visible { outline: 2px solid var(--akzent); outline-offset: -1px; }
+  .wert-zeile .einheit { color: var(--tinte-2); font-weight: 500; }
+  .wert-zeile .stufen { margin-left: auto; display: flex; gap: 6px; }
+  .stufen button {
+    all: unset;
+    cursor: pointer;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border: 1px solid var(--linie);
+    border-radius: 8px;
+    color: var(--tinte);
+    font-weight: 600;
+  }
+  .stufen button:hover { border-color: var(--akzent); color: var(--akzent); }
+  .stufen button:focus-visible { outline: 2px solid var(--akzent); outline-offset: -1px; }
+  .karte .hilfe { color: var(--tinte-2); font-size: 13px; margin-top: 8px; }
+
+  .karte.frei-karte { border-left: 3px solid var(--akzent); }
+  .frei-wert {
+    font: 600 26px/1.1 "Spline Sans Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--akzent-tinte);
+    margin-top: 8px;
+  }
+  .warnung {
+    display: none;
+    color: var(--warn);
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
+  }
+  .warnung.aktiv { display: block; }
+
+  .uebernehmen {
+    all: unset;
+    cursor: pointer;
+    text-align: center;
+    background: var(--akzent);
+    color: #fff;
+    font-weight: 600;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    transition: filter 120ms ease;
+  }
+  .uebernehmen:hover { filter: brightness(1.08); }
+  .uebernehmen:focus-visible { outline: 3px solid color-mix(in srgb, var(--akzent) 40%, transparent); }
+  .uebernehmen[disabled] { opacity: 0.45; cursor: not-allowed; }
+
+  .ergebnis {
+    display: none;
+    background: var(--grund);
+    border: 1px dashed var(--linie);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font: 500 12.5px/1.6 "Spline Sans Mono", ui-monospace, monospace;
+    color: var(--tinte-2);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .ergebnis.aktiv { display: block; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="buehne">
+  <header class="kopf">
+    <div>
+      <div class="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Schreibzone festlegen</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Ziehen Sie die beiden Linien auf Ihrem Briefpapier: Wo endet der Kopf,
+        wo beginnt der Fuß? Dazwischen wird Ihre Rechnung gedruckt.
+      </p>
+    </div>
+    <div class="sprachen" role="group" aria-label="Sprache / Language">
+      <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+      <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <div class="werkbank">
+    <div class="blatt-rahmen">
+      <div class="blatt" id="blatt">
+        <img id="bogen" src="briefpapier.png" alt="" draggable="false">
+        <div class="platzhalter" aria-hidden="true">
+          <div class="ph-kopf"></div>
+          <div class="ph-text">Muster &amp; Partner GmbH</div>
+          <div class="ph-fuss"></div>
+        </div>
+        <div class="zone-kopf" id="zoneKopf"></div>
+        <div class="zone-frei" id="zoneFrei">
+          <span class="zonen-etikett" id="zonenEtikett"></span>
+        </div>
+        <div class="zone-fuss" id="zoneFuss"></div>
+        <div class="griff" id="griffKopf" role="slider" tabindex="0"
+             aria-valuemin="0" aria-orientation="vertical">
+          <span class="marke-mm" id="markeKopf"></span>
+        </div>
+        <div class="griff" id="griffFuss" role="slider" tabindex="0"
+             aria-valuemin="0" aria-orientation="vertical">
+          <span class="marke-mm" id="markeFuss"></span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="leiste">
+      <div class="karte">
+        <div class="etikett" data-i18n="kopfEtikett">Briefkopf endet</div>
+        <div class="wert-zeile">
+          <input id="eingabeKopf" type="number" min="0" step="1" inputmode="numeric">
+          <span class="einheit" data-i18n="vomOberenRand">mm von oben</span>
+          <span class="stufen">
+            <button type="button" data-ziel="kopf" data-delta="-1" aria-label="−1 mm">−</button>
+            <button type="button" data-ziel="kopf" data-delta="1" aria-label="+1 mm">+</button>
+          </span>
+        </div>
+        <p class="hilfe" data-i18n="kopfHilfe">Alles oberhalb bleibt frei — Ihr Logo, Ihre Kopfgestaltung.</p>
+      </div>
+
+      <div class="karte">
+        <div class="etikett" data-i18n="fussEtikett">Fußzeile beginnt</div>
+        <div class="wert-zeile">
+          <input id="eingabeFuss" type="number" min="0" step="1" inputmode="numeric">
+          <span class="einheit" data-i18n="vomUnterenRand">mm von unten</span>
+          <span class="stufen">
+            <button type="button" data-ziel="fuss" data-delta="-1" aria-label="−1 mm">−</button>
+            <button type="button" data-ziel="fuss" data-delta="1" aria-label="+1 mm">+</button>
+          </span>
+        </div>
+        <p class="hilfe" data-i18n="fussHilfe">Alles unterhalb bleibt frei — Bankverbindung, Pflichtangaben.</p>
+      </div>
+
+      <div class="karte frei-karte">
+        <div class="etikett" data-i18n="freiEtikett">Nutzbare Höhe</div>
+        <div class="frei-wert" id="freiWert"></div>
+        <p class="warnung" id="warnung" data-i18n="warnungMin">
+          Mindestens 100 mm Schreibzone nötig — sonst passt keine Rechnung aufs Blatt.
+        </p>
+      </div>
+
+      <button type="button" class="uebernehmen" id="uebernehmen" data-i18n="uebernehmen">
+        Schreibzone übernehmen
+      </button>
+      <div class="ergebnis" id="ergebnis" aria-live="polite"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var A4_MM = 297;
+  var MIN_FREI_MM = 100;  // Schreibzone.MINDESTHOEHE_MM im Kern
+
+  var texte = {
+    de: {
+      titel: "Schreibzone festlegen",
+      untertitel: "Ziehen Sie die beiden Linien auf Ihrem Briefpapier: Wo endet der Kopf, wo beginnt der Fuß? Dazwischen wird Ihre Rechnung gedruckt.",
+      kopfEtikett: "Briefkopf endet",
+      fussEtikett: "Fußzeile beginnt",
+      vomOberenRand: "mm von oben",
+      vomUnterenRand: "mm von unten",
+      kopfHilfe: "Alles oberhalb bleibt frei — Ihr Logo, Ihre Kopfgestaltung.",
+      fussHilfe: "Alles unterhalb bleibt frei — Bankverbindung, Pflichtangaben.",
+      freiEtikett: "Nutzbare Höhe",
+      warnungMin: "Mindestens 100 mm Schreibzone nötig — sonst passt keine Rechnung aufs Blatt.",
+      uebernehmen: "Schreibzone übernehmen",
+      uebernommen: "Übernommen ✓",
+      zone: "Schreibzone",
+      griffKopf: "Ende des Briefkopfs, in Millimetern vom oberen Rand",
+      griffFuss: "Beginn der Fußzeile, in Millimetern vom unteren Rand"
+    },
+    en: {
+      titel: "Set the writing zone",
+      untertitel: "Drag the two lines on your letterhead: where does the header end, where does the footer begin? Your invoice is printed in between.",
+      kopfEtikett: "Header ends",
+      fussEtikett: "Footer begins",
+      vomOberenRand: "mm from top",
+      vomUnterenRand: "mm from bottom",
+      kopfHilfe: "Everything above stays untouched — your logo, your header design.",
+      fussHilfe: "Everything below stays untouched — bank details, legal footer.",
+      freiEtikett: "Usable height",
+      warnungMin: "At least 100 mm of writing zone required — otherwise no invoice fits on the page.",
+      uebernehmen: "Apply writing zone",
+      uebernommen: "Applied ✓",
+      zone: "Writing zone",
+      griffKopf: "End of the header, in millimetres from the top edge",
+      griffFuss: "Start of the footer, in millimetres from the bottom edge"
+    }
+  };
+
+  var zustand = { kopf: 52, fuss: 25, sprache: "de" };
+  try {
+    var gespeichert = localStorage.getItem("rechnungsblatt.sprache");
+    if (gespeichert === "en" || gespeichert === "de") zustand.sprache = gespeichert;
+  } catch (fehler) { /* Speicher nicht verfügbar — Standard bleibt */ }
+
+  var el = function (id) { return document.getElementById(id); };
+  var blatt = el("blatt");
+
+  // Einbettung: ?bild= liefert die Bogen-Vorschau, ?kopf=/&fuss= den Startwert
+  var parameter = new URLSearchParams(location.search);
+  if (parameter.get("bild")) el("bogen").src = parameter.get("bild");
+  if (!isNaN(parseFloat(parameter.get("kopf")))) zustand.kopf = parseFloat(parameter.get("kopf"));
+  if (!isNaN(parseFloat(parameter.get("fuss")))) zustand.fuss = parseFloat(parameter.get("fuss"));
+
+  el("bogen").addEventListener("error", function () {
+    blatt.classList.add("ohne-bild");
+  });
+
+  function t(schluessel) { return texte[zustand.sprache][schluessel]; }
+
+  function klemme() {
+    zustand.kopf = Math.max(0, Math.round(zustand.kopf));
+    zustand.fuss = Math.max(0, Math.round(zustand.fuss));
+    var maxKopf = A4_MM - zustand.fuss;
+    var maxFuss = A4_MM - zustand.kopf;
+    if (zustand.kopf > maxKopf) zustand.kopf = maxKopf;
+    if (zustand.fuss > maxFuss) zustand.fuss = maxFuss;
+  }
+
+  function frei() { return A4_MM - zustand.kopf - zustand.fuss; }
+
+  function zeichne() {
+    klemme();
+    var kopfProzent = (zustand.kopf / A4_MM) * 100;
+    var fussProzent = (zustand.fuss / A4_MM) * 100;
+
+    el("zoneKopf").style.height = kopfProzent + "%";
+    el("zoneFuss").style.height = fussProzent + "%";
+    var zoneFrei = el("zoneFrei");
+    zoneFrei.style.top = kopfProzent + "%";
+    zoneFrei.style.bottom = fussProzent + "%";
+
+    el("griffKopf").style.top = kopfProzent + "%";
+    el("griffFuss").style.top = (100 - fussProzent) + "%";
+    el("markeKopf").textContent = zustand.kopf + " mm";
+    el("markeFuss").textContent = zustand.fuss + " mm";
+
+    el("eingabeKopf").value = zustand.kopf;
+    el("eingabeFuss").value = zustand.fuss;
+    el("zonenEtikett").textContent = t("zone") + " · " + frei() + " mm";
+    el("freiWert").textContent = frei() + " mm";
+
+    var zuKlein = frei() < MIN_FREI_MM;
+    el("warnung").classList.toggle("aktiv", zuKlein);
+    el("uebernehmen").disabled = zuKlein;
+    el("ergebnis").classList.remove("aktiv");
+
+    var griffKopf = el("griffKopf");
+    griffKopf.setAttribute("aria-valuenow", zustand.kopf);
+    griffKopf.setAttribute("aria-valuemax", A4_MM - zustand.fuss);
+    griffKopf.setAttribute("aria-label", t("griffKopf"));
+    var griffFuss = el("griffFuss");
+    griffFuss.setAttribute("aria-valuenow", zustand.fuss);
+    griffFuss.setAttribute("aria-valuemax", A4_MM - zustand.kopf);
+    griffFuss.setAttribute("aria-label", t("griffFuss"));
+  }
+
+  function uebersetze() {
+    document.documentElement.lang = zustand.sprache;
+    var elemente = document.querySelectorAll("[data-i18n]");
+    for (var i = 0; i < elemente.length; i++) {
+      elemente[i].textContent = t(elemente[i].getAttribute("data-i18n"));
+    }
+    var knoepfe = document.querySelectorAll(".sprachen button");
+    for (var k = 0; k < knoepfe.length; k++) {
+      knoepfe[k].setAttribute(
+        "aria-pressed",
+        String(knoepfe[k].getAttribute("data-sprache") === zustand.sprache)
+      );
+    }
+    zeichne();
+  }
+
+  document.querySelector(".sprachen").addEventListener("click", function (ereignis) {
+    var knopf = ereignis.target.closest("button[data-sprache]");
+    if (!knopf) return;
+    zustand.sprache = knopf.getAttribute("data-sprache");
+    try { localStorage.setItem("rechnungsblatt.sprache", zustand.sprache); }
+    catch (fehler) { /* Speicher nicht verfügbar */ }
+    uebersetze();
+  });
+
+  // ---------- Ziehen ----------
+  function mmAusZeiger(ereignis) {
+    var kasten = blatt.getBoundingClientRect();
+    var anteil = (ereignis.clientY - kasten.top) / kasten.height;
+    return anteil * A4_MM;
+  }
+
+  function machZiehbar(griff, setze) {
+    griff.addEventListener("pointerdown", function (start) {
+      start.preventDefault();
+      griff.setPointerCapture(start.pointerId);
+      function beiBewegung(ereignis) { setze(mmAusZeiger(ereignis)); zeichne(); }
+      function beiEnde() {
+        griff.removeEventListener("pointermove", beiBewegung);
+        griff.removeEventListener("pointerup", beiEnde);
+        griff.removeEventListener("pointercancel", beiEnde);
+      }
+      griff.addEventListener("pointermove", beiBewegung);
+      griff.addEventListener("pointerup", beiEnde);
+      griff.addEventListener("pointercancel", beiEnde);
+    });
+  }
+  machZiehbar(el("griffKopf"), function (mm) { zustand.kopf = mm; });
+  machZiehbar(el("griffFuss"), function (mm) { zustand.fuss = A4_MM - mm; });
+
+  function tastatur(griff, richtung, ziel) {
+    griff.addEventListener("keydown", function (ereignis) {
+      var schritt = ereignis.shiftKey ? 10 : 1;
+      var delta = 0;
+      if (ereignis.key === "ArrowUp") delta = -schritt * richtung;
+      else if (ereignis.key === "ArrowDown") delta = schritt * richtung;
+      else return;
+      ereignis.preventDefault();
+      zustand[ziel] += delta;
+      zeichne();
+    });
+  }
+  tastatur(el("griffKopf"), 1, "kopf");   // Pfeil runter = Kopf wächst
+  tastatur(el("griffFuss"), -1, "fuss");  // Pfeil runter = Fuß schrumpft
+
+  // ---------- Leiste ----------
+  el("eingabeKopf").addEventListener("change", function () {
+    zustand.kopf = Number(this.value) || 0; zeichne();
+  });
+  el("eingabeFuss").addEventListener("change", function () {
+    zustand.fuss = Number(this.value) || 0; zeichne();
+  });
+  document.querySelector(".leiste").addEventListener("click", function (ereignis) {
+    var knopf = ereignis.target.closest("button[data-delta]");
+    if (!knopf) return;
+    zustand[knopf.getAttribute("data-ziel")] += Number(knopf.getAttribute("data-delta"));
+    zeichne();
+  });
+
+  el("uebernehmen").addEventListener("click", function () {
+    var zone = { kopf_ende_mm: zustand.kopf, fuss_beginn_mm: zustand.fuss };
+    var ausgabe = el("ergebnis");
+    ausgabe.textContent = JSON.stringify(zone, null, 2);
+    ausgabe.classList.add("aktiv");
+    this.textContent = t("uebernommen");
+    var knopf = this;
+    setTimeout(function () { knopf.textContent = t("uebernehmen"); }, 1600);
+    // Einbettung: die Web-Schicht lauscht auf Ereignis bzw. Nachricht.
+    blatt.dispatchEvent(new CustomEvent("schreibzone", { detail: zone, bubbles: true }));
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        { typ: "schreibzone", kopf_ende_mm: zone.kopf_ende_mm, fuss_beginn_mm: zone.fuss_beginn_mm },
+        "*"
+      );
+    }
+  });
+
+  uebersetze();
+
+  // --- Höhe an die Einbettung melden --------------------------------
+  // Sonst braucht der iframe eine feste Höhe und scrollt in sich —
+  // zwei Scrollebenen übereinander sind auf dem Telefon unbrauchbar.
+  if (window.parent !== window) {
+    var zuletzt = 0;
+    function hoeheMelden() {
+      var h = Math.ceil(document.documentElement.scrollHeight);
+      if (Math.abs(h - zuletzt) < 4) return;   // Zappeln vermeiden
+      zuletzt = h;
+      window.parent.postMessage({ typ: "editorHoehe", hoehe: h }, "*");
+    }
+    hoeheMelden();
+    window.addEventListener("load", hoeheMelden);
+    window.addEventListener("resize", hoeheMelden);
+    if (window.ResizeObserver) {
+      new ResizeObserver(hoeheMelden).observe(document.documentElement);
+    }
+  }
+})();
+</script>
+</body>
+</html>
