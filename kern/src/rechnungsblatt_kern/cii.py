@@ -112,6 +112,9 @@ def _positionselement(transaktion: ET.Element, nummer: int, position) -> None:
     _el(zeilendokument, "ram", "LineID", str(nummer))
 
     produkt = _el(zeile, "ram", "SpecifiedTradeProduct")
+    # Reihenfolge nach CII-Schema: SellerAssignedID vor Name vor Description.
+    if position.artikelnummer:
+        _el(produkt, "ram", "SellerAssignedID", position.artikelnummer)
     _el(produkt, "ram", "Name", position.bezeichnung)
     if position.beschreibung:
         _el(produkt, "ram", "Description", position.beschreibung)
@@ -241,6 +244,14 @@ def _abrechnung(
             nachlass = _el(abrechnung, "ram", "SpecifiedTradeAllowanceCharge")
             kennzeichen = _el(nachlass, "ram", "ChargeIndicator")
             _el(kennzeichen, "udt", "Indicator", "false")
+            if rechnung.rabatt_prozent is not None:
+                # BT-138 vor BT-92 (ActualAmount) — Schemareihenfolge.
+                _el(
+                    nachlass,
+                    "ram",
+                    "CalculationPercent",
+                    _betrag(rechnung.rabatt_prozent),
+                )
             _el(nachlass, "ram", "ActualAmount", _betrag(korb.rabatt))
             _el(nachlass, "ram", "Reason", rechnung.rabatt_grund)
             korbsteuer = _el(nachlass, "ram", "CategoryTradeTax")

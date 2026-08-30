@@ -26,6 +26,28 @@ def zeilensumme(position: Position) -> Decimal:
     return runden(position.menge * position.einzelpreis)
 
 
+def zeilensumme_gesamt(rechnung: Rechnung) -> Decimal:
+    """Netto aller Positionen vor Dokumentrabatt — die Basis für Prozentrabatt."""
+    return sum(
+        (zeilensumme(position) for position in rechnung.positionen), Decimal("0.00")
+    )
+
+
+def rabatt_aus_prozent(prozent: Decimal, zeilensumme_netto: Decimal) -> Decimal:
+    """Rechnet einen Prozentrabatt in einen Betrag um.
+
+    Maßgeblich für alle weiteren Berechnungen ist immer der gerundete Betrag;
+    der Prozentsatz wandert nur als Angabe (BT-138) in den Datensatz. So bleibt
+    die Verteilung auf die Steuerkörbe exakt, auch wenn der Prozentsatz auf
+    einen krummen Betrag führt.
+    """
+    if prozent < 0:
+        raise ValueError("Rabattsatz darf nicht negativ sein.")
+    if prozent > 100:
+        raise ValueError("Rabattsatz darf 100 % nicht übersteigen.")
+    return runden(zeilensumme_netto * prozent / Decimal("100"))
+
+
 @dataclass(frozen=True)
 class Steuerkorb:
     """Summen einer Steuerkategorie."""
@@ -64,7 +86,14 @@ def berechne_summen(rechnung: Rechnung) -> Summen:
         )
 
     gesamt_zeilen = sum(zeilen_je_kategorie.values(), Decimal("0"))
-    rabatt = runden(rechnung.rabatt_betrag) if rechnung.rabatt_betrag else Decimal("0.00")
+    # Prozentrabatt wird hier einmal in einen Betrag verwandelt; ab dann rechnet
+    # alles Weitere nur noch mit dem Betrag (siehe rabatt_aus_prozent).
+    if rechnung.rabatt_betrag is not None:
+        rabatt = runden(rechnung.rabatt_betrag)
+    elif rechnung.rabatt_prozent is not None:
+        rabatt = rabatt_aus_prozent(rechnung.rabatt_prozent, gesamt_zeilen)
+    else:
+        rabatt = Decimal("0.00")
     if rabatt < 0:
         raise ValueError("Rabatt darf nicht negativ sein.")
     if rabatt > gesamt_zeilen:

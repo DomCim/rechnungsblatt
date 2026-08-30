@@ -1,0 +1,47 @@
+{
+  "name": "Rechnungsblatt",
+  "short_name": "Rechnungsblatt",
+  "description": "E-Rechnungen auf dem eigenen Briefpapier schreiben.",
+  "lang": "de",
+  "dir": "ltr",
+  "start_url": "/app/rechnung",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1f1c18",
+  "theme_color": "#1f1c18",
+  "icons": [
+    {
+      "src": "/seiten/symbole/symbol-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/seiten/symbole/symbol-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/seiten/symbole/symbol-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Neue Rechnung",
+      "short_name": "Rechnung",
+      "url": "/app/rechnung",
+      "description": "Direkt eine neue Rechnung schreiben."
+    },
+    {
+      "name": "Ablage",
+      "short_name": "Ablage",
+      "url": "/app/ablage",
+      "description": "Erzeugte Belege ansehen."
+    }
+  ]
+}

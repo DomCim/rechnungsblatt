@@ -2,20 +2,35 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Einrichtung</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
 <style>
   .editor-rahmen {
     width: 100%;
     border: none;
     border-radius: var(--radius);
+    /* Anfangswert; die echte Höhe meldet der Editor selbst, damit er
+       nicht in sich scrollt. */
     height: 880px;
     background: transparent;
+    transition: height 140ms ease;
   }
   @media (max-width: 780px) { .editor-rahmen { height: 1180px; } }
+  @media (prefers-reduced-motion: reduce) { .editor-rahmen { transition: none; } }
   .upload-zone {
+    /* label ist von Haus aus inline: ohne block fällt die Fläche auf die
+       Textbreite zusammen und der Rahmen läuft in den Absatz darunter. */
+    display: block;
     border: 2px dashed var(--linie);
     border-radius: var(--radius);
     padding: 26px 20px;
@@ -70,6 +85,43 @@
     box-shadow: var(--schatten);
   }
   .vorschau-blatt.laedt { opacity: 0.45; }
+  /* Die Miniatur ist zu klein, um Schrift und Layout zu beurteilen —
+     ein Klick zeigt dieselbe Musterrechnung in voller Groesse. */
+  .vorschau-blatt { cursor: zoom-in; }
+
+  .leuchtkasten {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    background: rgba(0, 0, 0, 0.72);
+    cursor: zoom-out;
+  }
+  .leuchtkasten[hidden] { display: none; }
+  .leuchtkasten img {
+    max-width: min(100%, calc((100vh - 96px) * 210 / 297));
+    max-height: calc(100vh - 96px);
+    background: #fff;
+    border-radius: var(--radius);
+    box-shadow: var(--schatten);
+    cursor: default;
+  }
+  .leuchtkasten .schliessen {
+    /* Sichtbarer Ausweg neben Escape und Hintergrundklick. */
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font: 500 13px/1 "Instrument Sans", system-ui, sans-serif;
+    padding: 8px 14px;
+  }
+  .leuchtkasten .schliessen:hover { background: rgba(255, 255, 255, 0.14); }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -88,6 +140,7 @@
       <nav class="reiter">
         <a href="/app/einrichtung" aria-current="page" data-i18n="navEinrichtung">Einrichtung</a>
         <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
+        <a href="/app/stamm" data-i18n="navStamm">Stammdaten</a>
         <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
         <a href="/app/konto" data-i18n="navKonto">Konto</a>
       </nav>
@@ -223,18 +276,6 @@
             Platzhalter: {NUMMER}, {DATUM}, {KUNDE}. Leer = kein Verwendungszweck.
           </span>
         </div>
-        <div class="feld breit">
-          <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
-            <input id="kleinunternehmer" name="kleinunternehmer" type="checkbox" style="width:auto;">
-            <span data-i18n="kleinunternehmer">Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)</span>
-          </label>
-        </div>
-        <div class="feld breit">
-          <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
-            <input id="girocode" name="girocode" type="checkbox" checked style="width:auto;">
-            <span data-i18n="girocode">GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)</span>
-          </label>
-        </div>
       </div>
       <div class="zeile" style="margin-top:16px;">
         <button type="submit" class="knopf" id="stammdatenKnopf" data-i18n="speichern">Speichern</button>
@@ -274,27 +315,66 @@
             <label><input type="radio" name="gLayout" value="klassisch" checked><strong data-i18n="layoutKlassisch">Klassisch</strong><span data-i18n="layoutKlassischText">Belegdaten rechts, klare Linien</span></label>
             <label><input type="radio" name="gLayout" value="kompakt"><strong data-i18n="layoutKompakt">Kompakt</strong><span data-i18n="layoutKompaktText">Enge Abstände — viele Positionen</span></label>
             <label><input type="radio" name="gLayout" value="modern"><strong data-i18n="layoutModern">Modern</strong><span data-i18n="layoutModernText">Großer Titel, mehr Weißraum</span></label>
+            <label><input type="radio" name="gLayout" value="zebra"><strong data-i18n="layoutZebra">Zebra</strong><span data-i18n="layoutZebraText">Getönte Wechselzeilen — lange Listen</span></label>
+            <label><input type="radio" name="gLayout" value="luftig"><strong data-i18n="layoutLuftig">Luftig</strong><span data-i18n="layoutLuftigText">Ohne Linien, ruhig und zurückhaltend</span></label>
+            <label><input type="radio" name="gLayout" value="doppelt"><strong data-i18n="layoutDoppelt">Kompakt-Doppelt</strong><span data-i18n="layoutDoppeltText">Belegdaten zweispaltig, sehr eng</span></label>
           </div>
         </div>
+        <label class="schalter" style="margin-bottom:8px;">
+          <input id="gAkzent" type="checkbox"><span class="hebel"></span>
+          <span data-i18n="akzentAn">Akzentfarbe statt schwarzer Linien</span>
+        </label>
+        <!-- Nur sichtbar, wenn der Akzent eingeschaltet ist. -->
+        <div class="feld" id="gFarbeFeld" hidden style="max-width:260px;margin-bottom:12px;">
+          <label for="gFarbe" data-i18n="akzentfarbe">Farbe</label>
+          <div class="zeile" style="gap:8px;flex-wrap:nowrap;">
+            <input id="gFarbe" type="color" value="#136f83"
+                   style="width:52px;height:38px;padding:2px;cursor:pointer;">
+            <input id="gFarbeText" inputmode="text" spellcheck="false"
+                   placeholder="#136f83" style="max-width:110px;">
+          </div>
+          <span class="fehler" id="gFarbeFehler"></span>
+        </div>
         <div class="feld" id="gZeileFeld">
-          <label class="zeile" style="text-transform:none;letter-spacing:0;font-size:14px;font-weight:500;color:var(--tinte);">
-            <input id="gZeile" type="checkbox" style="width:auto;">
+          <label class="schalter">
+            <input id="gZeile" type="checkbox"><span class="hebel"></span>
             <span data-i18n="belegdatenZeile">Belegdaten als Zeile unter dem Titel (statt Block rechts)</span>
           </label>
         </div>
+        <label class="schalter" style="margin-bottom:10px;">
+          <input id="artikelnummern" name="artikelnummern" type="checkbox"><span class="hebel"></span>
+          <span data-i18n="artikelnummern">Artikelnummern verwenden (Spalte im Rechnungsformular und auf dem Beleg)</span>
+        </label>
+        <label class="schalter" style="margin-bottom:10px;">
+          <input id="kleinunternehmer" name="kleinunternehmer" type="checkbox"><span class="hebel"></span>
+          <span data-i18n="kleinunternehmer">Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)</span>
+        </label>
+        <label class="schalter" style="margin-bottom:16px;">
+          <input id="girocode" name="girocode" type="checkbox" checked><span class="hebel"></span>
+          <span data-i18n="girocode">GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)</span>
+        </label>
         <div class="zeile">
           <button type="button" class="knopf" id="gSpeichern" data-i18n="speichern">Speichern</button>
           <span id="gMeldung" class="beschreibung" style="margin:0;"></span>
         </div>
       </div>
       <div>
-        <img class="vorschau-blatt" id="gVorschau" alt="" src="">
+        <img class="vorschau-blatt" id="gVorschau" alt="" src=""
+             role="button" tabindex="0" title="Zum Vergrößern klicken">
         <p class="beschreibung" style="margin-top:8px;" data-i18n="vorschauHinweis">
           Musterrechnung — Ihre echten Daten erscheinen beim Erzeugen.
         </p>
       </div>
     </div>
   </section>
+
+<!-- Vorschau in voller Groesse (Schritt 4) -->
+<div class="leuchtkasten" id="vorschauKasten" hidden role="dialog" aria-modal="true"
+     aria-label="Vorschau in voller Größe">
+  <img id="vorschauGross" alt="" src="">
+  <button type="button" class="schliessen" id="vorschauZu"
+          data-i18n="schliessen">Schließen</button>
+</div>
 
   <section class="hinweis gut" id="bereitHinweis" hidden>
     <span data-i18n="bereit">Alles eingerichtet — Sie können jetzt Rechnungen schreiben:</span>
@@ -305,6 +385,11 @@
 <script src="/seiten/werkzeuge.js"></script>
 <script>
 (function () {
+  // Erst speichern, wenn Schritt 3 schon einmal gesichert wurde: sonst legte
+  // ein Klick hier eine halbleere stammdaten.json an, und /api/status meldete
+  // die Einrichtung als fertig, obwohl die Firmierung noch fehlt.
+  var stammdatenGesichert = false;
+
   "use strict";
   var texte = {
     de: {
@@ -338,6 +423,7 @@
       kontaktEmail: "E-Mail",
       kontaktTelefon: "Telefon",
       kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      artikelnummern: "Artikelnummern verwenden (Spalte im Rechnungsformular und auf dem Beleg)",
       girocode: "GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)",
       nummernMuster: "Rechnungsnummern-Muster",
       nummernMusterHilfe: "{JJJJ}/{JJ} = Jahr, {NNNN} = fortlaufender Zähler (Stellenzahl = Anzahl N). Beispiel: RE-{JJJJ}-{NNNN} → RE-2026-0001",
@@ -352,8 +438,17 @@
       layoutKlassisch: "Klassisch", layoutKlassischText: "Belegdaten rechts, klare Linien",
       layoutKompakt: "Kompakt", layoutKompaktText: "Enge Abstände — viele Positionen",
       layoutModern: "Modern", layoutModernText: "Großer Titel, mehr Weißraum",
+      layoutZebra: "Zebra", layoutZebraText: "Getönte Wechselzeilen — lange Listen",
+      layoutLuftig: "Luftig", layoutLuftigText: "Ohne Linien, ruhig und zurückhaltend",
+      layoutDoppelt: "Kompakt-Doppelt", layoutDoppeltText: "Belegdaten zweispaltig, sehr eng",
+      akzentAn: "Akzentfarbe statt schwarzer Linien",
+      akzentfarbe: "Farbe",
+      farbeUngueltig: "Bitte eine Farbe wie #136f83 angeben.",
       belegdatenZeile: "Belegdaten als Zeile unter dem Titel (statt Block rechts)",
       vorschauHinweis: "Musterrechnung — Ihre echten Daten erscheinen beim Erzeugen.",
+      vorschauVergroessern: "Zum Vergrößern klicken",
+      vorschauVoll: "Vorschau in voller Größe",
+      schliessen: "Schließen",
       ampelStandard: "Standard",
       ampelAngepasst: "angepasst",
       bereit: "Alles eingerichtet — Sie können jetzt Rechnungen schreiben:"
@@ -389,6 +484,7 @@
       kontaktEmail: "E-mail",
       kontaktTelefon: "Phone",
       kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      artikelnummern: "Use article numbers (column in the invoice form and on the document)",
       girocode: "Print GiroCode on invoices (QR code — customer scans and pays with prefilled details)",
       nummernMuster: "Invoice number pattern",
       nummernMusterHilfe: "{JJJJ}/{JJ} = year, {NNNN} = sequential counter (digits = number of Ns). Example: RE-{JJJJ}-{NNNN} → RE-2026-0001",
@@ -403,8 +499,17 @@
       layoutKlassisch: "Classic", layoutKlassischText: "Details on the right, clear rules",
       layoutKompakt: "Compact", layoutKompaktText: "Tight spacing — many line items",
       layoutModern: "Modern", layoutModernText: "Large title, more whitespace",
+      layoutZebra: "Zebra", layoutZebraText: "Shaded alternating rows — long lists",
+      layoutLuftig: "Airy", layoutLuftigText: "No rules, calm and restrained",
+      layoutDoppelt: "Compact-Double", layoutDoppeltText: "Document data in two columns, very tight",
+      akzentAn: "Accent colour instead of black rules",
+      akzentfarbe: "Colour",
+      farbeUngueltig: "Please enter a colour like #136f83.",
       belegdatenZeile: "Invoice details as a line below the title (instead of a block on the right)",
       vorschauHinweis: "Sample invoice — your real data appears when you create one.",
+      vorschauVergroessern: "Click to enlarge",
+      vorschauVoll: "Full-size preview",
+      schliessen: "Close",
       ampelStandard: "default",
       ampelAngepasst: "customised",
       bereit: "All set — you can write invoices now:"
@@ -445,6 +550,7 @@
     el("kontakt_telefon").value = daten.kontakt_telefon || "";
     el("kleinunternehmer").checked = !!daten.kleinunternehmer;
     el("girocode").checked = daten.girocode !== false;
+    el("artikelnummern").checked = !!daten.artikelnummern;
     if (daten.nummern_muster !== undefined) el("nummern_muster").value = daten.nummern_muster;
     if (daten.verwendungszweck_muster !== undefined) el("verwendungszweck_muster").value = daten.verwendungszweck_muster;
   }
@@ -462,6 +568,7 @@
     if (s.schreibzone) setzeAmpel(el("zonenAmpel"), "gruen", "ampelGruen");
     if (s.stammdaten) {
       setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
+      stammdatenGesichert = true;
       fuelleStammdaten(s.stammdaten);
     }
     el("bereitHinweis").hidden = !s.bereit;
@@ -535,7 +642,14 @@
   // ---------- Schreibzone (Nachricht aus dem Editor-Iframe) ----------
   window.addEventListener("message", async function (ereignis) {
     var daten = ereignis.data;
-    if (!daten || daten.typ !== "schreibzone") return;
+    if (!daten) return;
+    // Der Editor meldet seine Höhe, damit der Rahmen mitwächst und nicht
+    // in sich scrollt — zwei Scrollebenen sind auf dem Telefon unbrauchbar.
+    if (daten.typ === "editorHoehe" && daten.hoehe > 0) {
+      el("zonenEditor").style.height = Math.ceil(daten.hoehe) + "px";
+      return;
+    }
+    if (daten.typ !== "schreibzone") return;
     var antwort = await RB.api("/api/schreibzone", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -548,9 +662,11 @@
   });
 
   // ---------- Stammdaten ----------
-  el("stammdatenFormular").addEventListener("submit", async function (ereignis) {
-    ereignis.preventDefault();
-    var daten = {
+  // Sammelt das vollstaendige Stammdaten-Objekt. Auch Schritt 4 speichert
+  // hierueber: /api/stammdaten schreibt die Datei komplett neu, ein PUT mit
+  // nur den beiden Schaltern dort wuerde alles Uebrige loeschen.
+  function stammdatenLese() {
+    return {
       firmierung: el("firmierung").value.trim(),
       anschrift: {
         strasse: el("strasse").value.trim(),
@@ -568,9 +684,15 @@
       kontakt_telefon: el("kontakt_telefon").value.trim(),
       kleinunternehmer: el("kleinunternehmer").checked,
       girocode: el("girocode").checked,
+      artikelnummern: el("artikelnummern").checked,
       nummern_muster: el("nummern_muster").value.trim(),
       verwendungszweck_muster: el("verwendungszweck_muster").value.trim()
     };
+  }
+
+  el("stammdatenFormular").addEventListener("submit", async function (ereignis) {
+    ereignis.preventDefault();
+    var daten = stammdatenLese();
     var antwort = await RB.api("/api/stammdaten", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -582,6 +704,7 @@
     if (antwort.ok) {
       meldung.textContent = RB.t("gespeichert");
       setzeAmpel(el("stammdatenAmpel"), "gruen", "ampelGruen");
+      stammdatenGesichert = true;
       ladeStatus();
     } else {
       var detail = (antwort.daten && antwort.daten.detail) || {};
@@ -601,7 +724,9 @@
       schrift: el("gSchrift").value || "liberation-sans",
       schriftgrad: (document.querySelector('input[name="gGrad"]:checked') || {}).value || "normal",
       layout: (document.querySelector('input[name="gLayout"]:checked') || {}).value || "klassisch",
-      belegdaten_als_zeile: el("gZeile").checked
+      belegdaten_als_zeile: el("gZeile").checked,
+      akzent_an: el("gAkzent").checked,
+      akzentfarbe: el("gFarbe").value
     };
   }
 
@@ -613,14 +738,25 @@
     var layout = document.querySelector('input[name="gLayout"][value="' + (daten.layout || "klassisch") + '"]');
     if (layout) layout.checked = true;
     el("gZeile").checked = !!daten.belegdaten_als_zeile;
+    el("gAkzent").checked = !!daten.akzent_an;
+    if (daten.akzentfarbe) {
+      el("gFarbe").value = daten.akzentfarbe;
+      el("gFarbeText").value = daten.akzentfarbe;
+    }
+    farbfeldZeigen();
+  }
+
+  // Der Farbwähler gehört nur zum Akzent — sonst steht er nutzlos herum.
+  function farbfeldZeigen() {
+    el("gFarbeFeld").hidden = !el("gAkzent").checked;
   }
 
   var gZeitgeber = null;
   function gAktualisiere() {
     // "Kompakt" erzwingt die Belegdaten-Zeile ohnehin — Schalter dann aus
     var kompakt = gLese().layout === "kompakt";
+    // Das Ausgrauen macht .schalter:has(input:disabled) in basis.css.
     el("gZeile").disabled = kompakt;
-    el("gZeileFeld").style.opacity = kompakt ? "0.45" : "1";
     clearTimeout(gZeitgeber);
     gZeitgeber = setTimeout(gVorschauLaden, 250);
   }
@@ -631,7 +767,9 @@
     bild.classList.add("laedt");
     var quelle = "/api/gestaltung/vorschau.png?schrift=" + encodeURIComponent(daten.schrift) +
       "&schriftgrad=" + daten.schriftgrad + "&layout=" + daten.layout +
-      "&zeile=" + daten.belegdaten_als_zeile + "&t=" + Date.now();
+      "&zeile=" + daten.belegdaten_als_zeile +
+      "&akzent=" + daten.akzent_an +
+      "&farbe=" + encodeURIComponent(daten.akzentfarbe) + "&t=" + Date.now();
     var lader = new Image();
     lader.onload = function () { bild.src = quelle; bild.classList.remove("laedt"); };
     lader.onerror = function () { bild.classList.remove("laedt"); };
@@ -647,11 +785,91 @@
     if (ausgewaehlt) el("gSchrift").value = ausgewaehlt;
   }
 
+  // --- Vorschau in voller Groesse -----------------------------------------
+  // Die Miniatur ist 300 px breit; Schrift und Layout lassen sich darin kaum
+  // beurteilen. Der Leuchtkasten zeigt dasselbe Bild, das schon geladen ist.
+  var zuletztScharf = null;
+
+  function vorschauOeffnen() {
+    var klein = el("gVorschau");
+    if (!klein.src) return;           // noch nichts geladen
+    zuletztScharf = document.activeElement;
+    el("vorschauGross").src = klein.src;
+    el("vorschauGross").alt = RB.t("vorschauVoll");
+    el("vorschauKasten").hidden = false;
+    el("vorschauZu").focus();
+  }
+
+  function vorschauSchliessen() {
+    el("vorschauKasten").hidden = true;
+    el("vorschauGross").src = "";
+    if (zuletztScharf) zuletztScharf.focus();
+  }
+
+  el("gVorschau").addEventListener("click", vorschauOeffnen);
+  el("gVorschau").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); vorschauOeffnen(); }
+  });
+  el("vorschauZu").addEventListener("click", vorschauSchliessen);
+  el("vorschauKasten").addEventListener("click", function (e) {
+    // Klick aufs Bild selbst schliesst nicht — nur daneben.
+    if (e.target === el("vorschauGross")) return;
+    vorschauSchliessen();
+  });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && !el("vorschauKasten").hidden) vorschauSchliessen();
+  });
+  // Titel der Miniatur beim Sprachwechsel mitziehen (kein data-i18n fuer Attribute).
+  RB.beiSprachwechsel(function () {
+    el("gVorschau").title = RB.t("vorschauVergroessern");
+  });
+
   ["change", "input"].forEach(function (art) {
     el("gSchrift").addEventListener(art, gAktualisiere);
     el("gGrad").addEventListener(art, gAktualisiere);
     el("gLayout").addEventListener(art, gAktualisiere);
     el("gZeile").addEventListener(art, gAktualisiere);
+    el("gFarbe").addEventListener(art, gAktualisiere);
+  });
+
+  // Akzent-Schalter blendet den Farbwähler ein und zeichnet neu.
+  el("gAkzent").addEventListener("change", function () {
+    farbfeldZeigen();
+    gAktualisiere();
+  });
+
+  // Farbwähler und Texteingabe halten sich gegenseitig aktuell. Das Textfeld
+  // ist für alle da, die einen Hexwert aus ihrem Logo einsetzen wollen.
+  el("gFarbe").addEventListener("input", function () {
+    el("gFarbeText").value = this.value;
+    el("gFarbeFehler").textContent = "";
+  });
+  el("gFarbeText").addEventListener("input", function () {
+    var wert = this.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(wert)) {
+      el("gFarbe").value = wert;
+      el("gFarbeFehler").textContent = "";
+      gAktualisiere();
+    } else if (wert) {
+      el("gFarbeFehler").textContent = RB.t("farbeUngueltig");
+    } else {
+      el("gFarbeFehler").textContent = "";
+    }
+  });
+
+  // Die drei Schalter stehen neben der Vorschau und wirken sichtbar aufs
+  // Blatt (Steuerausweis, QR-Code, Art.-Nr.). Die Vorschau liest sie aus den
+  // GESPEICHERTEN Stammdaten — also erst sichern, dann neu zeichnen.
+  ["kleinunternehmer", "girocode", "artikelnummern"].forEach(function (name) {
+    el(name).addEventListener("change", async function () {
+      if (!stammdatenGesichert) return;   // Speichern erledigt Schritt 3
+      await RB.api("/api/stammdaten", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(stammdatenLese())
+      });
+      gVorschauLaden();
+    });
   });
 
   el("gSpeichern").addEventListener("click", async function () {
@@ -660,8 +878,21 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(gLese())
     });
-    el("gMeldung").textContent = antwort.ok ? RB.t("gespeichert") : RB.t("fehlerAllgemein");
-    if (antwort.ok) setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+    // Kleinunternehmer und GiroCode stehen zwar hier, gehoeren fachlich aber
+    // zu den Stammdaten — beide wirken sichtbar aufs Blatt, darum der Platz
+    // neben der Vorschau.
+    var stamm = await RB.api("/api/stammdaten", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(stammdatenLese())
+    });
+    var gut = antwort.ok && stamm.ok;
+    el("gMeldung").textContent = gut ? RB.t("gespeichert") : RB.t("fehlerAllgemein");
+    if (gut) {
+      setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+      // Die Vorschau liest den GiroCode aus den gespeicherten Stammdaten.
+      gVorschauLaden();
+    }
   });
 
   async function gStart() {
@@ -671,6 +902,11 @@
     if (gespeichert) {
       gSetze(gespeichert);
       setzeAmpel(el("gestaltungAmpel"), "gruen", "ampelAngepasst");
+    } else {
+      // Ohne gespeicherte Gestaltung läuft gSetze nicht — Textfeld und
+      // Sichtbarkeit trotzdem auf den Anfangszustand bringen.
+      el("gFarbeText").value = el("gFarbe").value;
+      farbfeldZeigen();
     }
     gAktualisiere();
   }
@@ -680,6 +916,17 @@
   ladeStatus();
   gStart();
 })();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
 </script>
 </body>
 </html>

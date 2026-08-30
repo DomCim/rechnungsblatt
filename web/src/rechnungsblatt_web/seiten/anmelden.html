@@ -2,15 +2,52 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Anmelden</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<!-- iOS kennt kein Manifest: Vollbild und Statusleiste hier setzen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
 <style>
   .buehne { max-width: 880px; }
-  .konten-gitter { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  /* 26px statt 16: die Schalen der beiden Karten ragen je 5px heraus,
+     bei 16px blieben nur 6px echte Fuge dazwischen. */
+  .konten-gitter { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; align-items: start; }
   @media (max-width: 760px) { .konten-gitter { grid-template-columns: 1fr; } }
   .karte form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+
+  /* Registrierung als Aufklapper — nur auf schmalen Geräten. */
+  .registrier-klapp > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .registrier-klapp > summary::-webkit-details-marker { display: none; }
+  /* Eigenes Zeichen statt Dreieck: dreht beim Öffnen. */
+  .registrier-klapp > summary::after {
+    content: "+";
+    font: 400 22px/1 "Instrument Sans", system-ui, sans-serif;
+    color: var(--tinte-2);
+    transition: transform 380ms var(--kurve);
+  }
+  .registrier-klapp[open] > summary::after { transform: rotate(45deg); }
+  .registrier-klapp > summary h2 { display: inline; }
+
+  @media (min-width: 761px) {
+    /* Am Rechner ist Platz für beide Wege nebeneinander — dort bleibt
+       die Karte offen und der Aufklapper verschwindet. */
+    .registrier-klapp > summary { cursor: default; }
+    .registrier-klapp > summary::after { display: none; }
+  }
   .meldung { margin-top: 12px; }
   .meldung:empty { display: none; }
 </style>
@@ -21,7 +58,9 @@
 
   <header class="kopf">
     <div>
-      <div class="marke"><a class="verweis" href="/" style="text-decoration: none;">Rechnungsblatt</a></div>
+      <!-- Verweis auf die Startseite, aber ohne .verweis: das färbte die
+           Marke rot und ließ sie als einzige Seite aus der Reihe fallen. -->
+      <div class="marke"><a href="/" style="color:inherit;text-decoration:none;">Rechnungsblatt</a></div>
       <h1 data-i18n="titel">Anmelden</h1>
       <p class="untertitel" data-i18n="untertitel">
         Melden Sie sich an, oder legen Sie ein Konto an. Neue Konten werden
@@ -51,10 +90,36 @@
         <button class="knopf" type="submit" data-i18n="anmeldenKnopf">Anmelden</button>
       </form>
       <div class="meldung" id="anmeldeMeldung" role="status" aria-live="polite"></div>
+      <p class="beschreibung" style="margin:12px 0 0;">
+        <a class="verweis" href="#" id="vergessenVerweis"
+           data-i18n="vergessen">Passwort vergessen?</a>
+      </p>
+      <div id="vergessenSchritt" hidden style="margin-top:10px;">
+        <p class="beschreibung" data-i18n="vergessenText">
+          Wir schicken einen Link an Ihre Adresse. Er gilt 60 Minuten.
+        </p>
+        <div class="feld">
+          <label for="vergessenEmail" data-i18n="email">E-Mail</label>
+          <input id="vergessenEmail" type="email" autocomplete="username">
+        </div>
+        <button type="button" class="knopf leise" id="vergessenSenden"
+                data-i18n="vergessenSenden">Link schicken</button>
+        <div class="meldung" id="vergessenMeldung" role="status" aria-live="polite"></div>
+      </div>
     </section>
 
     <section class="karte" id="registrieren">
-      <h2 data-i18n="registrierenTitel">Konto anlegen</h2>
+      <!-- Auf dem Telefon stehen sonst zwei volle Formulare untereinander,
+           und wer sich nur anmelden will, scrollt an einem vorbei, das er
+           nie braucht. Als <details> ist es dort ein Aufklapper; ab 760px
+           ist das open-Attribut per CSS erzwungen und die Karte steht
+           wieder offen neben der Anmeldung.
+           Der Anker /anmelden#registrieren von der Startseite klappt sie
+           auf — siehe Skript unten. -->
+      <details class="registrier-klapp">
+      <summary>
+        <h2 data-i18n="registrierenTitel">Konto anlegen</h2>
+      </summary>
       <p class="beschreibung" data-i18n="registrierenText">
         Kostenlos und ohne Zahlungsdaten. Sie können sich erst anmelden,
         nachdem Ihr Konto freigeschaltet wurde.
@@ -71,6 +136,52 @@
         <button class="knopf leise" type="submit" data-i18n="registrierenKnopf">Konto anlegen</button>
       </form>
       <div class="meldung" id="registrierMeldung" role="status" aria-live="polite"></div>
+
+      <!-- Schritt 2: Code aus der E-Mail. Erscheint erst nach dem Absenden. -->
+      <div id="codeSchritt" hidden style="margin-top:14px;">
+        <p class="beschreibung" data-i18n="codeText">
+          Wir haben Ihnen einen sechsstelligen Code geschickt. Er gilt 30 Minuten.
+        </p>
+        <div class="feld">
+          <label for="codeFeld" data-i18n="codeLabel">Bestätigungscode</label>
+          <input id="codeFeld" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="6" style="font-family:'Spline Sans Mono',monospace;
+                 font-size:20px; letter-spacing:0.3em; text-align:center;">
+        </div>
+        <div class="zeile">
+          <button type="button" class="knopf" id="codeSenden"
+                  data-i18n="codePruefen">Bestätigen</button>
+          <button type="button" class="knopf leise" id="codeNochmal"
+                  data-i18n="codeNochmal">Neuen Code schicken</button>
+        </div>
+        <div class="meldung" id="codeMeldung" role="status" aria-live="polite"></div>
+      </div>
+
+      <!-- Schritt 3: der Wiederherstellungscode. Steht allein, weil er das
+           Einzige ist, was der Kunde von dieser Seite mitnehmen muss. -->
+      <div id="rettungSchritt" hidden style="margin-top:14px;">
+        <h2 data-i18n="rettungTitel">Ihr Wiederherstellungscode</h2>
+        <p class="beschreibung" data-i18n="rettungText">
+          Notieren Sie ihn jetzt — am besten ausgedruckt. Ihre Rechnungsdaten
+          sind mit Ihrem Passwort verschlüsselt; vergessen Sie es, ist dieser
+          Code der einzige Weg zurück. Auch der Betreiber kann Ihnen dann
+          nicht helfen.
+        </p>
+        <p id="rettungCode" class="kennung"
+           style="font-size:22px; letter-spacing:0.12em; padding:14px;
+                  border:1px solid var(--kante); border-radius:8px;
+                  text-align:center; user-select:all;"></p>
+        <label class="schalter" style="margin-top:12px;">
+          <input type="checkbox" id="rettungNotiert">
+          <span class="hebel"></span>
+          <span data-i18n="rettungNotiert">Ich habe den Code notiert.</span>
+        </label>
+        <div class="zeile" style="margin-top:12px;">
+          <button type="button" class="knopf" id="rettungFertig" disabled
+                  data-i18n="rettungFertig">Fertig</button>
+        </div>
+      </div>
+      </details>
     </section>
 
   </div>
@@ -99,6 +210,18 @@
       email: "E-Mail",
       passwort: "Passwort",
       passwortNeu: "Passwort (mind. 10 Zeichen)",
+      codeText: "Wir haben Ihnen einen sechsstelligen Code geschickt. Er gilt 30 Minuten.",
+      codeLabel: "Bestätigungscode", codePruefen: "Bestätigen",
+      codeNochmal: "Neuen Code schicken", codeGeschickt: "Neuer Code ist unterwegs.",
+      registriertOhneMail: "Konto angelegt. Der Versand ist noch nicht eingerichtet — bitte wenden Sie sich an den Betreiber.",
+      bestaetigtOhneCode: "Adresse bestätigt. Einen Wiederherstellungscode können Sie später im Konto erzeugen.",
+      rettungTitel: "Ihr Wiederherstellungscode",
+      rettungText: "Notieren Sie ihn jetzt — am besten ausgedruckt. Ihre Rechnungsdaten sind mit Ihrem Passwort verschlüsselt; vergessen Sie es, ist dieser Code der einzige Weg zurück. Auch der Betreiber kann Ihnen dann nicht helfen.",
+      rettungNotiert: "Ich habe den Code notiert.", rettungFertig: "Fertig",
+      vergessen: "Passwort vergessen?",
+      vergessenText: "Wir schicken einen Link an Ihre Adresse. Er gilt 60 Minuten.",
+      vergessenSenden: "Link schicken",
+      vergessenGeschickt: "Falls es zu dieser Adresse ein Konto gibt, ist der Link unterwegs.",
       zurueck: "Zurück zur Übersicht",
       registriert: "Konto angelegt. Sobald der Betreiber es freischaltet, können Sie sich anmelden.",
       gesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber."
@@ -115,6 +238,18 @@
       email: "E-mail",
       passwort: "Password",
       passwortNeu: "Password (at least 10 characters)",
+      codeText: "We have sent you a six-digit code. It is valid for 30 minutes.",
+      codeLabel: "Confirmation code", codePruefen: "Confirm",
+      codeNochmal: "Send a new code", codeGeschickt: "A new code is on its way.",
+      registriertOhneMail: "Account created. Mail delivery is not set up yet — please contact the operator.",
+      bestaetigtOhneCode: "Address confirmed. You can generate a recovery code later in your account.",
+      rettungTitel: "Your recovery code",
+      rettungText: "Write it down now — printed, ideally. Your invoice data is encrypted with your password; if you forget it, this code is the only way back. Not even the operator can help you then.",
+      rettungNotiert: "I have written the code down.", rettungFertig: "Done",
+      vergessen: "Forgotten your password?",
+      vergessenText: "We will send a link to your address. It is valid for 60 minutes.",
+      vergessenSenden: "Send link",
+      vergessenGeschickt: "If an account exists for this address, the link is on its way.",
       zurueck: "Back to the overview",
       registriert: "Account created. As soon as the operator activates it you can sign in.",
       gesperrt: "Your account is blocked. Please contact the operator."
@@ -170,16 +305,127 @@
       })
     });
     if (antwort.ok) {
-      el("registrierForm").reset();
-      melde(ziel, RB.t("registriert"), true);
+      // Die Adresse merken: der Bestaetigungsschritt braucht sie, und der
+      // Kunde soll sie nicht ein zweites Mal tippen.
+      offeneAdresse = el("regEmail").value.trim();
+      el("registrierForm").hidden = true;
+      el("codeSchritt").hidden = false;
+      melde(ziel, RB.t(antwort.daten && antwort.daten.mail_verschickt
+        ? "registriert" : "registriertOhneMail"), true);
+      el("codeFeld").focus();
       return;
     }
     melde(ziel, grund(antwort), false);
   });
 
+  // ---------- E-Mail bestaetigen ----------
+  // Die Adresse aus der Registrierung; ohne sie wuesste der Server nicht,
+  // wessen Code geprueft werden soll.
+  var offeneAdresse = "";
+
+  el("codeSenden").addEventListener("click", async function () {
+    var ziel = el("codeMeldung");
+    melde(ziel, RB.t("laedt"), true);
+    var antwort = await RB.api("/api/email/bestaetigen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: offeneAdresse,
+        code: el("codeFeld").value.trim()
+      })
+    });
+    if (!antwort.ok) { melde(ziel, grund(antwort), false); return; }
+    el("codeSchritt").hidden = true;
+    var code = antwort.daten && antwort.daten.wiederherstellungscode;
+    if (code) {
+      el("rettungCode").textContent = code;
+      el("rettungSchritt").hidden = false;
+    } else {
+      // Kein Code mehr im Speicher (Dienst zwischendurch neu gestartet).
+      // Der Zugang steht trotzdem — im Konto laesst sich ein neuer erzeugen.
+      melde(el("registrierMeldung"), RB.t("bestaetigtOhneCode"), true);
+    }
+  });
+
+  el("codeNochmal").addEventListener("click", async function () {
+    melde(el("codeMeldung"), RB.t("laedt"), true);
+    await RB.api("/api/email/code-neu", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: offeneAdresse })
+    });
+    melde(el("codeMeldung"), RB.t("codeGeschickt"), true);
+  });
+
+  // Erst wenn der Haken sitzt, geht es weiter: Der Code ist das Einzige,
+  // was von dieser Seite mitgenommen werden MUSS.
+  el("rettungNotiert").addEventListener("change", function () {
+    el("rettungFertig").disabled = !this.checked;
+  });
+  el("rettungFertig").addEventListener("click", function () {
+    el("rettungSchritt").hidden = true;
+    melde(el("registrierMeldung"), RB.t("registriert"), true);
+  });
+
+  // ---------- Passwort vergessen ----------
+  el("vergessenVerweis").addEventListener("click", function (ereignis) {
+    ereignis.preventDefault();
+    el("vergessenSchritt").hidden = !el("vergessenSchritt").hidden;
+    if (!el("vergessenSchritt").hidden) {
+      el("vergessenEmail").value = el("anmeldeEmail").value;
+      el("vergessenEmail").focus();
+    }
+  });
+
+  el("vergessenSenden").addEventListener("click", async function () {
+    var ziel = el("vergessenMeldung");
+    melde(ziel, RB.t("laedt"), true);
+    await RB.api("/api/passwort/vergessen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: el("vergessenEmail").value.trim() })
+    });
+    // Immer dieselbe Meldung — ob es die Adresse gibt, verraet die Seite
+    // nicht.
+    melde(ziel, RB.t("vergessenGeschickt"), true);
+  });
+
   RB.starte(texte);
-  if (window.location.hash === "#registrieren") el("regEmail").focus();
+
+  // Der Aufklapper ist nur auf schmalen Geräten einer. Ab 761px steht die
+  // Karte offen — das lässt sich nicht in CSS erzwingen, weil "open" ein
+  // Attribut ist, kein Stil.
+  var klapp = document.querySelector(".registrier-klapp");
+  var breit = window.matchMedia("(min-width: 761px)");
+  function klappPruefen() {
+    if (breit.matches) klapp.open = true;
+  }
+  klappPruefen();
+  breit.addEventListener("change", klappPruefen);
+  // Am Telefon soll ein Klick auf die Überschrift nicht wieder zuklappen,
+  // wenn breit — dort ist summary ohnehin nur Titel.
+  klapp.querySelector("summary").addEventListener("click", function (e) {
+    if (breit.matches) e.preventDefault();
+  });
+
+  // "Konto anlegen" von der Startseite führt hierher mit #registrieren.
+  // Ohne Aufklappen landete der Besucher auf einer zugeklappten Karte.
+  if (window.location.hash === "#registrieren") {
+    klapp.open = true;
+    el("regEmail").focus();
+  }
 })();
+</script>
+<script>
+  // Service Worker: hält die Hülle vor und zeigt ohne Netz einen klaren
+  // Hinweis. Rechnungen entstehen weiterhin nur online.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("/sw.js").catch(function () {
+        // Ohne Service Worker läuft alles wie bisher — kein Grund zu klagen.
+      });
+    });
+  }
 </script>
 </body>
 </html>

@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import tempfile
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -64,7 +65,7 @@ from rechnungsblatt_kern import (
     verfuegbare_schriften,
 )
 
-from . import konten
+from . import konten, post, tresor
 from .konten import KontingentErschoepft, KontoFehler, Nutzer
 
 DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
@@ -77,8 +78,19 @@ PLAUSIBLE_DOMAIN = os.environ.get("PLAUSIBLE_DOMAIN", "")
 
 MAX_UPLOAD_BYTES = 20 * 1024 * 1024
 SITZUNG_COOKIE = "rb_sitzung"
+# Nur für die lokale Entwicklung: den Sitzungsschlüssel auch aus einer
+# Kopfzeile lesen. iOS leert bei Web-Apps über HTTP den Cookie-Speicher
+# beim Schließen — im Portainer-Stack (HTTPS) ist das nicht nötig und
+# bleibt deshalb aus.
+SITZUNG_KOPFZEILE = os.environ.get("SITZUNG_KOPFZEILE", "") == "1"
 
 protokoll = logging.getLogger("rechnungsblatt")
+
+# Wiederherstellungscodes zwischen Registrierung und Bestätigung.
+# Bewusst nur im Speicher: Der Code darf nirgends abgelegt werden, sonst
+# wäre der ganze Aufwand umsonst. Startet der Dienst dazwischen neu, ist
+# er weg — dann hilft „neuen Code erzeugen" im Konto.
+_SPAETER: dict[int, str] = {}
 
 
 @contextlib.asynccontextmanager
@@ -109,7 +121,11 @@ app = FastAPI(
 # ---------------------------------------------------------------- Anmeldung
 
 def _angemeldeter(anfrage: Request) -> Nutzer | None:
-    return konten.nutzer_zu_sitzung(anfrage.cookies.get(SITZUNG_COOKIE))
+    schluessel = anfrage.cookies.get(SITZUNG_COOKIE)
+    if not schluessel and SITZUNG_KOPFZEILE:
+        # Ersatzweg, wenn der Browser das Cookie verworfen hat.
+        schluessel = anfrage.headers.get("X-Rb-Sitzung")
+    return konten.nutzer_zu_sitzung(schluessel)
 
 
 def angemeldet(anfrage: Request) -> Nutzer:
@@ -148,9 +164,20 @@ def _wurzel(person: Nutzer) -> Path:
     return DATEN / "nutzer" / str(person.id)
 
 
-def mandant(person: Nutzer = Depends(freigegeben)) -> Path:
-    wurzel = _wurzel(person)
+def mandant(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> Path:
+    """Datenverzeichnis des Mandanten — und sein Schlüssel für diese Anfrage.
+
+    Der Datenschlüssel liegt verpackt in der Sitzung und lässt sich nur
+    mit dem Sitzungsschlüssel aus dem Cookie öffnen. Er wandert in eine
+    Kontextvariable, aus der `_lies_datei` und `_schreibe_datei` ihn holen
+    — sonst müsste er durch jede Hilfsfunktion durchgereicht werden.
+    """
+    wurzel = Mandantenpfad(_wurzel(person))
     wurzel.mkdir(parents=True, exist_ok=True)
+    sitzung = anfrage.cookies.get(SITZUNG_COOKIE)
+    if not sitzung and SITZUNG_KOPFZEILE:
+        sitzung = anfrage.headers.get("X-Rb-Sitzung")
+    wurzel.schluessel = konten.datenschluessel_der_sitzung(sitzung)
     return wurzel
 
 
@@ -171,10 +198,19 @@ def _setze_sitzungscookie(antwort: Response, schluessel: str, anfrage: Request) 
 def _seite(name: str) -> HTMLResponse:
     inhalt = (SEITEN / name).read_text(encoding="utf-8")
     schnipsel = ""
-    if PLAUSIBLE_URL and PLAUSIBLE_DOMAIN:
+    # Zuerst die Verwaltung, dann die Umgebung: So lässt sich Plausible im
+    # laufenden Betrieb ein- und ausschalten, ohne dass ein Stack ohne
+    # Eintrag plötzlich ohne Zählung dasteht.
+    try:
+        werte = konten.einstellungen()
+    except Exception:          # Datenbank noch nicht erreichbar
+        werte = {}
+    url = (werte.get("plausible_url") or PLAUSIBLE_URL).rstrip("/")
+    domain = werte.get("plausible_domain") or PLAUSIBLE_DOMAIN
+    if url and domain:
         schnipsel = (
-            f'<script defer data-domain="{PLAUSIBLE_DOMAIN}" '
-            f'src="{PLAUSIBLE_URL}/js/script.js"></script>'
+            f'<script defer data-domain="{domain}" '
+            f'src="{url}/js/script.js"></script>'
         )
     return HTMLResponse(inhalt.replace("<!--PLAUSIBLE-->", schnipsel))
 
@@ -187,6 +223,36 @@ def startseite() -> HTMLResponse:
 @app.get("/anmelden", response_class=HTMLResponse)
 def anmeldeseite() -> HTMLResponse:
     return _seite("anmelden.html")
+
+
+# ---------------------------------------------------------------- App-Hülle
+# Damit die Seite als App installiert werden kann. Der Service Worker muss
+# von der Wurzel kommen: sein Geltungsbereich ist sonst auf /seiten/
+# begrenzt und die Navigation unter /app/… liefe daran vorbei.
+
+@app.get("/manifest.webmanifest")
+def manifest() -> FileResponse:
+    return FileResponse(
+        SEITEN / "manifest.webmanifest",
+        media_type="application/manifest+json",
+    )
+
+
+@app.get("/sw.js")
+def dienstarbeiter() -> FileResponse:
+    return FileResponse(
+        SEITEN / "sw.js",
+        media_type="application/javascript",
+        # Nie zwischenspeichern, sonst bleibt eine alte Fassung hängen und
+        # die App aktualisiert sich nie wieder.
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@app.get("/favicon.ico")
+def favicon() -> FileResponse:
+    return FileResponse(SEITEN / "symbole" / "favicon.ico",
+                        media_type="image/x-icon")
 
 
 def _seite_mit_konto(anfrage: Request, name: str) -> Response:
@@ -219,6 +285,11 @@ def einrichtungsseite(anfrage: Request) -> Response:
 @app.get("/app/rechnung", response_class=HTMLResponse)
 def rechnungsformular(anfrage: Request) -> Response:
     return _seite_mit_konto(anfrage, "rechnung.html")
+
+
+@app.get("/app/stamm", response_class=HTMLResponse)
+def stammseite(anfrage: Request) -> Response:
+    return _seite_mit_konto(anfrage, "stamm.html")
 
 
 @app.get("/app/ablage", response_class=HTMLResponse)
@@ -283,6 +354,7 @@ def _tarif_json(tarif: konten.Tarif) -> dict:
         "preis_je_rechnung_cent": tarif.preis_je_rechnung_cent,
         "reihenfolge": tarif.reihenfolge,
         "sichtbar": tarif.sichtbar,
+        "hervorheben": tarif.hervorheben,
     }
 
 
@@ -308,33 +380,180 @@ def oeffentliche_tarife() -> list[dict]:
 @app.post("/api/registrieren")
 def registrieren(daten: dict) -> JSONResponse:
     try:
-        person = konten.registriere(daten.get("email", ""), daten.get("passwort", ""))
+        person, code = konten.registriere(
+            daten.get("email", ""), daten.get("passwort", "")
+        )
     except KontoFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    # Der Wiederherstellungscode wird NICHT sofort gezeigt: erst muss die
+    # Adresse bestätigt sein. So steht er später allein auf der Seite,
+    # statt neben einem Eingabefeld unterzugehen — und er erreicht nur
+    # jemanden, der das Postfach wirklich hat.
+    _SPAETER[person.id] = code
+    nachweis = konten.lege_nachweis_an(person.id, konten.ZWECK_EMAIL)
+    try:
+        verschickt = post.sende_bestaetigungscode(person.email, nachweis)
+    except post.PostFehler:
+        # Konto steht, nur der Versand klemmt. Den Code kann der Kunde
+        # neu anfordern; ein Rückbau der Registrierung hülfe niemandem.
+        verschickt = False
     return JSONResponse(
-        {"status": person.status, "email": person.email}, status_code=201
+        {"status": person.status, "email": person.email,
+         "bestaetigung_noetig": True, "mail_verschickt": verschickt},
+        status_code=201,
     )
+
+
+@app.post("/api/email/bestaetigen")
+def email_bestaetigen(daten: dict) -> JSONResponse:
+    """Sechsstelligen Code einlösen und den Wiederherstellungscode zeigen."""
+    person = konten.nutzer_zu_email(daten.get("email", ""))
+    if person is None:
+        raise HTTPException(422, detail={"grund": "Der Code stimmt nicht."})
+    try:
+        nutzer_id = konten.loese_nachweis_ein(
+            str(daten.get("code", "")).strip(), konten.ZWECK_EMAIL
+        )
+    except KontoFehler as fehler:
+        konten.zaehle_fehlversuch(person.id, konten.ZWECK_EMAIL)
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    konten.bestaetige_email(nutzer_id)
+    # Jetzt, und nur jetzt, bekommt der Kunde seinen Wiederherstellungscode
+    # zu sehen. Er steht nirgends in der Datenbank — nur seine Hülle.
+    return JSONResponse({
+        "bestaetigt": True,
+        "wiederherstellungscode": _SPAETER.pop(nutzer_id, None),
+    })
+
+
+@app.post("/api/email/code-neu")
+def email_code_neu(daten: dict) -> JSONResponse:
+    """Neuen Bestätigungscode anfordern.
+
+    Antwortet immer gleich — ob es die Adresse gibt, geht niemanden etwas
+    an, der sie nicht ohnehin kennt.
+    """
+    person = konten.nutzer_zu_email(daten.get("email", ""))
+    if person is not None and not person.ist_bestaetigt:
+        nachweis = konten.lege_nachweis_an(person.id, konten.ZWECK_EMAIL)
+        with contextlib.suppress(post.PostFehler):
+            post.sende_bestaetigungscode(person.email, nachweis)
+    return JSONResponse({"verschickt": True})
+
+
+@app.post("/api/passwort/vergessen")
+def passwort_vergessen(daten: dict, anfrage: Request) -> JSONResponse:
+    """Schickt den Rücksetz-Link.
+
+    Antwortet immer gleich, egal ob es die Adresse gibt: Sonst ließe sich
+    hier abfragen, wer Kunde ist.
+    """
+    person = konten.nutzer_zu_email(daten.get("email", ""))
+    if person is not None:
+        marke = konten.lege_nachweis_an(person.id, konten.ZWECK_RUECKSETZEN)
+        basis = konten.einstellungen().get("oeffentliche_adresse", "").rstrip("/")
+        if not basis:
+            # Fällt auf die Adresse zurück, über die die Anfrage kam.
+            basis = str(anfrage.base_url).rstrip("/")
+        with contextlib.suppress(post.PostFehler):
+            post.sende_ruecksetzlink(person.email, f"{basis}/passwort-neu?marke={marke}")
+    return JSONResponse({"verschickt": True})
+
+
+@app.get("/passwort-neu", response_class=HTMLResponse)
+def passwort_neu_seite() -> HTMLResponse:
+    """Bestätigungsseite des Rücksetz-Links.
+
+    Der Link führt hierher, nicht direkt ins Konto: Ein Klick allein soll
+    nichts verändern — Mail-Scanner und Vorschaufunktionen öffnen Links
+    ungefragt. Erst die Eingabe auf dieser Seite setzt das Passwort.
+    """
+    return _seite("passwort-neu.html")
+
+
+@app.post("/api/passwort/neu")
+def passwort_neu(daten: dict) -> JSONResponse:
+    """Löst den Rücksetz-Nachweis ein und setzt das neue Passwort.
+
+    **Die Daten bleiben dabei verschlüsselt.** Ein neues Passwort öffnet
+    die alte Hülle nicht — dafür gibt es den Wiederherstellungscode. Wird
+    er mitgeschickt, wandert der Datenschlüssel in die neue Hülle und die
+    Belege bleiben lesbar; ohne ihn bekommt der Kunde nur den Zugang
+    zurück. Die Oberfläche muss das deutlich sagen.
+    """
+    marke = str(daten.get("marke", "")).strip()
+    neues = str(daten.get("passwort", ""))
+    code = str(daten.get("wiederherstellungscode", "")).strip()
+    try:
+        nutzer_id = konten.loese_nachweis_ein(marke, konten.ZWECK_RUECKSETZEN)
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+
+    person = konten.nutzer(nutzer_id)
+    if person is None:
+        raise HTTPException(422, detail={"grund": "Konto nicht gefunden."})
+
+    if code:
+        try:
+            konten.stelle_mit_code_wieder_her(person.email, code, neues)
+            return JSONResponse({"gesetzt": True, "daten_erhalten": True})
+        except KontoFehler as fehler:
+            raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+
+    try:
+        konten.setze_passwort(nutzer_id, neues)
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    # Die alte Hülle passt nun nicht mehr — die vorhandenen Belege sind
+    # ohne Wiederherstellungscode nicht mehr zu öffnen. Ehrlich melden.
+    return JSONResponse({"gesetzt": True, "daten_erhalten": False})
 
 
 @app.post("/api/anmelden")
 def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
+    passwort = daten.get("passwort", "")
     try:
-        person = konten.pruefe_anmeldung(
-            daten.get("email", ""), daten.get("passwort", "")
+        person, datenschluessel = konten.pruefe_anmeldung(
+            daten.get("email", ""), passwort
         )
     except KontoFehler as fehler:
         raise HTTPException(401, detail={"grund": str(fehler)}) from fehler
     if person.status == konten.STATUS_GESPERRT:
         raise HTTPException(403, detail={"grund": "Ihr Konto ist gesperrt."})
-    schluessel = konten.starte_sitzung(person.id)
-    antwort = JSONResponse(_nutzer_json(person))
+    if not person.ist_bestaetigt:
+        # Ohne bestätigte Adresse keine Sitzung — sonst wäre die
+        # Bestätigung eine Empfehlung statt einer Bedingung. Bestandskonten
+        # von vor dieser Änderung gelten als bestätigt (siehe Migration).
+        raise HTTPException(
+            403,
+            detail={
+                "code": "email_offen",
+                "grund": "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.",
+            },
+        )
+    if datenschluessel is None:
+        # Konto aus der Zeit vor der Verschlüsselung (oder der Startadmin,
+        # der ohne Registrierung entsteht): Hülle jetzt nachlegen, solange
+        # das Passwort vorliegt. Vorhandene Klartextdateien bleiben lesbar
+        # und werden beim nächsten Schreiben umgestellt.
+        datenschluessel = konten.lege_huellen_an(person.id, passwort)
+    schluessel = konten.starte_sitzung(person.id, datenschluessel)
+    nutzdaten = _nutzer_json(person)
+    if SITZUNG_KOPFZEILE:
+        # Nur lokal: die Seite legt den Schlüssel ab und reicht ihn nach,
+        # falls iOS das Cookie verworfen hat.
+        nutzdaten["sitzung"] = schluessel
+    antwort = JSONResponse(nutzdaten)
     _setze_sitzungscookie(antwort, schluessel, anfrage)
     return antwort
 
 
 @app.post("/api/abmelden")
 def abmelden(anfrage: Request) -> JSONResponse:
-    konten.beende_sitzung(anfrage.cookies.get(SITZUNG_COOKIE))
+    schluessel = anfrage.cookies.get(SITZUNG_COOKIE)
+    if not schluessel and SITZUNG_KOPFZEILE:
+        schluessel = anfrage.headers.get("X-Rb-Sitzung")
+    konten.beende_sitzung(schluessel)
     antwort = JSONResponse({"abgemeldet": True})
     antwort.delete_cookie(SITZUNG_COOKIE, path="/")
     return antwort
@@ -447,11 +666,85 @@ def verwaltung_guthaben(
 
 @app.delete("/api/verwaltung/nutzer/{nutzer_id}")
 def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
+    """Konto und Nutzdaten entfernen — beides, nicht nur der Datenbankeintrag.
+
+    Bis hierher blieb ``DATEN/nutzer/<id>/`` nach dem Löschen vollständig
+    liegen: Rechnungen, Briefpapier, Kundenadressen. Zwei Folgen, beide
+    schlecht — die Daten eines gelöschten Kunden lagen weiter auf der
+    Platte, und eine spätere Nutzer-ID konnte dasselbe Verzeichnis erben
+    und damit fremde Belege sehen.
+
+    Reihenfolge: erst die Dateien, dann die Zeile. Scheitert das Löschen
+    der Dateien, bleibt das Konto bestehen und der Vorgang lässt sich
+    wiederholen — andersherum gäbe es ein Verzeichnis ohne Besitzer.
+    """
+    verzeichnis = DATEN / "nutzer" / str(nutzer_id)
+    # Pfad absichern: nutzer_id kommt aus der URL. FastAPI erzwingt zwar
+    # int, aber der Check kostet nichts und hält auch künftige Umbauten
+    # davon ab, hier versehentlich außerhalb von DATEN zu löschen.
+    erwartet = (DATEN / "nutzer").resolve()
+    if verzeichnis.exists() and verzeichnis.resolve().parent != erwartet:
+        raise HTTPException(422, detail={"grund": "Ungültiges Datenverzeichnis."})
+    if verzeichnis.exists():
+        try:
+            shutil.rmtree(verzeichnis)
+        except OSError as fehler:
+            protokoll.exception("Datenverzeichnis von %s nicht gelöscht", nutzer_id)
+            raise HTTPException(
+                500,
+                detail={
+                    "grund": "Die Nutzdaten ließen sich nicht löschen; das Konto "
+                    "bleibt bestehen. Bitte erneut versuchen."
+                },
+            ) from fehler
     try:
         konten.loesche_nutzer(nutzer_id)
     except KontoFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
     return {"geloescht": nutzer_id}
+
+
+@app.get("/api/verwaltung/zahlen")
+def verwaltung_zahlen(_: Nutzer = Depends(verwalter)) -> dict:
+    """Konten und Belege in Zahlen. Plausible zählt daneben die Aufrufe."""
+    return konten.betriebszahlen()
+
+
+@app.get("/api/verwaltung/einstellungen")
+def verwaltung_einstellungen(_: Nutzer = Depends(verwalter)) -> dict:
+    """Betriebseinstellungen. Das SMTP-Passwort kommt NUR als Punkte zurück."""
+    werte = konten.einstellungen()
+    werte["eingerichtet"] = post.ist_eingerichtet()
+    return werte
+
+
+@app.put("/api/verwaltung/einstellungen")
+def verwaltung_einstellungen_setzen(
+    daten: dict, _: Nutzer = Depends(verwalter)
+) -> dict:
+    konten.setze_einstellungen({k: str(v) for k, v in daten.items()})
+    werte = konten.einstellungen()
+    werte["eingerichtet"] = post.ist_eingerichtet()
+    return werte
+
+
+@app.post("/api/verwaltung/testmail")
+def verwaltung_testmail(daten: dict, person: Nutzer = Depends(verwalter)) -> dict:
+    """Probenachricht an den Admin — der einzige Weg, den Zugang zu prüfen."""
+    ziel = str(daten.get("an", "")).strip() or person.email
+    try:
+        verschickt = post.sende(
+            ziel,
+            "Testnachricht von Rechnungsblatt",
+            "Der Postausgang ist richtig eingerichtet.\n\nRechnungsblatt\n",
+        )
+    except post.PostFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    if not verschickt:
+        raise HTTPException(
+            422, detail={"grund": "Kein SMTP eingerichtet — nichts verschickt."}
+        )
+    return {"verschickt": True, "an": ziel}
 
 
 @app.get("/api/verwaltung/tarife")
@@ -474,6 +767,7 @@ def verwaltung_tarif_speichern(
             preis_je_rechnung_cent=int(daten.get("preis_je_rechnung_cent", 0)),
             reihenfolge=int(daten.get("reihenfolge", 0)),
             sichtbar=bool(daten.get("sichtbar", True)),
+            hervorheben=bool(daten.get("hervorheben", False)),
         )
     except (TypeError, ValueError) as fehler:
         raise HTTPException(422, detail={"grund": f"Ungültiger Tarif: {fehler}"}) from fehler
@@ -482,15 +776,116 @@ def verwaltung_tarif_speichern(
 
 # ---------------------------------------------------------------- Ablage
 
+# --- Verschlüsselte Ablage --------------------------------------------
+#
+# Die Nutzdaten liegen verschlüsselt auf der Platte; der Schlüssel kommt
+# aus der Sitzung (siehe `tresor`). Ohne Schlüssel wird im Klartext
+# gelesen und geschrieben — das betrifft nur Konten aus der Zeit davor und
+# die Tests.
+#
+# Der Schlüssel hängt am Mandantenverzeichnis, nicht an einer
+# Kontextvariablen: FastAPI führt synchrone Endpunkte in einem Threadpool
+# aus, und eine in `mandant` gesetzte ContextVar erreicht den Endpunkt
+# dort nicht. `mandant` liefert ohnehin genau dieses Pfadobjekt an jeden
+# Endpunkt — der Schlüssel reist damit mit, ohne durch jede
+# Hilfsfunktion gereicht zu werden.
+class Mandantenpfad(Path):
+    """Pfad des Mandantenverzeichnisses samt seinem Datenschlüssel."""
+
+    _flavour = type(Path())._flavour        # von pathlib verlangt
+    schluessel: bytes | None = None
+
+    def _make_child_relpath(self, name):    # noqa: N802 (pathlib-Vorgabe)
+        kind = super()._make_child_relpath(name)
+        kind.schluessel = self.schluessel
+        return kind
+
+    def __truediv__(self, andere):
+        kind = super().__truediv__(andere)
+        if isinstance(kind, Mandantenpfad):
+            kind.schluessel = self.schluessel
+        return kind
+
+
+def _schluessel_zu(pfad: Path) -> bytes | None:
+    """Findet den Schlüssel zu einem Pfad innerhalb des Mandantenordners."""
+    if isinstance(pfad, Mandantenpfad):
+        return pfad.schluessel
+    for eltern in pfad.parents:
+        if isinstance(eltern, Mandantenpfad):
+            return eltern.schluessel
+    return None
+
+
+def _lies_datei(pfad: Path, schluessel: bytes | None = None) -> bytes:
+    """Rohbytes einer Mandantendatei, entschlüsselt wenn nötig."""
+    inhalt = pfad.read_bytes()
+    if schluessel is None:
+        schluessel = _schluessel_zu(pfad)
+    if schluessel is None:
+        if tresor.ist_verschluesselt(inhalt):
+            raise HTTPException(
+                409,
+                detail={
+                    "code": "kein_schluessel",
+                    "grund": "Die Daten sind verschlüsselt, aber diese Sitzung "
+                    "trägt keinen Schlüssel. Bitte neu anmelden.",
+                },
+            )
+        return inhalt
+    try:
+        return tresor.entschluessle(inhalt, schluessel)
+    except tresor.TresorFehler as fehler:
+        raise HTTPException(
+            409,
+            detail={"code": "schluessel_passt_nicht",
+                    "grund": "Diese Datei lässt sich nicht entschlüsseln."},
+        ) from fehler
+
+
+def _schreibe_datei(pfad: Path, inhalt: bytes,
+                   schluessel: bytes | None = None) -> None:
+    """Schreibt eine Mandantendatei, verschlüsselt wenn ein Schlüssel da ist."""
+    pfad.parent.mkdir(parents=True, exist_ok=True)
+    if schluessel is None:
+        schluessel = _schluessel_zu(pfad)
+    if schluessel is not None:
+        inhalt = tresor.verschluessle(inhalt, schluessel)
+    pfad.write_bytes(inhalt)
+
+
 def _lese_json(pfad: Path) -> dict | None:
     if not pfad.exists():
         return None
-    return json.loads(pfad.read_text(encoding="utf-8"))
+    return json.loads(_lies_datei(pfad).decode("utf-8"))
 
 
 def _schreibe_json(pfad: Path, daten: dict) -> None:
-    pfad.parent.mkdir(parents=True, exist_ok=True)
-    pfad.write_text(json.dumps(daten, ensure_ascii=False, indent=2), encoding="utf-8")
+    _schreibe_datei(
+        pfad, json.dumps(daten, ensure_ascii=False, indent=2).encode("utf-8")
+    )
+
+
+@contextlib.contextmanager
+def _im_klartext(pfad: Path):
+    """Stellt eine Mandantendatei kurz entschlüsselt bereit.
+
+    Der Kern nimmt Pfade, keine Bytes — er öffnet das Briefpapier selbst.
+    Ein Schlüssel ist ihm fremd und soll es bleiben: Verschlüsselung ist
+    Sache der Web-Schicht (``docs/uebergabe.md`` §2).
+
+    Die Kopie liegt in einem Temporärverzeichnis **innerhalb** des
+    Mandantenordners und verschwindet mit dem Block — auch bei einer
+    Ausnahme. Nicht in /tmp: dort läge Klartext außerhalb des Volumes.
+    """
+    if not pfad.exists():
+        yield pfad
+        return
+    inhalt = _lies_datei(pfad)
+    with tempfile.TemporaryDirectory(dir=pfad.parent) as arbeit:
+        klar = Path(arbeit) / pfad.name
+        klar.write_bytes(inhalt)
+        yield klar
 
 
 def _briefpapier_pfad(wurzel: Path) -> Path:
@@ -573,6 +968,12 @@ async def briefpapier_hochladen(
             raise HTTPException(500, detail={"grund": str(fehler)}) from fehler
     # Original bewusst verwerfen — gespeichert wird nur die normalisierte Fassung.
     erzeuge_vorschau_png(_briefpapier_pfad(wurzel), _vorschau_pfad(wurzel), dpi=150)
+    # Der Kern kennt keinen Schlüssel und legt beide Dateien im Klartext ab.
+    # Sie tragen den Briefbogen der Firma, also die Identität des Mandanten —
+    # hier nachträglich verschlüsseln, sobald sie fertig sind.
+    for datei_pfad in (_briefpapier_pfad(wurzel), _vorschau_pfad(wurzel)):
+        if datei_pfad.exists():
+            _schreibe_datei(datei_pfad, datei_pfad.read_bytes())
     meta = {
         "dateiname": datei.filename,
         "schriften_ersetzt": ergebnis.schriften_ersetzt,
@@ -586,7 +987,8 @@ async def briefpapier_hochladen(
 def briefpapier_vorschau(wurzel: Path = Depends(mandant)) -> FileResponse:
     if not _vorschau_pfad(wurzel).exists():
         raise HTTPException(404, detail={"grund": "Kein Briefpapier eingerichtet."})
-    return FileResponse(_vorschau_pfad(wurzel), media_type="image/png")
+    # Verschlüsselt abgelegt — FileResponse würde Geheimtext ausliefern.
+    return Response(_lies_datei(_vorschau_pfad(wurzel)), media_type="image/png")
 
 
 # ---------------------------------------------------------------- Schreibzone
@@ -610,6 +1012,9 @@ def schreibzone_setzen(zone: dict, wurzel: Path = Depends(mandant)) -> dict:
 
 # ---------------------------------------------------------------- Gestaltung
 
+_FARBE_MUSTER = re.compile(r"#[0-9a-fA-F]{6}")
+
+
 def _gestaltung_aus_json(daten: dict) -> Blattgestaltung:
     schrift = daten.get("schrift", "liberation-sans")
     if schrift not in {s.schluessel for s in verfuegbare_schriften()}:
@@ -621,11 +1026,18 @@ def _gestaltung_aus_json(daten: dict) -> Blattgestaltung:
         raise HTTPException(
             422, detail={"grund": f"Ungültige Gestaltung: {fehler}"}
         ) from fehler
+    farbe = str(daten.get("akzentfarbe") or "#136f83").strip()
+    if not _FARBE_MUSTER.fullmatch(farbe):
+        raise HTTPException(
+            422, detail={"grund": f"Ungültige Akzentfarbe: {farbe!r} (erwartet #rrggbb)."}
+        )
     return Blattgestaltung(
         schrift=schrift,
         schriftgrad=schriftgrad,
         layout=layout,
         belegdaten_als_zeile=bool(daten.get("belegdaten_als_zeile", False)),
+        akzent_an=bool(daten.get("akzent_an", False)),
+        akzentfarbe=farbe,
     )
 
 
@@ -652,6 +1064,8 @@ def gestaltung_setzen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
         "schriftgrad": str(daten.get("schriftgrad", "normal")).lower(),
         "layout": str(daten.get("layout", "klassisch")).lower(),
         "belegdaten_als_zeile": bool(daten.get("belegdaten_als_zeile", False)),
+        "akzent_an": bool(daten.get("akzent_an", False)),
+        "akzentfarbe": str(daten.get("akzentfarbe") or "#136f83").strip(),
     }
     _schreibe_json(wurzel / "gestaltung.json", gespeichert)
     return gespeichert
@@ -663,6 +1077,8 @@ def gestaltung_vorschau(
     schriftgrad: str | None = None,
     layout: str | None = None,
     zeile: bool = False,
+    akzent: bool = False,
+    farbe: str | None = None,
     wurzel: Path = Depends(mandant),
 ) -> Response:
     """Musterrechnung mit der (ggf. noch ungespeicherten) Gestaltung als PNG."""
@@ -673,6 +1089,8 @@ def gestaltung_vorschau(
                 "schriftgrad": schriftgrad or "normal",
                 "layout": layout or "klassisch",
                 "belegdaten_als_zeile": zeile,
+                "akzent_an": akzent,
+                "akzentfarbe": farbe or "#136f83",
             }
         )
     else:
@@ -688,13 +1106,12 @@ def gestaltung_vorschau(
     )
     stammdaten_json = _lese_json(wurzel / "stammdaten.json")
     stammdaten = _stammdaten_aus_json(stammdaten_json) if stammdaten_json else None
-    briefpapier = (
-        _briefpapier_pfad(wurzel) if _briefpapier_pfad(wurzel).exists() else None
-    )
-
-    pdf = erzeuge_gestaltungsvorschau(
-        zone, gestaltung, stammdaten, briefpapier, girocode=_girocode_aktiv(wurzel)
-    )
+    with _im_klartext(_briefpapier_pfad(wurzel)) as bogen:
+        briefpapier = bogen if _briefpapier_pfad(wurzel).exists() else None
+        pdf = erzeuge_gestaltungsvorschau(
+            zone, gestaltung, stammdaten, briefpapier,
+            girocode=_girocode_aktiv(wurzel),
+        )
     wurzel.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=wurzel) as arbeit:
         pdf_pfad = Path(arbeit) / "vorschau.pdf"
@@ -736,6 +1153,7 @@ def _stammdaten_aus_json(daten: dict) -> Stammdaten:
         kontakt_email=daten.get("kontakt_email") or None,
         kontakt_telefon=daten.get("kontakt_telefon") or None,
         kleinunternehmer=bool(daten.get("kleinunternehmer", False)),
+        artikelnummern=bool(daten.get("artikelnummern", False)),
     )
 
 
@@ -853,9 +1271,155 @@ def _verwendungszweck(wurzel: Path, rechnung: Rechnung, angegeben: str | None) -
 
 # ---------------------------------------------------------------- Kundenstamm
 
+def _leer_zu_none(wert) -> str | None:
+    """Leere Eingaben als None speichern, nicht als Leerzeichenkette —
+    der Kern unterscheidet zwischen 'nicht angegeben' und 'leer'."""
+    text = str(wert or "").strip()
+    return text or None
+
+
 @app.get("/api/kunden")
 def kunden_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
     return _lese_json(wurzel / "kunden.json") or []
+
+
+@app.put("/api/kunden")
+def kunden_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[dict]:
+    """Ganze Liste ersetzen — das Adressbuch schickt seinen Stand zurück."""
+    bereinigt = []
+    for eintrag in daten:
+        name = str(eintrag.get("name", "")).strip()
+        if not name:
+            continue  # namenlose Einträge sind niemandem nützlich
+        anschrift = eintrag.get("anschrift") or {}
+        bereinigt.append({
+            "name": name,
+            "anschrift": {
+                "strasse": str(anschrift.get("strasse", "")).strip(),
+                "plz": str(anschrift.get("plz", "")).strip(),
+                "ort": str(anschrift.get("ort", "")).strip(),
+                "land": str(anschrift.get("land") or "DE").strip().upper()[:2],
+            },
+            "ust_idnr": _leer_zu_none(eintrag.get("ust_idnr")),
+            "email": _leer_zu_none(eintrag.get("email")),
+            "leitweg_id": _leer_zu_none(eintrag.get("leitweg_id")),
+            "zuletzt": eintrag.get("zuletzt"),
+        })
+    _schreibe_json(wurzel / "kunden.json", bereinigt)
+    return bereinigt
+
+
+# ---------------------------------------------------------------- Artikel
+
+@app.get("/api/artikel")
+def artikel_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
+    return _lese_json(wurzel / "artikel.json") or []
+
+
+@app.put("/api/artikel")
+def artikel_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[dict]:
+    """Wiederkehrende Leistungen und Waren. Preise als Zeichenkette, damit
+    aus 19,90 kein Fließkommawert wird — gerechnet wird erst im Kern."""
+    bereinigt = []
+    for eintrag in daten:
+        bezeichnung = str(eintrag.get("bezeichnung", "")).strip()
+        if not bezeichnung:
+            continue
+        preis = str(eintrag.get("einzelpreis", "")).replace(",", ".").strip()
+        if preis:
+            try:
+                Decimal(preis)  # nur prüfen, gespeichert wird der Text
+            except InvalidOperation:
+                raise HTTPException(422, detail={
+                    "grund": f"{bezeichnung}: {preis!r} ist kein Preis."
+                })
+        steuer = str(eintrag.get("steuer") or "UST_19").strip()
+        if steuer not in {k.name for k in Steuerkategorie}:
+            raise HTTPException(422, detail={
+                "grund": f"{bezeichnung}: unbekannte Steuerkategorie {steuer!r}."
+            })
+        bereinigt.append({
+            "artikelnummer": _leer_zu_none(eintrag.get("artikelnummer")),
+            "bezeichnung": bezeichnung,
+            "beschreibung": _leer_zu_none(eintrag.get("beschreibung")),
+            "einheit": str(eintrag.get("einheit") or "C62").strip(),
+            "einzelpreis": preis or "0.00",
+            "steuer": steuer,
+        })
+    _schreibe_json(wurzel / "artikel.json", bereinigt)
+    return bereinigt
+
+
+# -------------------------------------------------------- Rechnungsvorlagen
+
+@app.get("/api/vorlagen")
+def vorlagen_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
+    return _lese_json(wurzel / "vorlagen.json") or []
+
+
+@app.put("/api/vorlagen")
+def vorlagen_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[dict]:
+    """Benannte Positionslisten — dieselbe Leistung an wechselnde Kunden.
+
+    Bewusst OHNE Empfänger: das ist der Unterschied zu „Beleg als Vorlage"
+    aus der Ablage, die den alten Kunden mitschleppt. Preise werden wie im
+    Artikelstamm als Zeichenkette gehalten, gerechnet wird erst im Kern.
+    """
+    bereinigt = []
+    for eintrag in daten:
+        name = str(eintrag.get("name", "")).strip()
+        if not name:
+            continue  # namenlose Vorlagen findet später niemand wieder
+        positionen = []
+        for p in eintrag.get("positionen") or []:
+            bezeichnung = str(p.get("bezeichnung", "")).strip()
+            if not bezeichnung:
+                continue
+            for feld in ("menge", "einzelpreis"):
+                wert = str(p.get(feld, "")).replace(",", ".").strip()
+                if wert:
+                    try:
+                        Decimal(wert)
+                    except InvalidOperation:
+                        raise HTTPException(422, detail={
+                            "grund": f"{name} / {bezeichnung}: "
+                                     f"{wert!r} ist keine Zahl."
+                        })
+            steuer = str(p.get("steuer") or "UST_19").strip()
+            if steuer not in {k.name for k in Steuerkategorie}:
+                raise HTTPException(422, detail={
+                    "grund": f"{name} / {bezeichnung}: "
+                             f"unbekannte Steuerkategorie {steuer!r}."
+                })
+            positionen.append({
+                "artikelnummer": _leer_zu_none(p.get("artikelnummer")),
+                "bezeichnung": bezeichnung,
+                "beschreibung": _leer_zu_none(p.get("beschreibung")),
+                "menge": str(p.get("menge", "")).replace(",", ".").strip() or "1",
+                "einheit": str(p.get("einheit") or "C62").strip(),
+                "einzelpreis": str(p.get("einzelpreis", "")).replace(",", ".").strip() or "0.00",
+                "steuer": steuer,
+            })
+        if not positionen:
+            continue  # eine Vorlage ohne Positionen spart keine Arbeit
+        rabatt = str(eintrag.get("rabatt", "")).replace(",", ".").strip()
+        if rabatt:
+            try:
+                Decimal(rabatt)
+            except InvalidOperation:
+                raise HTTPException(422, detail={
+                    "grund": f"{name}: {rabatt!r} ist kein Rabattwert."
+                })
+        bereinigt.append({
+            "name": name,
+            "positionen": positionen,
+            "rabatt": rabatt or None,
+            "rabatt_art": "prozent" if eintrag.get("rabatt_art") == "prozent" else "betrag",
+            "rabatt_grund": _leer_zu_none(eintrag.get("rabatt_grund")),
+            "freitext": _leer_zu_none(eintrag.get("freitext")),
+        })
+    _schreibe_json(wurzel / "vorlagen.json", bereinigt)
+    return bereinigt
 
 
 def _kunde_merken(wurzel: Path, rechnung: Rechnung) -> None:
@@ -927,6 +1491,7 @@ def _rechnung_aus_json(daten: dict) -> Rechnung:
                 ),
                 steuer=steuer,
                 beschreibung=position.get("beschreibung") or None,
+                artikelnummer=position.get("artikelnummer") or None,
             )
         )
     zeitraum = None
@@ -952,6 +1517,11 @@ def _rechnung_aus_json(daten: dict) -> Rechnung:
         leistungszeitraum=zeitraum,
         rabatt_betrag=(
             _dezimal(daten["rabatt_betrag"], "Rabatt") if daten.get("rabatt_betrag") else None
+        ),
+        rabatt_prozent=(
+            _dezimal(daten["rabatt_prozent"], "Rabattsatz")
+            if daten.get("rabatt_prozent")
+            else None
         ),
         rabatt_grund=daten.get("rabatt_grund") or "Rabatt",
         freitext=daten.get("freitext") or None,
@@ -1001,6 +1571,22 @@ def rechnung_erzeugen(
         rechnung,
         verwendungszweck=_verwendungszweck(wurzel, rechnung, daten.get("verwendungszweck")),
     )
+    # Eine vergebene Nummer ist vergeben. Eine erteilte Rechnung darf nicht
+    # geändert werden — wer korrigieren will, storniert per Gutschrift und
+    # schreibt eine neue. Ohne diese Sperre überschriebe ein zweiter Aufruf
+    # mit derselben Nummer PDF, XML und Daten des ersten Belegs spurlos;
+    # die fortlaufende Nummerierung wäre wertlos, weil hinter einer Nummer
+    # nacheinander verschiedene Rechnungen stehen könnten.
+    if (wurzel / "ablage" / rechnung.nummer).exists():
+        return JSONResponse(
+            status_code=409,
+            content={
+                "code": "nummer_vergeben",
+                "grund": f"Die Nummer {rechnung.nummer} ist bereits vergeben. "
+                "Eine erteilte Rechnung wird nicht geändert: stornieren Sie "
+                "sie per Gutschrift und schreiben Sie eine neue.",
+            },
+        )
     # Kontingent vorab prüfen, damit kein PDF gebaut wird, das niemand bekommt.
     if not konten.kontingent(person).darf_erzeugen:
         return JSONResponse(
@@ -1012,15 +1598,16 @@ def rechnung_erzeugen(
             },
         )
     try:
-        ergebnis = erzeuge_rechnung(
-            rechnung,
-            stammdaten,
-            _briefpapier_pfad(wurzel),
-            zone,
-            zeitpunkt=dt.datetime.now(dt.timezone.utc).astimezone(),
-            gestaltung=_gestaltung_laden(wurzel),
-            girocode=_girocode_aktiv(wurzel),
-        )
+        with _im_klartext(_briefpapier_pfad(wurzel)) as bogen:
+            ergebnis = erzeuge_rechnung(
+                rechnung,
+                stammdaten,
+                bogen,
+                zone,
+                zeitpunkt=dt.datetime.now(dt.timezone.utc).astimezone(),
+                gestaltung=_gestaltung_laden(wurzel),
+                girocode=_girocode_aktiv(wurzel),
+            )
     except UngueltigeRechnung as fehler:
         return JSONResponse(
             status_code=422,
@@ -1040,8 +1627,10 @@ def rechnung_erzeugen(
 
     ordner = wurzel / "ablage" / rechnung.nummer
     ordner.mkdir(parents=True, exist_ok=True)
-    (ordner / "rechnung.pdf").write_bytes(ergebnis.pdf)
-    (ordner / "factur-x.xml").write_bytes(ergebnis.xml)
+    # Auch der Beleg selbst wird verschlüsselt — er ist die Rechnung, nicht
+    # bloss ihre Beschreibung.
+    _schreibe_datei(ordner / "rechnung.pdf", ergebnis.pdf)
+    _schreibe_datei(ordner / "factur-x.xml", ergebnis.xml)
     _schreibe_json(ordner / "daten.json", daten)
     _nummernkreis_fortschreiben(wurzel, rechnung.nummer)
     _kunde_merken(wurzel, rechnung)
@@ -1090,6 +1679,11 @@ def _ablage_ordner(wurzel: Path, nummer: str) -> Path:
     ordner = (wurzel / "ablage" / nummer).resolve()
     if not ordner.is_relative_to((wurzel / "ablage").resolve()) or not ordner.is_dir():
         raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
+    # resolve() baut ein neues Pfadobjekt und verliert dabei den Schlüssel
+    # — hier wieder anheften, sonst stehen die Belege ohne ihn da.
+    if isinstance(wurzel, Mandantenpfad):
+        ordner = Mandantenpfad(ordner)
+        ordner.schluessel = wurzel.schluessel
     return ordner
 
 
@@ -1114,22 +1708,33 @@ def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
     return belege
 
 
+# Belege liegen verschlüsselt — FileResponse würde den Geheimtext
+# ausliefern. Sie gehen deshalb durch _lies_datei und als Response
+# hinaus. Rechnungen sind ein paar hundert Kilobyte; sie dabei einmal in
+# den Speicher zu nehmen, ist unkritisch.
 @app.get("/api/ablage/{nummer}/pdf")
-def ablage_pdf(nummer: str, wurzel: Path = Depends(mandant)) -> FileResponse:
-    return FileResponse(
-        _ablage_ordner(wurzel, nummer) / "rechnung.pdf",
+def ablage_pdf(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
+    pfad = _ablage_ordner(wurzel, nummer) / "rechnung.pdf"
+    if not pfad.exists():
+        raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
+    return Response(
+        _lies_datei(pfad),
         media_type="application/pdf",
-        filename=f"{nummer}.pdf",
-        content_disposition_type="inline",
+        headers={"content-disposition": f'inline; filename="{nummer}.pdf"'},
     )
 
 
 @app.get("/api/ablage/{nummer}/xml")
-def ablage_xml(nummer: str, wurzel: Path = Depends(mandant)) -> FileResponse:
-    return FileResponse(
-        _ablage_ordner(wurzel, nummer) / "factur-x.xml",
+def ablage_xml(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
+    pfad = _ablage_ordner(wurzel, nummer) / "factur-x.xml"
+    if not pfad.exists():
+        raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
+    return Response(
+        _lies_datei(pfad),
         media_type="application/xml",
-        filename=f"{nummer}-factur-x.xml",
+        headers={
+            "content-disposition": f'attachment; filename="{nummer}-factur-x.xml"'
+        },
     )
 
 

@@ -271,3 +271,58 @@ def test_leistungszeitraum_statt_datum(rechnung, stammdaten):
         )
         is None
     )
+
+
+# ------------------------------------------- Artikelnummer und Prozentrabatt
+
+_ZEILE = "rsm:SupplyChainTradeTransaction/ram:IncludedSupplyChainTradeLineItem"
+
+
+def test_artikelnummer_als_seller_assigned_id(rechnung, stammdaten):
+    """BT-155 landet als SellerAssignedID im Produktblock."""
+    mit = dataclasses.replace(
+        rechnung,
+        positionen=(
+            dataclasses.replace(rechnung.positionen[0], artikelnummer="ART-4711"),
+        ),
+    )
+    wurzel = _xml(mit, stammdaten)
+    assert _text(
+        wurzel, f"{_ZEILE}/ram:SpecifiedTradeProduct/ram:SellerAssignedID"
+    ) == "ART-4711"
+
+
+def test_ohne_artikelnummer_kein_leeres_element(rechnung, stammdaten):
+    wurzel = _xml(rechnung, stammdaten)
+    assert wurzel.find(
+        f"{_ZEILE}/ram:SpecifiedTradeProduct/ram:SellerAssignedID", NS
+    ) is None
+
+
+def test_prozentrabatt_als_calculation_percent(rechnung, stammdaten):
+    """BT-138 steht im Nachlassblock, der Betrag bleibt maßgeblich."""
+    mit = dataclasses.replace(
+        rechnung, rabatt_prozent=Decimal("10"), rabatt_grund="Treuerabatt"
+    )
+    wurzel = _xml(mit, stammdaten)
+    nachlass = wurzel.find(
+        "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement"
+        "/ram:SpecifiedTradeAllowanceCharge",
+        NS,
+    )
+    assert nachlass is not None
+    assert _text(nachlass, "ram:CalculationPercent") == "10.00"
+    assert _text(nachlass, "ram:ActualAmount") == "20.00"
+    assert _text(nachlass, "ram:Reason") == "Treuerabatt"
+
+
+def test_betragsrabatt_ohne_calculation_percent(rechnung, stammdaten):
+    mit = dataclasses.replace(rechnung, rabatt_betrag=Decimal("20.00"))
+    wurzel = _xml(mit, stammdaten)
+    nachlass = wurzel.find(
+        "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement"
+        "/ram:SpecifiedTradeAllowanceCharge",
+        NS,
+    )
+    assert nachlass is not None
+    assert nachlass.find("ram:CalculationPercent", NS) is None
