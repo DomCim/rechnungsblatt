@@ -26,13 +26,6 @@ def zeilensumme(position: Position) -> Decimal:
     return runden(position.menge * position.einzelpreis)
 
 
-def zeilensumme_gesamt(rechnung: Rechnung) -> Decimal:
-    """Netto aller Positionen vor Dokumentrabatt — die Basis für Prozentrabatt."""
-    return sum(
-        (zeilensumme(position) for position in rechnung.positionen), Decimal("0.00")
-    )
-
-
 def rabatt_aus_prozent(prozent: Decimal, zeilensumme_netto: Decimal) -> Decimal:
     """Rechnet einen Prozentrabatt in einen Betrag um.
 

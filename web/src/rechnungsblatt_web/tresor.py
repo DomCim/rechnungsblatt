@@ -207,6 +207,3 @@ def normalisiere_code(eingabe: str) -> str:
     return "".join(z for z in eingabe.upper() if z in _ALPHABET)
 
 
-def gleich(a: str, b: str) -> bool:
-    """Zeitkonstanter Vergleich, damit die Laufzeit nichts verrät."""
-    return hmac.compare_digest(a, b)

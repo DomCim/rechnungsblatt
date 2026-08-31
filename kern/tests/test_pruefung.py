@@ -191,3 +191,33 @@ def test_xrechnung_verlangt_leitweg_id_kontakt_und_email(rechnung, stammdaten):
 
 def test_en16931_verlangt_keine_leitweg_id(rechnung, stammdaten):
     assert pruefe_paragraph14(rechnung, stammdaten, Profil.EN16931) == []
+
+
+def test_einzelpreis_mit_drei_nachkommastellen_wird_beanstandet(rechnung, stammdaten):
+    """Sonst widersprechen sich Einzelpreis und Positionsbetrag im XML.
+
+    Der Preis wird im XML auf zwei Stellen ausgewiesen, der Betrag aber
+    aus dem ungerundeten Wert gerechnet. Bei 0,333 € × 3 rechnet ein
+    Prüfer 0,33 × 3 = 0,99 gegen einen ausgewiesenen Betrag von 1,00 —
+    und beanstandet die Rechnung.
+    """
+    krumm = dataclasses.replace(
+        rechnung,
+        positionen=(
+            Position(bezeichnung="Stunden", menge=Decimal("3"), einheit="HUR",
+                     einzelpreis=Decimal("0.333"),
+                     steuer=Steuerkategorie.UST_19),
+        ),
+    )
+    assert "P5" in codes(pruefe_paragraph14(krumm, stammdaten))
+
+    # Zwei Stellen bleiben erlaubt — auch als glatte Zahl.
+    glatt = dataclasses.replace(
+        rechnung,
+        positionen=(
+            Position(bezeichnung="Stunden", menge=Decimal("3"), einheit="HUR",
+                     einzelpreis=Decimal("0.33"),
+                     steuer=Steuerkategorie.UST_19),
+        ),
+    )
+    assert "P5" not in codes(pruefe_paragraph14(glatt, stammdaten))

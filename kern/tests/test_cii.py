@@ -326,3 +326,44 @@ def test_betragsrabatt_ohne_calculation_percent(rechnung, stammdaten):
     )
     assert nachlass is not None
     assert nachlass.find("ram:CalculationPercent", NS) is None
+
+
+def test_prozentrabatt_bei_gemischten_saetzen_nennt_seine_basis(rechnung, stammdaten):
+    """BT-138 ohne BT-137 ist bei mehreren Steuerkörben nicht nachrechenbar.
+
+    Der Nachlass entsteht je Steuerkorb. Der Prozentsatz stand bisher in
+    jedem davon unverändert — 10 % in beiden —, während die Beträge
+    verschieden sind (10 % von 800 und 10 % von 200). Ohne den Basisbetrag
+    daneben kann ein Eingangsvalidator den Satz nicht gegenrechnen; bei
+    einer XRechnung an eine Behörde ist das ein Grund für die Ablehnung.
+    """
+    gemischt = dataclasses.replace(
+        rechnung,
+        positionen=(
+            Position(bezeichnung="Ware A", menge=Decimal("1"),
+                     einheit="C62", einzelpreis=Decimal("800.00"),
+                     steuer=Steuerkategorie.UST_19),
+            Position(bezeichnung="Ware B", menge=Decimal("1"),
+                     einheit="C62", einzelpreis=Decimal("200.00"),
+                     steuer=Steuerkategorie.UST_7),
+        ),
+        rabatt_prozent=Decimal("10"),
+        rabatt_grund="Treuerabatt",
+    )
+    wurzel = _xml(gemischt, stammdaten)
+    nachlaesse = wurzel.findall(
+        "rsm:SupplyChainTradeTransaction/ram:ApplicableHeaderTradeSettlement"
+        "/ram:SpecifiedTradeAllowanceCharge", NS)
+    assert len(nachlaesse) == 2, "je Steuerkorb ein Nachlass"
+
+    for nachlass in nachlaesse:
+        prozent = _text(nachlass, "ram:CalculationPercent")
+        basis = _text(nachlass, "ram:BasisAmount")
+        betrag = _text(nachlass, "ram:ActualAmount")
+        assert prozent is not None
+        # Der Satz muss sich auf den mitgegebenen Basisbetrag beziehen.
+        assert basis is not None, "BT-138 ohne BT-137 ist nicht prüfbar"
+        gerechnet = (Decimal(basis) * Decimal(prozent) / 100).quantize(Decimal("0.01"))
+        assert gerechnet == Decimal(betrag), (
+            f"{prozent} % von {basis} ergibt {gerechnet}, "
+            f"ausgewiesen ist aber {betrag}")

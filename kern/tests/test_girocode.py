@@ -111,3 +111,33 @@ def test_gutschrift_ohne_girocode(rechnung, stammdaten):
     ohne = rendere_blatt(gutschrift, stammdaten, summen, Schreibzone(), girocode=False)
     # Gutschrift: kein Zahlungsaufruf, also identisch viele Flächen
     assert _qr_flaechen_anzahl(mit_schalter) == _qr_flaechen_anzahl(ohne)
+
+
+def test_fremdwaehrung_bekommt_keinen_girocode(rechnung, stammdaten):
+    """EPC069-12 kennt nur Euro — ein QR-Code in CHF wäre eine Falschangabe.
+
+    Die Betragszeile im GiroCode beginnt fest mit „EUR". Eine Rechnung
+    über 119,00 CHF ergäbe damit einen Code, den die Banking-App als
+    119,00 **EUR** anzeigt: Der Kunde überweist den falschen Betrag in der
+    falschen Währung. Das XML führt die Währung korrekt mit, der QR-Code
+    kann es nicht — also gehört er dann weggelassen, wie bei einer
+    Gutschrift auch.
+    """
+    from rechnungsblatt_kern.blatt import girocode_moeglich
+
+    assert girocode_moeglich(rechnung) is True
+    in_franken = dataclasses.replace(rechnung, waehrung="CHF")
+    assert girocode_moeglich(in_franken) is False
+
+
+def test_fremdwaehrung_erscheint_nicht_auf_dem_blatt(rechnung, stammdaten):
+    """Gegenprobe am fertigen Beleg, nicht nur an der Hilfsfunktion."""
+    in_franken = dataclasses.replace(rechnung, waehrung="CHF")
+    summen = berechne_summen(in_franken)
+    seiten = rendere_blatt(
+        in_franken, stammdaten, summen,
+        Schreibzone(kopf_ende_mm=45, fuss_beginn_mm=25),
+        girocode=True,
+    )
+    text = b"".join(seiten) if isinstance(seiten, list) else seiten
+    assert b"GiroCode" not in text
