@@ -15,11 +15,8 @@ from fastapi.responses import JSONResponse
 from . import bezahlen, dkim, konten, post, statistik
 from .basis import (
     datenverzeichnis,
-    freigegeben,
-    oeffentliche_adresse,
     protokoll,
     verwalter,
-    wurzel_von,
 )
 from .darstellung import tarif_json
 from .konten import KontoFehler, Nutzer
