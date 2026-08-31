@@ -1081,3 +1081,56 @@ def test_standardtarif_laesst_sich_nicht_loeschen(leere_konten):
     with pytest.raises(konten.KontoFehler) as fehler:
         konten.loesche_tarif(konten.STANDARD_TARIF)
     assert "Standardtarif" in str(fehler.value)
+
+
+def test_absender_ohne_klammeraffe_ist_keine_adresse():
+    """Ohne @ ist es kein Absender — der Mailserver weist ihn ab.
+
+    Aus dem Betrieb: Im Absenderfeld stand „Rechnungsblatt.de". Strato
+    antwortete darauf mit `553 Missing '@' in e-mail address`, und die
+    Fehlermeldung nannte danach den Empfänger — was die Suche in die
+    falsche Richtung schickte.
+
+    `rpartition("@")` allein lieferte für diesen Text die „Domain"
+    rechnungsblatt.de, die Alignment-Prüfung ging durch, und nichts
+    warnte.
+    """
+    from rechnungsblatt_web import dkim
+
+    assert dkim.domain_von("Rechnungsblatt.de") == ""
+    assert dkim.domain_von("Firma Müller") == ""
+    assert dkim.domain_von("@nur-domain.de") == ""
+    assert dkim.domain_von("no-reply@rechnungsblatt.de") == "rechnungsblatt.de"
+    assert dkim.domain_von("Name <no-reply@rechnungsblatt.de>") == "rechnungsblatt.de"
+    # Und damit greift auch die Alignment-Prüfung nicht mehr fälschlich.
+    assert not dkim.passt("rechnungsblatt.de", "Rechnungsblatt.de")
+
+
+def test_smtp_fehler_bekommen_eine_erklaerung():
+    """Die Rohmeldung des Servers sagt nicht, was zu tun ist.
+
+    „The read operation timed out" auf Port 465 heißt fast immer: Der Port
+    ist unterwegs gesperrt, nicht falsch eingestellt. Das gehört dazu,
+    sonst sucht man den Fehler bei Passwort und Server.
+    """
+    import smtplib
+
+    from rechnungsblatt_web import post
+
+    hilfe = post._hilfe_zum_fehler(
+        TimeoutError("The read operation timed out"), "smtp.example.de", 465, True)
+    assert "587" in hilfe
+
+    hilfe = post._hilfe_zum_fehler(
+        smtplib.SMTPRecipientsRefused({"x@y.de": (550, b"No such mailbox")}),
+        "smtp.example.de", 587, False)
+    assert "Empfänger" in hilfe
+
+    hilfe = post._hilfe_zum_fehler(
+        smtplib.SMTPSenderRefused(553, b"Missing '@'", "Rechnungsblatt.de"),
+        "smtp.example.de", 587, False)
+    assert "Absenderadresse" in hilfe
+
+    # Ein unbekannter Fehler bekommt keinen erfundenen Rat.
+    assert post._hilfe_zum_fehler(
+        smtplib.SMTPException("irgendwas"), "smtp.example.de", 587, False) == ""
