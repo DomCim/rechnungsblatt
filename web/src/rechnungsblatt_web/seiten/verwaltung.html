@@ -203,6 +203,35 @@
       <div class="feld breit"><label for="plausDomain" data-i18n="fPlausDomain">Gezählte Domain</label>
         <input id="plausDomain" placeholder="rechnungsblatt.example.de"></div>
     </div>
+    <h2 style="margin-top:22px;" data-i18n="stripeTitel">Zahlungen</h2>
+    <p class="beschreibung" data-i18n="stripeText">
+      Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben
+      setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden
+      verschlüsselt abgelegt und nie wieder angezeigt.
+    </p>
+    <div class="felder">
+      <div class="feld breit">
+        <label for="stripeSecret" data-i18n="fStripeSecret">Geheimer Schlüssel (sk_…)</label>
+        <input id="stripeSecret" type="password" autocomplete="off"></div>
+      <div class="feld breit">
+        <label for="stripeHook" data-i18n="fStripeHook">Webhook-Geheimnis (whsec_…)</label>
+        <input id="stripeHook" type="password" autocomplete="off"></div>
+      <div class="feld">
+        <label for="stripePreis" data-i18n="fStripePreis">Preis-ID des Abos (price_…)</label>
+        <input id="stripePreis" placeholder="price_..."></div>
+      <div class="feld">
+        <label for="stripeAboTarif" data-i18n="fStripeAboTarif">Tarif beim Abo</label>
+        <input id="stripeAboTarif" placeholder="monat"></div>
+      <div class="feld breit">
+        <label for="stripeAufladungen" data-i18n="fStripeAufladungen">Wählbare Beträge in Euro</label>
+        <input id="stripeAufladungen" placeholder="10, 25, 50"></div>
+    </div>
+    <p class="beschreibung" style="margin-top:10px;" data-i18n="stripeHinweis">
+      Der Webhook zeigt auf <span class="kennung">/api/bezahlen/webhook</span>.
+      Nötige Ereignisse: checkout.session.completed, invoice.paid,
+      invoice.payment_failed, customer.subscription.deleted.
+    </p>
+
     <div class="zeile" style="margin-top:12px;">
       <button type="button" class="knopf" id="postSpeichern" data-i18n="speichern">Speichern</button>
       <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Testnachricht schicken</button>
@@ -270,6 +299,14 @@
       zaehlungTitel: "Zählung",
       zaehlungText: "Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible über HTTPS erreichbar sein — sonst blockt der Browser.",
       fPlausUrl: "Plausible-Adresse", fPlausDomain: "Gezählte Domain",
+      stripeTitel: "Zahlungen",
+      stripeText: "Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden verschlüsselt abgelegt und nie wieder angezeigt.",
+      fStripeSecret: "Geheimer Schlüssel (sk_…)",
+      fStripeHook: "Webhook-Geheimnis (whsec_…)",
+      fStripePreis: "Preis-ID des Abos (price_…)",
+      fStripeAboTarif: "Tarif beim Abo",
+      fStripeAufladungen: "Wählbare Beträge in Euro",
+      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted.",
       postTitel: "Postausgang",
       postText: "Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll. Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.",
       fHost: "Server", fPort: "Port", fBenutzer: "Benutzer", fPasswort: "Passwort",
@@ -311,6 +348,14 @@
       zaehlungTitel: "Analytics",
       zaehlungText: "Plausible counts page views without cookies. Without an address no script is embedded at all. If the site runs over HTTPS, Plausible must be reachable over HTTPS too — otherwise the browser blocks it.",
       fPlausUrl: "Plausible address", fPlausDomain: "Counted domain",
+      stripeTitel: "Payments",
+      stripeText: "Without keys the app offers no payment — you then set plans and credit by hand, as before. The keys are stored encrypted and never shown again.",
+      fStripeSecret: "Secret key (sk_…)",
+      fStripeHook: "Webhook secret (whsec_…)",
+      fStripePreis: "Price ID of the plan (price_…)",
+      fStripeAboTarif: "Plan on subscription",
+      fStripeAufladungen: "Selectable amounts in euro",
+      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted.",
       postTitel: "Outgoing mail",
       postText: "Without these details Rechnungsblatt sends no confirmation codes and no reset links — the messages only end up in the log. The password is stored encrypted and never shown again.",
       fHost: "Server", fPort: "Port", fBenutzer: "User", fPasswort: "Password",
@@ -650,6 +695,11 @@
     el("smtpTls").checked = werte.smtp_tls === "1";
     el("plausUrl").value = werte.plausible_url || "";
     el("plausDomain").value = werte.plausible_domain || "";
+    el("stripeSecret").value = werte.stripe_secret || "";
+    el("stripeHook").value = werte.stripe_webhook_secret || "";
+    el("stripePreis").value = werte.stripe_preis_abo || "";
+    el("stripeAboTarif").value = werte.stripe_abo_tarif || "";
+    el("stripeAufladungen").value = werte.stripe_aufladungen || "";
   }
 
   el("postSpeichern").addEventListener("click", async function () {
@@ -665,7 +715,14 @@
       smtp_tls: el("smtpTls").checked ? "1" : "",
       oeffentliche_adresse: el("oeffAdresse").value.trim(),
       plausible_url: el("plausUrl").value.trim(),
-      plausible_domain: el("plausDomain").value.trim()
+      plausible_domain: el("plausDomain").value.trim(),
+      // Punkte heissen "unveraendert lassen" -- die Geheimnisse kommen nie
+      // im Klartext zurueck.
+      stripe_secret: el("stripeSecret").value,
+      stripe_webhook_secret: el("stripeHook").value,
+      stripe_preis_abo: el("stripePreis").value.trim(),
+      stripe_abo_tarif: el("stripeAboTarif").value.trim(),
+      stripe_aufladungen: el("stripeAufladungen").value.trim()
     }, "PUT");
     if (ergebnis) { postFuellen(ergebnis); postMelde(RB.t("gespeichert"), true); }
   });
