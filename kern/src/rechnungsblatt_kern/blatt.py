@@ -25,6 +25,7 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 from .modell import (
+    Belegtyp,
     Blattgestaltung,
     Layoutvariante,
     Rechnung,
@@ -271,6 +272,22 @@ def _masse(gestaltung: Blattgestaltung) -> _Masse:
 
 
 # ---------------------------------------------------------------- Rendering
+
+def girocode_moeglich(rechnung: Rechnung) -> bool:
+    """Darf dieser Beleg einen GiroCode tragen?
+
+    Zwei Fälle sprechen dagegen:
+
+    * **Gutschrift.** Da überweist niemand etwas.
+    * **Fremdwährung.** EPC069-12 kennt nur Euro, und die Betragszeile im
+      Code beginnt fest mit ``EUR``. Eine Rechnung über 119,00 CHF ergäbe
+      einen Code, den die Banking-App als 119,00 **Euro** anzeigt — der
+      Kunde überwiese den falschen Betrag in der falschen Währung. Lieber
+      kein QR-Code als ein falscher.
+    """
+    return (rechnung.typ is not Belegtyp.GUTSCHRIFT
+            and rechnung.waehrung.strip().upper() == "EUR")
+
 
 def rendere_blatt(
     rechnung: Rechnung,
@@ -667,14 +684,7 @@ def _rendere(
         y -= 1.5 * mm * masse.faktor
 
     # GiroCode: nur wenn der Empfänger tatsächlich etwas überweisen soll
-    from .modell import Belegtyp
-
-    if (
-        girocode
-        and rechnung.typ is not Belegtyp.GUTSCHRIFT
-        and summen.brutto > 0
-        and stammdaten.iban.strip()
-    ):
+    if girocode and girocode_moeglich(rechnung) and summen.brutto > 0             and stammdaten.iban.strip():
         from .girocode import erzeuge_epc_daten, zeichne_girocode
 
         qr_mm = 26.0

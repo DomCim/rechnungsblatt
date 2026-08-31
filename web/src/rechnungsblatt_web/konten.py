@@ -1153,8 +1153,24 @@ def lege_nachweis_an(nutzer_id: int, zweck: str) -> str:
     return wert
 
 
-def loese_nachweis_ein(wert: str, zweck: str) -> int:
+def loese_nachweis_ein(wert: str, zweck: str,
+                       nutzer_id: int | None = None) -> int:
     """Prüft einen Nachweis und verbraucht ihn. Liefert die Nutzer-ID.
+
+    **``nutzer_id`` angeben, wo der Aufrufer das Konto kennt.** Ohne diese
+    Bindung sucht die Abfrage allein über den Code — und ein sechsstelliger
+    Bestätigungscode trifft dann irgendein offenes Konto, nicht das
+    genannte. Zwei Folgen, beide nachgestellt:
+
+    * Der Fehlversuchszähler hängt am *genannten* Konto (siehe
+      ``zaehle_fehlversuch``). Wer die Adresse eines eigenen Wegwerfkontos
+      mitschickt, füllt dessen Zähler und darf beliebig oft raten.
+    * Ein Treffer verrät das fremde Konto — beim Bestätigen samt dessen
+      Wiederherstellungscode, der den Datenschlüssel öffnet.
+
+    Ohne Bindung bleibt es nur dort richtig, wo der Nachweis selbst lang
+    und zufällig ist und der Aufrufer das Konto gar nicht kennen kann —
+    etwa die Marke im Rücksetz-Link.
 
     Der Nachweis wird in jedem Fall entwertet — auch beim letzten
     Fehlversuch. Sonst ließen sich sechs Ziffern durchprobieren.
@@ -1163,11 +1179,18 @@ def loese_nachweis_ein(wert: str, zweck: str) -> int:
     if not wert:
         raise falsch
     with verbindung() as verb:
-        zeile = verb.execute(
-            "SELECT nutzer, versuche, laeuft_ab FROM nachweise "
-            "WHERE kennung = %s AND zweck = %s",
-            (_kennung(wert), zweck),
-        ).fetchone()
+        if nutzer_id is None:
+            zeile = verb.execute(
+                "SELECT nutzer, versuche, laeuft_ab FROM nachweise "
+                "WHERE kennung = %s AND zweck = %s",
+                (_kennung(wert), zweck),
+            ).fetchone()
+        else:
+            zeile = verb.execute(
+                "SELECT nutzer, versuche, laeuft_ab FROM nachweise "
+                "WHERE kennung = %s AND zweck = %s AND nutzer = %s",
+                (_kennung(wert), zweck, nutzer_id),
+            ).fetchone()
         if zeile is None:
             # Fehlversuch am RICHTIGEN Nachweis mitzählen, damit Raten
             # nicht unbegrenzt möglich ist. Ohne Treffer wissen wir aber

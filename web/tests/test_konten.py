@@ -1170,3 +1170,86 @@ def test_nachricht_ist_crlf_terminiert():
     # Und ohne DKIM, über den Weg in post.
     ohne = post._unterschreibe(nachricht, "no-reply@rechnungsblatt.de", {})
     assert nackte_lf(ohne) == 0
+
+
+# ------------------------------------------------- Nachweise: Kontobindung
+
+def test_fremder_bestaetigungscode_trifft_nicht_das_eigene_konto(leere_konten):
+    """Ein Code gehört zu genau einem Konto — auch wenn er zufällig stimmt.
+
+    Ohne die Bindung suchte die Abfrage allein über den Code-Hash. Ein
+    sechsstelliger Code, gegen ein *eigenes* Wegwerfkonto geraten, traf
+    dann irgendein offenes Konto: Der Fehlversuchszähler lief beim eigenen
+    mit, die Grenze von fünf Versuchen war wirkungslos, und ein Treffer
+    gab den Wiederherstellungscode des Fremden heraus — der öffnet dessen
+    Datenschlüssel.
+    """
+    konten = leere_konten
+    opfer, _ = konten.registriere("opfer@example.org", "geheim-genug-123")
+    taeter, _ = konten.registriere("taeter@example.org", "geheim-genug-123")
+    code_opfer = konten.lege_nachweis_an(opfer.id, konten.ZWECK_EMAIL)
+
+    # Der Täter schickt den Code des Opfers, nennt aber sein eigenes Konto.
+    with pytest.raises(konten.KontoFehler):
+        konten.loese_nachweis_ein(code_opfer, konten.ZWECK_EMAIL,
+                                  nutzer_id=taeter.id)
+
+    # Der Nachweis des Opfers ist dabei nicht verbraucht worden.
+    assert konten.loese_nachweis_ein(code_opfer, konten.ZWECK_EMAIL,
+                                     nutzer_id=opfer.id) == opfer.id
+
+
+def test_bestaetigen_ueber_die_api_bindet_an_die_genannte_adresse(leere_konten):
+    """Derselbe Schutz über den Endpunkt, nicht nur in der Kontenschicht."""
+    konten = leere_konten
+    opfer, _ = konten.registriere("opfer2@example.org", "geheim-genug-123")
+    konten.registriere("taeter2@example.org", "geheim-genug-123")
+    code_opfer = konten.lege_nachweis_an(opfer.id, konten.ZWECK_EMAIL)
+
+    klient = TestClient(main.app)
+    antwort = klient.post("/api/email/bestaetigen", json={
+        "email": "taeter2@example.org", "code": code_opfer,
+    })
+    assert antwort.status_code == 422
+    # Und das Opfer ist weiterhin unbestätigt.
+    assert konten.nutzer(opfer.id).email_bestaetigt is None
+
+
+def test_ruecksetzmarke_braucht_keine_kontobindung(leere_konten):
+    """Die Marke ist lang und zufällig — und steht in einem Link ohne Adresse.
+
+    Hier kennt der Aufrufer das Konto nicht; eine Bindung wäre nicht
+    möglich. Das ist der einzige Fall, in dem die Suche allein über den
+    Nachweis richtig bleibt.
+    """
+    konten = leere_konten
+    person, _ = konten.registriere("marke@example.org", "geheim-genug-123")
+    marke = konten.lege_nachweis_an(person.id, konten.ZWECK_RUECKSETZEN)
+    assert len(marke) >= 20, "kurze Marke wäre ratbar"
+    assert konten.loese_nachweis_ein(marke, konten.ZWECK_RUECKSETZEN) == person.id
+
+
+def test_erfolgreicher_versand_meldet_erfolg(leere_konten):
+    """`sende` muss True liefern — sonst gilt eine verschickte Mail als Fehler.
+
+    Aus dem Betrieb: Der Adminbereich meldete „Kein SMTP eingerichtet",
+    obwohl die Nachricht ankam. Ursache war ein fehlendes `return` am Ende
+    von `sende`; der Rückgabewert war None, und `if not verschickt` griff.
+    """
+    import smtplib
+    from unittest.mock import patch
+
+    from rechnungsblatt_web import post
+
+    konten = leere_konten
+    konten.setze_einstellungen({
+        "smtp_host": "127.0.0.1", "smtp_port": "2525",
+        "smtp_benutzer": "", "smtp_absender": "no-reply@example.de",
+        "smtp_tls": "",
+    })
+    try:
+        with patch.object(smtplib, "SMTP") as smtp:
+            smtp.return_value.__enter__.return_value = smtp
+            assert post.sende("kunde@example.org", "Test", "Hallo\n") is True
+    finally:
+        konten.setze_einstellungen({"smtp_host": "", "smtp_absender": ""})

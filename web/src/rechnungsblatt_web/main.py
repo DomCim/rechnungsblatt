@@ -485,7 +485,10 @@ def email_bestaetigen(daten: dict) -> JSONResponse:
         raise HTTPException(422, detail={"grund": "Der Code stimmt nicht."})
     try:
         nutzer_id = konten.loese_nachweis_ein(
-            str(daten.get("code", "")).strip(), konten.ZWECK_EMAIL
+            str(daten.get("code", "")).strip(), konten.ZWECK_EMAIL,
+            # An das Konto binden, dessen Adresse mitgeschickt wurde:
+            # Sonst träfe ein geratener Code irgendein offenes Konto.
+            nutzer_id=person.id,
         )
     except KontoFehler as fehler:
         konten.zaehle_fehlversuch(person.id, konten.ZWECK_EMAIL)
