@@ -1,8 +1,13 @@
 """Zahlungen über Stripe Checkout — Guthaben und Abo.
 
 Bewusst schmal: Rechnungsblatt kennt genau zwei Vorgänge — jemand lädt
-Guthaben auf, oder jemand schließt ein Abo ab. Alles Weitere (Karten,
+Guthaben auf, oder jemand bucht einen Abo-Tarif. Alles Weitere (Karten,
 SEPA-Mandate, Rückbuchungen, Rechnungen an den Kunden) bleibt bei Stripe.
+
+**Abo-Tarife sind Datensätze, kein Sonderfall im Code.** Jeder Tarif mit
+einem Monatsbeitrag trägt seine eigene Stripe-Preis-ID; wer einen weiteren
+Tarif anbietet, legt ihn im Adminbereich an und trägt die ID ein — hier ist
+dafür nichts zu ändern.
 
 **Keine Zahlungsdaten berühren diesen Server.** Der Kunde wird auf eine
 von Stripe gehostete Seite geleitet; hierher kommt nur die Nachricht, dass
@@ -116,13 +121,34 @@ def sitzung_guthaben(person: konten.Nutzer, betrag_cent: int, basis: str) -> str
     return sitzung.url
 
 
-def sitzung_abo(person: konten.Nutzer, basis: str) -> str:
-    """Checkout für das Abo. Der Preis steht als ID in der Verwaltung."""
-    preis = _zugang().get("stripe_preis_abo", "").strip()
+def abo_tarife() -> list[konten.Tarif]:
+    """Sichtbare Tarife, die als Abo buchbar sind.
+
+    Buchbar heißt: eine Stripe-Preis-ID hinterlegt. Ein Tarif mit
+    Monatsbeitrag, aber ohne ID, erscheint auf der Preistafel und ist
+    trotzdem nicht buchbar — dann fehlt der Eintrag im Adminbereich.
+    """
+    return [
+        t for t in konten.tarife(nur_sichtbare=True) if t.stripe_preis.strip()
+    ]
+
+
+def sitzung_abo(person: konten.Nutzer, schluessel: str, basis: str) -> str:
+    """Checkout für einen Abo-Tarif. Der Preis steht am Tarif."""
+    try:
+        gewuenscht = konten.tarif(schluessel)
+    except konten.KontoFehler as fehler:
+        raise BezahlFehler(str(fehler)) from fehler
+    if not gewuenscht.sichtbar:
+        # Ein unsichtbarer Tarif ist zurückgezogen; ihn über einen
+        # gebastelten Aufruf zu buchen, wäre ein Weg an der Entscheidung
+        # des Betreibers vorbei.
+        raise BezahlFehler("Dieser Tarif wird nicht angeboten.")
+    preis = gewuenscht.stripe_preis.strip()
     if not preis:
         raise BezahlFehler(
-            "Keine Stripe-Preis-ID für das Abo eingetragen "
-            "(Adminbereich → Zahlungen)."
+            f"Für den Tarif „{gewuenscht.name}“ ist keine Stripe-Preis-ID "
+            "eingetragen (Adminbereich → Tarife)."
         )
     stripe.api_key = _schluessel()
     sitzung = stripe.checkout.Session.create(
@@ -131,7 +157,13 @@ def sitzung_abo(person: konten.Nutzer, basis: str) -> str:
         line_items=[{"price": preis, "quantity": 1}],
         success_url=f"{basis}/app/konto?bezahlt=1",
         cancel_url=f"{basis}/app/konto?abgebrochen=1",
-        metadata={"nutzer_id": str(person.id), "art": "abo"},
+        # Der Tarif reist mit: Der Webhook erfährt sonst nicht, welcher
+        # der Abo-Tarife gebucht wurde.
+        metadata={
+            "nutzer_id": str(person.id),
+            "art": "abo",
+            "tarif": gewuenscht.schluessel,
+        },
     )
     return sitzung.url
 
@@ -188,7 +220,29 @@ def _nutzer_aus_ereignis(objekt: dict) -> konten.Nutzer | None:
     return konten.nutzer_zu_stripe_kunde(kunde) if kunde else None
 
 
-def verarbeite(ereignis: dict, abo_tarif: str) -> str:
+def _gebuchter_tarif(objekt: dict) -> str:
+    """Welcher Abo-Tarif wurde gebucht?
+
+    Steht in den Metadaten der Checkout-Sitzung. Fehlt er — etwa bei einem
+    Abo, das jemand direkt in Stripe angelegt hat —, sucht die Funktion den
+    Tarif über die Preis-ID. Erst wenn auch das nichts findet, bleibt der
+    Standardtarif: lieber zu wenig gewährt als das falsche Kontingent.
+    """
+    aus_metadaten = (objekt.get("metadata") or {}).get("tarif")
+    if aus_metadaten:
+        return str(aus_metadaten)
+    posten = ((objekt.get("items") or {}).get("data") or [])
+    for eintrag in posten:
+        preis = (eintrag.get("price") or {}).get("id")
+        if not preis:
+            continue
+        for kandidat in konten.tarife():
+            if kandidat.stripe_preis.strip() == preis:
+                return kandidat.schluessel
+    return konten.STANDARD_TARIF
+
+
+def verarbeite(ereignis: dict) -> str:
     """Verbucht ein geprüftes Ereignis. Liefert eine Zeile fürs Protokoll.
 
     Behandelt werden nur die vier Fälle, die den Kontostand ändern. Alles
@@ -203,8 +257,9 @@ def verarbeite(ereignis: dict, abo_tarif: str) -> str:
         if person is None:
             return f"{art}: kein Konto zuzuordnen"
         if objekt.get("mode") == "subscription":
-            konten.setze_abo(person.id, objekt.get("subscription"), abo_tarif)
-            return f"{art}: Abo für {person.email}"
+            gebucht = _gebuchter_tarif(objekt)
+            konten.setze_abo(person.id, objekt.get("subscription"), gebucht)
+            return f"{art}: Tarif {gebucht} für {person.email}"
         betrag = int(objekt.get("amount_total") or 0)
         neu = konten.verbuche_zahlung(
             objekt.get("id", ""), person.id, "guthaben", betrag

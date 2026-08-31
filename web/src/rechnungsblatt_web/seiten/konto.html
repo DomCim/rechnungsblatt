@@ -103,10 +103,15 @@
     <p class="beschreibung" data-i18n="bezahlText">
       Bezahlt wird über Stripe. Zahlungsdaten liegen dort, nicht hier.
     </p>
+    <h3 class="zwischentitel" id="guthabenTitel" data-i18n="guthabenTitel">Guthaben aufladen</h3>
     <div id="aufladungen" class="zeile"></div>
+
+    <!-- Ein Knopf je buchbarem Abo-Tarif. Die Liste kommt aus der
+         Datenbank, damit ein neuer Tarif ohne Codeänderung erscheint. -->
+    <h3 class="zwischentitel" id="aboTitel" hidden data-i18n="aboTitel">Abo buchen</h3>
+    <div id="abos" class="zeile"></div>
+
     <div class="zeile" style="margin-top:12px;">
-      <button type="button" class="knopf" id="aboStarten" hidden
-              data-i18n="aboStarten">Abo abschließen</button>
       <button type="button" class="knopf leise" id="bezahlVerwalten" hidden
               data-i18n="bezahlVerwalten">Zahlungen verwalten</button>
     </div>
@@ -192,7 +197,9 @@
       verbrauchTitel: "Erzeugte Rechnungen",
       bezahlTitel: "Guthaben und Abo",
       bezahlText: "Bezahlt wird über Stripe. Zahlungsdaten liegen dort, nicht hier.",
-      aufladen: "Aufladen", aboStarten: "Abo abschließen",
+      aufladen: "Aufladen",
+      guthabenTitel: "Guthaben aufladen", aboTitel: "Abo buchen",
+      aboLaeuft: "läuft", jeMonat: " im Monat", inklusiv: "Inklusive Rechnungen",
       bezahlVerwalten: "Zahlungen verwalten",
       bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
       abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
@@ -224,7 +231,9 @@
       verbrauchTitel: "Invoices produced",
       bezahlTitel: "Credit and subscription",
       bezahlText: "Payment runs through Stripe. Payment details stay there, not here.",
-      aufladen: "Top up", aboStarten: "Start subscription",
+      aufladen: "Top up",
+      guthabenTitel: "Top up credit", aboTitel: "Choose a plan",
+      aboLaeuft: "active", jeMonat: " per month", inklusiv: "Invoices included",
       bezahlVerwalten: "Manage payments",
       bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
       abgebrochen: "Cancelled. Nothing was charged.",
@@ -355,7 +364,32 @@
       ziel.appendChild(knopf);
     });
 
-    el("aboStarten").hidden = !a.abo_moeglich;
+    // Abo-Tarife: je einer ein Knopf. Der laufende Tarif wird gezeigt,
+    // aber nicht zum Kauf angeboten -- ihn erneut zu buchen legte bei
+    // Stripe ein zweites Abo an.
+    var abos = el("abos");
+    abos.textContent = "";
+    el("aboTitel").hidden = !(a.abos && a.abos.length);
+    (a.abos || []).forEach(function (tarif) {
+      var knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "knopf" + (tarif.laufend ? " leise" : "");
+      knopf.disabled = tarif.laufend;
+      var preis = (tarif.monatsbeitrag_cent / 100).toLocaleString(
+        RB.sprache() === "de" ? "de-DE" : "en-GB",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
+      knopf.textContent = tarif.laufend
+        ? tarif.name + " — " + RB.t("aboLaeuft")
+        : tarif.name + " — " + preis + RB.t("jeMonat");
+      if (tarif.inklusiv_rechnungen !== null && !tarif.laufend) {
+        knopf.title = RB.t("inklusiv") + ": " + tarif.inklusiv_rechnungen;
+      }
+      knopf.addEventListener("click", function () {
+        weiterZu("/api/bezahlen/abo", { tarif: tarif.schluessel });
+      });
+      abos.appendChild(knopf);
+    });
+
     el("bezahlVerwalten").hidden = !a.hat_kunde;
 
     // Rueckkehr von Stripe: Die Gutschrift kommt ueber den Webhook, nicht
@@ -365,9 +399,6 @@
     if (frage.get("abgebrochen")) bezahlMelde(RB.t("abgebrochen"), false);
   }
 
-  el("aboStarten").addEventListener("click", function () {
-    weiterZu("/api/bezahlen/abo");
-  });
   el("bezahlVerwalten").addEventListener("click", function () {
     weiterZu("/api/bezahlen/verwalten");
   });

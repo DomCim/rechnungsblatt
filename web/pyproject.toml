@@ -20,6 +20,10 @@ dependencies = [
     # Signaturpruefung und API-Versionierung will bei Zahlungsverkehr
     # niemand selbst pflegen.
     "stripe>=9",
+    # Besucherzahlen aus der Plausible-Stats-API. Bislang nur eine
+    # Test-Abhaengigkeit (der FastAPI-Testklient braucht sie); seit die
+    # Verwaltung die Zahlen abruft, gehoert sie zur Laufzeit.
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]

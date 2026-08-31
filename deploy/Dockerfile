@@ -16,9 +16,13 @@ WORKDIR /srv
 COPY kern/ kern/
 COPY web/ web/
 
+# Die Web-Abhaengigkeiten stehen hier einzeln statt ueber ./web, damit der
+# Quellbaum als Quelle dient (siehe PYTHONPATH unten). Wer in
+# web/pyproject.toml etwas ergaenzt, muss es hier mitziehen -- sonst
+# faellt es erst beim Start des Containers auf.
 RUN pip install --no-cache-dir ./kern \
     && pip install --no-cache-dir fastapi "uvicorn[standard]" python-multipart \
-       "psycopg[binary,pool]>=3.1" "cryptography>=42" "stripe>=9"
+       "psycopg[binary,pool]>=3.1" "cryptography>=42" "stripe>=9" "httpx>=0.27"
 
 # App läuft aus dem Quellbaum (Seiten und Zonen-Editor liegen neben dem Paket)
 ENV PYTHONPATH=/srv/web/src \

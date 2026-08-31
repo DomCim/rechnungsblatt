@@ -1,5 +1,7 @@
 """Tests der Mandantenschicht: Anmeldung, Freigabe, Rollen, Kontingent, Trennung."""
 
+import dataclasses
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -620,3 +622,349 @@ def test_passwort_hash_ist_gesalzen(leere_konten):
     assert erster != zweiter  # eigenes Salz je Hash
     assert leere_konten.passwort_stimmt("dasselbe123", erster)
     assert not leere_konten.passwort_stimmt("etwasanderes", erster)
+
+
+# ------------------------------------------------------------ Abo-Tarife
+
+def test_tarif_traegt_eigene_stripe_preis_id(leere_konten):
+    """Die Preis-ID gehört zum Tarif, nicht in eine globale Einstellung.
+
+    Nur so lassen sich mehrere Abos nebeneinander anbieten — vorher konnte
+    genau ein Tarif als Abo gebucht werden.
+    """
+    konten = leere_konten
+    vorher = konten.tarif("monat")
+    konten.speichere_tarif(dataclasses.replace(vorher, stripe_preis="price_A"))
+    try:
+        assert konten.tarif("monat").stripe_preis == "price_A"
+        # Der zweite Tarif bekommt eine andere ID; sie dürfen sich nicht
+        # gegenseitig überschreiben.
+        zweiter = konten.tarif("unbegrenzt")
+        konten.speichere_tarif(dataclasses.replace(zweiter, stripe_preis="price_B"))
+        assert konten.tarif("monat").stripe_preis == "price_A"
+        assert konten.tarif("unbegrenzt").stripe_preis == "price_B"
+    finally:
+        konten.speichere_tarif(vorher)
+        konten.speichere_tarif(zweiter)
+
+
+def test_tarif_ohne_preis_id_bleibt_leer(leere_konten):
+    """Ein Tarif ohne Abo trägt keine ID — und das ist ein gültiger Zustand."""
+    assert leere_konten.tarif("probe").stripe_preis == ""
+
+
+def test_angebot_zeigt_nur_buchbare_abos(leere_konten):
+    """Buchbar ist ein Tarif erst mit Preis-ID — und nur wenn er sichtbar ist."""
+    konten = leere_konten
+    lege_kunden_an(konten, "abo@example.org", "geheim-genug-123", tarif="probe")
+    monat = konten.tarif("monat")
+    unbegrenzt = konten.tarif("unbegrenzt")
+    konten.speichere_tarif(dataclasses.replace(
+        monat, stripe_preis="price_M", sichtbar=True))
+    konten.speichere_tarif(dataclasses.replace(
+        unbegrenzt, stripe_preis="price_U", sichtbar=False))
+    konten.setze_einstellungen({"stripe_secret": "sk_test_x"})
+    try:
+        klient = TestClient(main.app)
+        melde_an(klient, "abo@example.org", "geheim-genug-123")
+        angebot = klient.get("/api/bezahlen/angebot").json()
+        schluessel = [a["schluessel"] for a in angebot["abos"]]
+        # „monat" ist buchbar, „unbegrenzt" zurückgezogen, „guthaben" und
+        # „probe" haben keine Preis-ID.
+        assert schluessel == ["monat"]
+    finally:
+        konten.speichere_tarif(monat)
+        konten.speichere_tarif(unbegrenzt)
+        konten.setze_einstellungen({"stripe_secret": ""})
+
+
+def test_zurueckgezogener_tarif_ist_nicht_zu_erschleichen(leere_konten):
+    """Ein unsichtbarer Tarif darf auch über einen direkten Aufruf nicht gehen.
+
+    Sonst ließe sich ein zurückgenommenes Angebot weiter buchen, indem man
+    den Schlüssel von Hand einsetzt.
+    """
+    konten = leere_konten
+    lege_kunden_an(konten, "schlau@example.org", "geheim-genug-123", tarif="probe")
+    unbegrenzt = konten.tarif("unbegrenzt")
+    konten.speichere_tarif(dataclasses.replace(
+        unbegrenzt, stripe_preis="price_U", sichtbar=False))
+    konten.setze_einstellungen({"stripe_secret": "sk_test_x"})
+    try:
+        klient = TestClient(main.app)
+        melde_an(klient, "schlau@example.org", "geheim-genug-123")
+        antwort = klient.post("/api/bezahlen/abo", json={"tarif": "unbegrenzt"})
+        assert antwort.status_code == 422
+        assert "nicht angeboten" in antwort.json()["detail"]["grund"]
+    finally:
+        konten.speichere_tarif(unbegrenzt)
+        konten.setze_einstellungen({"stripe_secret": ""})
+
+
+def test_webhook_bucht_den_gewaehlten_tarif(leere_konten):
+    """Der Tarif kommt aus den Metadaten der Sitzung, nicht aus einer Vorgabe.
+
+    Vorher setzte der Webhook für jedes Abo denselben Tarif — bei mehreren
+    Abo-Tarifen hätte das jedem Kunden das falsche Kontingent gegeben.
+    """
+    from rechnungsblatt_web import bezahlen
+
+    konten = leere_konten
+    person = lege_kunden_an(konten, "hook@example.org", "geheim-genug-123",
+                            tarif="probe")
+    ereignis = {
+        "type": "checkout.session.completed",
+        "data": {"object": {
+            "mode": "subscription",
+            "subscription": "sub_1",
+            "metadata": {"nutzer_id": str(person.id), "tarif": "unbegrenzt"},
+        }},
+    }
+    bezahlen.verarbeite(ereignis)
+    assert konten.nutzer(person.id).tarif == "unbegrenzt"
+
+
+def test_webhook_findet_den_tarif_ueber_die_preis_id(leere_konten):
+    """Ohne Metadaten hilft die Preis-ID — etwa bei einem Abo aus Stripe."""
+    from rechnungsblatt_web import bezahlen
+
+    konten = leere_konten
+    person = lege_kunden_an(konten, "direkt@example.org", "geheim-genug-123",
+                            tarif="probe")
+    monat = konten.tarif("monat")
+    konten.speichere_tarif(dataclasses.replace(monat, stripe_preis="price_M"))
+    try:
+        ereignis = {
+            "type": "checkout.session.completed",
+            "data": {"object": {
+                "mode": "subscription",
+                "subscription": "sub_2",
+                "metadata": {"nutzer_id": str(person.id)},
+                "items": {"data": [{"price": {"id": "price_M"}}]},
+            }},
+        }
+        bezahlen.verarbeite(ereignis)
+        assert konten.nutzer(person.id).tarif == "monat"
+    finally:
+        konten.speichere_tarif(monat)
+
+
+# ------------------------------------------------------------ Besucher
+
+def test_besucher_ohne_schluessel_ist_kein_fehler(leere_konten):
+    """Ohne API-Schlüssel bleibt die Auswertung leer — gezählt wird trotzdem.
+
+    Der Unterschied zählt: „nicht eingerichtet" ist ein Zustand, den der
+    Betreiber selbst beheben kann; ein Fehler sähe nach einem Defekt aus.
+    """
+    from rechnungsblatt_web import statistik
+
+    konten = leere_konten
+    konten.setze_einstellungen({
+        "plausible_url": "https://plausible.example.org",
+        "plausible_domain": "beispiel.de",
+        "plausible_api_key": "",
+    })
+    try:
+        assert statistik.zugang() is None
+        lege_kunden_an(konten, "chef@example.org", "geheim-genug-123")
+        konten.setze_rolle(konten.nutzer_zu_email("chef@example.org").id, "admin")
+        klient = TestClient(main.app)
+        melde_an(klient, "chef@example.org", "geheim-genug-123")
+        antwort = klient.get("/api/verwaltung/besucher")
+        assert antwort.status_code == 200
+        assert antwort.json() == {"eingerichtet": False}
+    finally:
+        konten.setze_einstellungen({
+            "plausible_url": "", "plausible_domain": "", "plausible_api_key": "",
+        })
+
+
+def test_besucher_weist_erfundenen_zeitraum_ab(leere_konten):
+    """Ein unbekannter Zeitraum wird abgewiesen, nicht stillschweigend ersetzt.
+
+    Mit einer Vorgabe käme bei ``?zeitraum=constructor`` klaglos die
+    30-Tage-Auswertung zurück — und niemand merkte den Tippfehler.
+    """
+    konten = leere_konten
+    lege_kunden_an(konten, "chef2@example.org", "geheim-genug-123")
+    konten.setze_rolle(konten.nutzer_zu_email("chef2@example.org").id, "admin")
+    klient = TestClient(main.app)
+    melde_an(klient, "chef2@example.org", "geheim-genug-123")
+    assert klient.get("/api/verwaltung/besucher?zeitraum=constructor").status_code == 422
+
+
+def test_plausible_schluessel_wird_verschluesselt_abgelegt(leere_konten):
+    """Der Schlüssel liest zwar nur — aber die Zahlen aller Seiten des Kontos."""
+    konten = leere_konten
+    konten.setze_einstellungen({"plausible_api_key": "geheimer-lese-schluessel"})
+    try:
+        with konten.verbindung() as verb:
+            roh = verb.execute(
+                "SELECT wert FROM einstellungen WHERE schluessel = 'plausible_api_key'"
+            ).fetchone()["wert"]
+        assert "geheimer-lese-schluessel" not in roh
+        assert roh.startswith("v1:")
+        # Für die Anwendung ist er trotzdem lesbar.
+        werte = konten.einstellungen(mit_geheimnissen=True)
+        assert werte["plausible_api_key"] == "geheimer-lese-schluessel"
+        # Ohne ausdrücklichen Wunsch nicht.
+        assert "geheim" not in konten.einstellungen()["plausible_api_key"]
+    finally:
+        konten.setze_einstellungen({"plausible_api_key": ""})
+
+
+def test_verlauf_fuellt_die_tage_die_plausible_auslaesst():
+    """Plausible liefert nur Tage mit Ereignissen — die Lücken fehlen sonst.
+
+    Ohne das Auffüllen wäre ein besucherloser Tag gar kein Balken, und der
+    Verlauf sähe kürzer aus, als er ist.
+    """
+    from rechnungsblatt_web import statistik
+
+    antwort = {
+        "results": [
+            {"metrics": [12], "dimensions": ["2026-08-01"]},
+            {"metrics": [7], "dimensions": ["2026-08-03"]},
+        ],
+        "meta": {"time_labels": ["2026-08-01", "2026-08-02", "2026-08-03"]},
+    }
+    assert statistik._verlauf(antwort) == [
+        {"tag": "2026-08-01", "besucher": 12},
+        {"tag": "2026-08-02", "besucher": 0},
+        {"tag": "2026-08-03", "besucher": 7},
+    ]
+
+
+def test_geheimnis_laesst_sich_wieder_entfernen(leere_konten):
+    """Leer heißt entfernen, Punkte heißen unverändert.
+
+    Ohne den Unterschied ließe sich ein einmal gesetzter Zugang über die
+    Oberfläche nie wieder abschalten: Sie schickt die Maskierung zurück,
+    die sie angezeigt bekommen hat.
+    """
+    konten = leere_konten
+    konten.setze_einstellungen({"stripe_secret": "sk_test_abc"})
+    assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == "sk_test_abc"
+
+    # Punkte: bleibt stehen
+    konten.setze_einstellungen({"stripe_secret": "••••••"})
+    assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == "sk_test_abc"
+
+    # Leer: weg
+    konten.setze_einstellungen({"stripe_secret": ""})
+    assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == ""
+
+
+# ------------------------------------------------------------ DKIM
+
+def test_dkim_unterschrift_haelt_der_pruefung_stand():
+    """Die Signatur wird von einer fremden Umsetzung der Norm anerkannt.
+
+    Ein Selbsttest wäre wertlos — dieselbe Rechnung zweimal ergibt immer
+    dasselbe. Hier prüft ``dkimpy`` nach, sofern es installiert ist.
+    """
+    fremd = pytest.importorskip("dkim", reason="dkimpy nicht installiert")
+
+    from email.message import EmailMessage
+    from email.utils import formatdate, make_msgid
+
+    from rechnungsblatt_web import dkim as eigen
+
+    pem = eigen.erzeuge_schluesselpaar()
+    eintrag = eigen.dns_eintrag(pem, "rb", "rechnungsblatt.de")
+
+    def baue(betreff: str):
+        n = EmailMessage()
+        n["From"] = "Rechnungsblatt <no-reply@rechnungsblatt.de>"
+        n["To"] = "kunde@example.org"
+        n["Subject"] = betreff
+        n["Date"] = formatdate(localtime=True)
+        n["Message-ID"] = make_msgid(domain="rechnungsblatt.de")
+        n.set_content("Ihr Code lautet 481920.\n")
+        return n
+
+    def dns(_name, timeout=5):
+        return eintrag["wert"].encode()
+
+    # Der Umlaut ist kein Sonderfall, sondern der Normalfall: „Ihr
+    # Bestätigungscode" steht auf jeder Registrierungsmail. Python kodiert
+    # ihn als =?utf-8?q?…; signiert werden muss diese Form, nicht der
+    # Klartext, den get() liefert.
+    for betreff in ("Testnachricht", "Ihr Bestätigungscode"):
+        roh = eigen.unterschreibe(baue(betreff), "rechnungsblatt.de", "rb", pem)
+        assert fremd.verify(roh, dnsfunc=dns) is True, betreff
+        # Die Signaturzeile darf nicht selbst kodiert werden.
+        assert b"=?utf-8?" not in roh.split(b"From:")[0]
+
+    # Gegenproben: eine veränderte Nachricht darf nicht bestehen.
+    roh = eigen.unterschreibe(baue("Test"), "rechnungsblatt.de", "rb", pem)
+    assert fremd.verify(roh.replace(b"481920", b"999999"), dnsfunc=dns) is False
+    assert fremd.verify(
+        roh.replace(b"kunde@example.org", b"opfer@example.org"), dnsfunc=dns
+    ) is False
+
+    # Und mit einem fremden Schlüssel im DNS ebenfalls nicht.
+    anderer = eigen.dns_eintrag(eigen.erzeuge_schluesselpaar(), "rb",
+                                "rechnungsblatt.de")
+    assert fremd.verify(
+        roh, dnsfunc=lambda _n, timeout=5: anderer["wert"].encode()
+    ) is False
+
+
+def test_dkim_alignment_folgt_dmarc():
+    """Nur passende Domains: Unterdomain zählt, umgekehrt nicht.
+
+    Mit dem Schlüssel von example.org im Namen von rechnungsblatt.de zu
+    unterschreiben, bestünde zwar die DKIM-Prüfung — DMARC verlangt aber,
+    dass Absender und signierende Domain zusammengehören.
+    """
+    from rechnungsblatt_web import dkim
+
+    assert dkim.passt("rechnungsblatt.de", "no-reply@rechnungsblatt.de")
+    assert dkim.passt("rechnungsblatt.de", "no-reply@post.rechnungsblatt.de")
+    assert dkim.passt("rechnungsblatt.de", "Name <no-reply@RECHNUNGSBLATT.DE>")
+    assert not dkim.passt("post.rechnungsblatt.de", "no-reply@rechnungsblatt.de")
+    assert not dkim.passt("rechnungsblatt.de", "no-reply@example.org")
+    assert not dkim.passt("", "no-reply@rechnungsblatt.de")
+    assert not dkim.passt("rechnungsblatt.de", "")
+
+
+def test_dkim_schluessel_wird_verschluesselt_abgelegt(leere_konten):
+    """Wer den privaten Schlüssel hat, verschickt Post in fremdem Namen."""
+    from rechnungsblatt_web import dkim
+
+    konten = leere_konten
+    pem = dkim.erzeuge_schluesselpaar()
+    konten.setze_einstellungen({"dkim_schluessel": pem})
+    try:
+        with konten.verbindung() as verb:
+            roh = verb.execute(
+                "SELECT wert FROM einstellungen WHERE schluessel = 'dkim_schluessel'"
+            ).fetchone()["wert"]
+        assert "BEGIN PRIVATE KEY" not in roh
+        assert roh.startswith("v1:")
+        assert konten.einstellungen(mit_geheimnissen=True)["dkim_schluessel"] == pem
+    finally:
+        konten.setze_einstellungen({"dkim_schluessel": ""})
+
+
+def test_unlesbarer_dkim_schluessel_verhindert_den_versand_nicht(leere_konten):
+    """Eine unsignierte Nachricht kommt vielleicht an, eine nicht verschickte nie."""
+    from email.message import EmailMessage
+
+    from rechnungsblatt_web import post
+
+    nachricht = EmailMessage()
+    nachricht["From"] = "no-reply@rechnungsblatt.de"
+    nachricht["To"] = "kunde@example.org"
+    nachricht["Subject"] = "Test"
+    nachricht.set_content("Hallo\n")
+
+    roh = post._unterschreibe(nachricht, "no-reply@rechnungsblatt.de", {
+        "dkim_domain": "rechnungsblatt.de",
+        "dkim_selektor": "rb",
+        "dkim_schluessel": "kein gueltiger schluessel",
+    })
+    assert b"DKIM-Signature" not in roh
+    assert b"Hallo" in roh

@@ -158,6 +158,18 @@ h2 {
 }
 .untertitel { color: var(--tinte-2); max-width: 58ch; margin-top: 6px; }
 
+/* Gliedert eine Karte, ohne mit ihrer h2 zu konkurrieren: kleiner,
+   gesperrt, in der gedaempften Tinte. */
+.zwischentitel {
+  font-family: "Fraunces", Georgia, serif;
+  font-variation-settings: "opsz" 30, "SOFT" 25;
+  font-weight: 600;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  color: var(--tinte-2);
+  margin: 18px 0 8px;
+}
+
 nav.reiter { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 nav.reiter a {
   color: var(--tinte-2);
