@@ -265,6 +265,35 @@
       <span data-i18n="fTls">Verschlüsselt ab Verbindungsaufbau (Port 465)</span>
     </label>
 
+    <h3 class="zwischentitel" data-i18n="dkimTitel">Unterschrift (DKIM)</h3>
+    <p class="beschreibung" data-i18n="dkimText">
+      Ohne Unterschrift landet Post von einer eigenen Domain regelmäßig im
+      Spam — ein Bestätigungscode im Spamordner ist so gut wie keiner. Die
+      Domain muss zum Absender oben passen.
+    </p>
+    <div class="felder">
+      <div class="feld"><label for="dkimDomain" data-i18n="fDkimDomain">Domain</label>
+        <input id="dkimDomain" placeholder="rechnungsblatt.de"></div>
+      <div class="feld"><label for="dkimSelektor" data-i18n="fDkimSelektor">Selektor</label>
+        <input id="dkimSelektor" placeholder="rb"></div>
+      <div class="feld breit">
+        <label for="dkimSchluessel" data-i18n="fDkimSchluessel">Privater Schlüssel (PEM)</label>
+        <input id="dkimSchluessel" type="password" autocomplete="off"></div>
+    </div>
+    <div class="zeile" style="margin-top:10px;">
+      <button type="button" class="knopf leise" id="dkimErzeugen"
+              data-i18n="dkimErzeugen">Schlüssel erzeugen</button>
+    </div>
+    <div id="dkimStand" class="meldung hinweis" hidden style="margin-top:10px;"></div>
+    <div id="dkimDns" hidden style="margin-top:10px;">
+      <p class="beschreibung" data-i18n="dkimDnsText">
+        Diesen Eintrag im DNS veröffentlichen — ohne ihn nützt die
+        Unterschrift nichts:
+      </p>
+      <pre class="kennung" id="dkimDnsWert"
+           style="white-space:pre-wrap;word-break:break-all;"></pre>
+    </div>
+
     <h2 style="margin-top:22px;" data-i18n="zaehlungTitel">Zählung</h2>
     <p class="beschreibung" data-i18n="zaehlungText">
       Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein
@@ -367,6 +396,18 @@
       guthabenFrage: "Guthaben in Cent buchen (negativ zum Abziehen):",
       dublettenTitel: "Gleiches Steuermerkmal",
       dublettenText: "Diese Konten führen dieselbe USt-IdNr. oder Steuernummer. Das kann eine Betriebsübergabe sein oder ein Wechsel der Steuernummer — oder ein zweites Konto für die freien Rechnungen. Bitte prüfen.",
+      dkimTitel: "Unterschrift (DKIM)",
+      dkimText: "Ohne Unterschrift landet Post von einer eigenen Domain regelmäßig im Spam — ein Bestätigungscode im Spamordner ist so gut wie keiner. Die Domain muss zum Absender oben passen.",
+      fDkimDomain: "Domain", fDkimSelektor: "Selektor",
+      fDkimSchluessel: "Privater Schlüssel (PEM)",
+      dkimErzeugen: "Schlüssel erzeugen",
+      dkimErsetzen: "Ein neuer Schlüssel ersetzt den bisherigen. Bis der neue DNS-Eintrag veröffentlicht ist, gilt keine Unterschrift mehr. Fortfahren?",
+      dkimErzeugt: "Schlüssel erzeugt. Jetzt den DNS-Eintrag veröffentlichen.",
+      dkimAus: "Nicht eingerichtet — Post geht unsigniert raus.",
+      dkimHalb: "Nur halb eingerichtet: Domain, Selektor und Schlüssel gehören zusammen. Solange etwas fehlt, wird nicht unterschrieben.",
+      dkimAn: "Eingerichtet. Post wird unterschrieben.",
+      dkimPasstNicht: "Die Domain passt nicht zum Absender %s — so geht die Post unsigniert raus.",
+      dkimDnsText: "Diesen Eintrag im DNS veröffentlichen — ohne ihn nützt die Unterschrift nichts:",
       besucherTitel: "Besucher",
       besucherText: "Wer wann wie hergefunden hat — gezählt von Plausible, ohne Cookies.",
       bZeit7t: "7 Tage", bZeit30t: "30 Tage", bZeit90t: "90 Tage", bZeit365t: "1 Jahr",
@@ -428,6 +469,18 @@
       guthabenFrage: "Book credit in cents (negative to deduct):",
       dublettenTitel: "Same tax identifier",
       dublettenText: "These accounts share a VAT ID or tax number. That can be a handover or a changed tax number — or a second account for the free invoices. Please check.",
+      dkimTitel: "Signature (DKIM)",
+      dkimText: "Without a signature, mail from your own domain regularly ends up in spam — a confirmation code in the spam folder is as good as none. The domain has to match the sender above.",
+      fDkimDomain: "Domain", fDkimSelektor: "Selector",
+      fDkimSchluessel: "Private key (PEM)",
+      dkimErzeugen: "Generate key",
+      dkimErsetzen: "A new key replaces the current one. Until the new DNS record is published, no signature applies. Continue?",
+      dkimErzeugt: "Key generated. Now publish the DNS record.",
+      dkimAus: "Not set up — mail goes out unsigned.",
+      dkimHalb: "Only half set up: domain, selector and key belong together. While anything is missing, nothing is signed.",
+      dkimAn: "Set up. Mail is being signed.",
+      dkimPasstNicht: "The domain does not match the sender %s — mail goes out unsigned.",
+      dkimDnsText: "Publish this record in DNS — without it the signature is of no use:",
       besucherTitel: "Visitors",
       besucherText: "Who came when and how — counted by Plausible, without cookies.",
       bZeit7t: "7 days", bZeit30t: "30 days", bZeit90t: "90 days", bZeit365t: "1 year",
@@ -763,6 +816,65 @@
   }
   RB.beiSprachwechsel(zeichneZahlen);
 
+  // ---------- DKIM ----------
+  async function ladeDkim() {
+    var antwort = await RB.api("/api/verwaltung/dkim");
+    if (!antwort.ok) return;
+    var d = antwort.daten;
+    var stand = el("dkimStand");
+    var dns = el("dkimDns");
+
+    if (d.unvollstaendig) {
+      // Eine halbe Unterschrift schlaegt beim Empfaenger fehl und sieht
+      // dann nach einer Faelschung aus -- schlimmer als gar keine.
+      stand.hidden = false;
+      stand.className = "meldung hinweis warn";
+      stand.textContent = RB.t("dkimHalb");
+      dns.hidden = true;
+      return;
+    }
+    if (!d.eingerichtet) {
+      stand.hidden = false;
+      stand.className = "meldung hinweis";
+      stand.textContent = RB.t("dkimAus");
+      dns.hidden = true;
+      return;
+    }
+    if (d.fehler) {
+      stand.hidden = false;
+      stand.className = "meldung hinweis warn";
+      stand.textContent = d.fehler;
+      dns.hidden = true;
+      return;
+    }
+    stand.hidden = false;
+    if (!d.passt) {
+      // Technisch gueltig, aber DMARC verlangt, dass Absender und
+      // signierende Domain zusammengehoeren.
+      stand.className = "meldung hinweis warn";
+      stand.textContent = RB.t("dkimPasstNicht").replace("%s", d.absender || "—");
+    } else {
+      stand.className = "meldung hinweis gut";
+      stand.textContent = RB.t("dkimAn");
+    }
+    dns.hidden = false;
+    el("dkimDnsWert").textContent =
+      d.dns.name + "  " + d.dns.typ + "
+" + d.dns.wert;
+  }
+
+  el("dkimErzeugen").addEventListener("click", async function () {
+    if (!window.confirm(RB.t("dkimErsetzen"))) return;
+    var antwort = await RB.api("/api/verwaltung/dkim/schluessel", { method: "POST" });
+    if (!antwort.ok) {
+      var g = antwort.daten && antwort.daten.detail && antwort.daten.detail.grund;
+      postMelde(g || RB.t("fehlerAllgemein"), false);
+      return;
+    }
+    postMelde(RB.t("dkimErzeugt"), true);
+    ladeDkim();
+  });
+
   // ---------- Besucher ----------
   var ZEITRAEUME = ["7t", "30t", "90t", "365t"];
   var zeitraum = "30t";
@@ -936,6 +1048,9 @@
     el("smtpPasswort").value = werte.smtp_passwort || "";
     el("smtpAbsender").value = werte.smtp_absender || "";
     el("oeffAdresse").value = werte.oeffentliche_adresse || "";
+    el("dkimDomain").value = werte.dkim_domain || "";
+    el("dkimSelektor").value = werte.dkim_selektor || "";
+    el("dkimSchluessel").value = werte.dkim_schluessel || "";
     el("smtpTls").checked = werte.smtp_tls === "1";
     el("plausUrl").value = werte.plausible_url || "";
     el("plausDomain").value = werte.plausible_domain || "";
@@ -957,6 +1072,9 @@
       smtp_absender: el("smtpAbsender").value.trim(),
       smtp_tls: el("smtpTls").checked ? "1" : "",
       oeffentliche_adresse: el("oeffAdresse").value.trim(),
+      dkim_domain: el("dkimDomain").value.trim(),
+      dkim_selektor: el("dkimSelektor").value.trim(),
+      dkim_schluessel: el("dkimSchluessel").value,
       plausible_url: el("plausUrl").value.trim(),
       plausible_domain: el("plausDomain").value.trim(),
       // Punkte heissen "unveraendert lassen" -- siehe smtp_passwort.
@@ -1002,6 +1120,7 @@
     if (antwortDub.ok) zeichneDubletten(antwortDub.daten);
     zeichneZeitwahl();
     ladeBesucher();
+    ladeDkim();
 
     zeichneNutzer();
     zeichneTarife();

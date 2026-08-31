@@ -20,8 +20,9 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import formatdate, make_msgid
 
-from . import konten
+from . import dkim, konten
 
 protokoll = logging.getLogger("rechnungsblatt.post")
 
@@ -37,6 +38,49 @@ def _zugang() -> dict[str, str]:
 def ist_eingerichtet() -> bool:
     zugang = _zugang()
     return bool(zugang.get("smtp_host") and zugang.get("smtp_absender"))
+
+
+def _absender_domain(absender: str) -> str:
+    return dkim.domain_von(absender)
+
+
+def _unterschreibe(nachricht, absender: str, zugang: dict) -> bytes:
+    """Die versandfertige Nachricht — unterschrieben, wenn DKIM passt.
+
+    Drei Gruende, warum hier nichts geschieht — alle unkritisch, alle im
+    Log nachvollziehbar:
+
+    * Es ist kein DKIM hinterlegt. Dann verschickt die App wie bisher.
+    * Die Angaben sind unvollstaendig. Eine halbe Unterschrift schlaegt
+      beim Empfaenger fehl und sieht dann nach einer Faelschung aus —
+      schlimmer als gar keine.
+    * Die signierende Domain passt nicht zum Absender. Die Unterschrift
+      waere technisch gueltig, DMARC verlangt aber, dass beide
+      zusammengehoeren; sie kostete nur Rechenzeit.
+    """
+    domain = (zugang.get("dkim_domain") or "").strip()
+    selektor = (zugang.get("dkim_selektor") or "").strip()
+    pem = (zugang.get("dkim_schluessel") or "").strip()
+    if not (domain and selektor and pem):
+        if domain or selektor or pem:
+            protokoll.warning(
+                "DKIM ist nur halb eingerichtet (Domain, Selektor und "
+                "Schluessel gehoeren zusammen) — es wird nicht unterschrieben."
+            )
+        return nachricht.as_bytes()
+    if not dkim.passt(domain, absender):
+        protokoll.warning(
+            "DKIM ist fuer %s hinterlegt, der Absender %s gehoert aber nicht "
+            "dazu — diese Nachricht geht unsigniert raus.", domain, absender,
+        )
+        return nachricht.as_bytes()
+    try:
+        return dkim.unterschreibe(nachricht, domain, selektor, pem)
+    except dkim.DkimFehler as fehler:
+        # Nicht scheitern: Eine unsignierte Nachricht kommt vielleicht an,
+        # eine nicht verschickte sicher nicht.
+        protokoll.error("DKIM-Unterschrift nicht moeglich: %s", fehler)
+        return nachricht.as_bytes()
 
 
 def sende(an: str, betreff: str, text: str) -> bool:
@@ -63,7 +107,17 @@ def sende(an: str, betreff: str, text: str) -> bool:
     nachricht["From"] = absender
     nachricht["To"] = an
     nachricht["Subject"] = betreff
+    # Date und Message-ID gehoeren dazu, bevor unterschrieben wird: Sie
+    # werden mitsigniert, und ein Mailserver, der sie nachtraegt, bricht
+    # die Unterschrift. Ausserdem gilt eine Nachricht ohne beides bei
+    # manchen Filtern schon fuer sich als verdaechtig.
+    nachricht["Date"] = formatdate(localtime=True)
+    nachricht["Message-ID"] = make_msgid(domain=_absender_domain(absender) or None)
     nachricht.set_content(text)
+
+    # Fertige Bytes, damit die Signaturzeile unangetastet bleibt (siehe
+    # dkim.unterschreibe). Ohne Unterschrift ist es einfach die Nachricht.
+    roh = _unterschreibe(nachricht, absender, zugang)
 
     port = int(zugang.get("smtp_port") or 587)
     benutzer = zugang.get("smtp_benutzer", "").strip()
@@ -77,13 +131,15 @@ def sende(an: str, betreff: str, text: str) -> bool:
             with smtplib.SMTP_SSL(host, port, context=umgebung, timeout=20) as server:
                 if benutzer:
                     server.login(benutzer, passwort)
-                server.send_message(nachricht)
+                # sendmail statt send_message: Das baut die Nachricht neu
+                # auf und wuerde die Signaturzeile wieder umkodieren.
+                server.sendmail(absender, [an], roh)
         else:
             with smtplib.SMTP(host, port, timeout=20) as server:
                 server.starttls(context=umgebung)
                 if benutzer:
                     server.login(benutzer, passwort)
-                server.send_message(nachricht)
+                server.sendmail(absender, [an], roh)
     except (smtplib.SMTPException, OSError, ssl.SSLError) as fehler:
         protokoll.exception("Versand an %s fehlgeschlagen", an)
         raise PostFehler(f"E-Mail konnte nicht verschickt werden: {fehler}") from fehler

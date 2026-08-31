@@ -65,7 +65,7 @@ from rechnungsblatt_kern import (
     verfuegbare_schriften,
 )
 
-from . import bezahlen, konten, post, statistik, tresor
+from . import bezahlen, dkim, konten, post, statistik, tresor
 from .konten import KontingentErschoepft, KontoFehler, Nutzer
 
 DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
@@ -929,6 +929,54 @@ def verwaltung_testmail(daten: dict, person: Nutzer = Depends(verwalter)) -> dic
             422, detail={"grund": "Kein SMTP eingerichtet — nichts verschickt."}
         )
     return {"verschickt": True, "an": ziel}
+
+
+@app.get("/api/verwaltung/dkim")
+def verwaltung_dkim(_: Nutzer = Depends(verwalter)) -> dict:
+    """Zustand der Unterschrift und der DNS-Eintrag, der dazu gehört.
+
+    Ohne den veröffentlichten Eintrag nützt die Unterschrift nichts — der
+    Empfänger holt den öffentlichen Schlüssel dort ab.
+    """
+    werte = konten.einstellungen(mit_geheimnissen=True)
+    domain = (werte.get("dkim_domain") or "").strip()
+    selektor = (werte.get("dkim_selektor") or "").strip()
+    pem = (werte.get("dkim_schluessel") or "").strip()
+    absender = (werte.get("smtp_absender") or "").strip()
+
+    antwort: dict = {
+        "eingerichtet": bool(domain and selektor and pem),
+        "unvollstaendig": bool((domain or selektor or pem)
+                               and not (domain and selektor and pem)),
+        "absender": absender,
+        "passt": bool(domain and absender and dkim.passt(domain, absender)),
+    }
+    if antwort["eingerichtet"]:
+        try:
+            antwort["dns"] = dkim.dns_eintrag(pem, selektor, domain)
+        except dkim.DkimFehler as fehler:
+            antwort["fehler"] = str(fehler)
+    return antwort
+
+
+@app.post("/api/verwaltung/dkim/schluessel")
+def verwaltung_dkim_schluessel(_: Nutzer = Depends(verwalter)) -> dict:
+    """Erzeugt ein Schlüsselpaar und legt den privaten Teil ab.
+
+    Bequemer und sicherer, als den Betreiber mit openssl auf der
+    Kommandozeile zu lassen — und der private Schlüssel verlässt den
+    Server dabei nie.
+    """
+    werte = konten.einstellungen()
+    domain = (werte.get("dkim_domain") or "").strip()
+    selektor = (werte.get("dkim_selektor") or "").strip()
+    if not (domain and selektor):
+        raise HTTPException(422, detail={
+            "grund": "Erst Domain und Selektor eintragen und speichern."
+        })
+    pem = dkim.erzeuge_schluesselpaar()
+    konten.setze_einstellungen({"dkim_schluessel": pem})
+    return {"dns": dkim.dns_eintrag(pem, selektor, domain)}
 
 
 @app.get("/api/verwaltung/besucher")

@@ -834,13 +834,17 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # Der API-Schluessel liegt verschluesselt: Er liest zwar nur,
                # aber er liest die Zahlen aller Seiten des Kontos.
                "plausible_url", "plausible_domain", "plausible_api_key",
+               # DKIM. Der private Schluessel liegt verschluesselt: Wer ihn
+               # hat, kann in fremdem Namen Post verschicken, die jede
+               # Pruefung besteht.
+               "dkim_domain", "dkim_selektor", "dkim_schluessel",
                # Stripe. Der geheime Schluessel und das Webhook-Geheimnis
                # liegen verschluesselt (siehe _GEHEIME_FELDER).
                # Die Preis-ID eines Abos steht am Tarif, nicht hier: Es gibt
                # mehr als einen Abo-Tarif.
                "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen")
 _GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
-                   "plausible_api_key"}
+                   "plausible_api_key", "dkim_schluessel"}
 
 
 def einstellungen(mit_geheimnissen: bool = False) -> dict[str, str]:

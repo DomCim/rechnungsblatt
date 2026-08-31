@@ -854,3 +854,117 @@ def test_geheimnis_laesst_sich_wieder_entfernen(leere_konten):
     # Leer: weg
     konten.setze_einstellungen({"stripe_secret": ""})
     assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == ""
+
+
+# ------------------------------------------------------------ DKIM
+
+def test_dkim_unterschrift_haelt_der_pruefung_stand():
+    """Die Signatur wird von einer fremden Umsetzung der Norm anerkannt.
+
+    Ein Selbsttest wäre wertlos — dieselbe Rechnung zweimal ergibt immer
+    dasselbe. Hier prüft ``dkimpy`` nach, sofern es installiert ist.
+    """
+    fremd = pytest.importorskip("dkim", reason="dkimpy nicht installiert")
+
+    from email.message import EmailMessage
+    from email.utils import formatdate, make_msgid
+
+    from rechnungsblatt_web import dkim as eigen
+
+    pem = eigen.erzeuge_schluesselpaar()
+    eintrag = eigen.dns_eintrag(pem, "rb", "rechnungsblatt.de")
+
+    def baue(betreff: str):
+        n = EmailMessage()
+        n["From"] = "Rechnungsblatt <no-reply@rechnungsblatt.de>"
+        n["To"] = "kunde@example.org"
+        n["Subject"] = betreff
+        n["Date"] = formatdate(localtime=True)
+        n["Message-ID"] = make_msgid(domain="rechnungsblatt.de")
+        n.set_content("Ihr Code lautet 481920.\n")
+        return n
+
+    def dns(_name, timeout=5):
+        return eintrag["wert"].encode()
+
+    # Der Umlaut ist kein Sonderfall, sondern der Normalfall: „Ihr
+    # Bestätigungscode" steht auf jeder Registrierungsmail. Python kodiert
+    # ihn als =?utf-8?q?…; signiert werden muss diese Form, nicht der
+    # Klartext, den get() liefert.
+    for betreff in ("Testnachricht", "Ihr Bestätigungscode"):
+        roh = eigen.unterschreibe(baue(betreff), "rechnungsblatt.de", "rb", pem)
+        assert fremd.verify(roh, dnsfunc=dns) is True, betreff
+        # Die Signaturzeile darf nicht selbst kodiert werden.
+        assert b"=?utf-8?" not in roh.split(b"From:")[0]
+
+    # Gegenproben: eine veränderte Nachricht darf nicht bestehen.
+    roh = eigen.unterschreibe(baue("Test"), "rechnungsblatt.de", "rb", pem)
+    assert fremd.verify(roh.replace(b"481920", b"999999"), dnsfunc=dns) is False
+    assert fremd.verify(
+        roh.replace(b"kunde@example.org", b"opfer@example.org"), dnsfunc=dns
+    ) is False
+
+    # Und mit einem fremden Schlüssel im DNS ebenfalls nicht.
+    anderer = eigen.dns_eintrag(eigen.erzeuge_schluesselpaar(), "rb",
+                                "rechnungsblatt.de")
+    assert fremd.verify(
+        roh, dnsfunc=lambda _n, timeout=5: anderer["wert"].encode()
+    ) is False
+
+
+def test_dkim_alignment_folgt_dmarc():
+    """Nur passende Domains: Unterdomain zählt, umgekehrt nicht.
+
+    Mit dem Schlüssel von example.org im Namen von rechnungsblatt.de zu
+    unterschreiben, bestünde zwar die DKIM-Prüfung — DMARC verlangt aber,
+    dass Absender und signierende Domain zusammengehören.
+    """
+    from rechnungsblatt_web import dkim
+
+    assert dkim.passt("rechnungsblatt.de", "no-reply@rechnungsblatt.de")
+    assert dkim.passt("rechnungsblatt.de", "no-reply@post.rechnungsblatt.de")
+    assert dkim.passt("rechnungsblatt.de", "Name <no-reply@RECHNUNGSBLATT.DE>")
+    assert not dkim.passt("post.rechnungsblatt.de", "no-reply@rechnungsblatt.de")
+    assert not dkim.passt("rechnungsblatt.de", "no-reply@example.org")
+    assert not dkim.passt("", "no-reply@rechnungsblatt.de")
+    assert not dkim.passt("rechnungsblatt.de", "")
+
+
+def test_dkim_schluessel_wird_verschluesselt_abgelegt(leere_konten):
+    """Wer den privaten Schlüssel hat, verschickt Post in fremdem Namen."""
+    from rechnungsblatt_web import dkim
+
+    konten = leere_konten
+    pem = dkim.erzeuge_schluesselpaar()
+    konten.setze_einstellungen({"dkim_schluessel": pem})
+    try:
+        with konten.verbindung() as verb:
+            roh = verb.execute(
+                "SELECT wert FROM einstellungen WHERE schluessel = 'dkim_schluessel'"
+            ).fetchone()["wert"]
+        assert "BEGIN PRIVATE KEY" not in roh
+        assert roh.startswith("v1:")
+        assert konten.einstellungen(mit_geheimnissen=True)["dkim_schluessel"] == pem
+    finally:
+        konten.setze_einstellungen({"dkim_schluessel": ""})
+
+
+def test_unlesbarer_dkim_schluessel_verhindert_den_versand_nicht(leere_konten):
+    """Eine unsignierte Nachricht kommt vielleicht an, eine nicht verschickte nie."""
+    from email.message import EmailMessage
+
+    from rechnungsblatt_web import post
+
+    nachricht = EmailMessage()
+    nachricht["From"] = "no-reply@rechnungsblatt.de"
+    nachricht["To"] = "kunde@example.org"
+    nachricht["Subject"] = "Test"
+    nachricht.set_content("Hallo\n")
+
+    roh = post._unterschreibe(nachricht, "no-reply@rechnungsblatt.de", {
+        "dkim_domain": "rechnungsblatt.de",
+        "dkim_selektor": "rb",
+        "dkim_schluessel": "kein gueltiger schluessel",
+    })
+    assert b"DKIM-Signature" not in roh
+    assert b"Hallo" in roh
