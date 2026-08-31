@@ -1134,3 +1134,39 @@ def test_smtp_fehler_bekommen_eine_erklaerung():
     # Ein unbekannter Fehler bekommt keinen erfundenen Rat.
     assert post._hilfe_zum_fehler(
         smtplib.SMTPException("irgendwas"), "smtp.example.de", 587, False) == ""
+
+
+def test_nachricht_ist_crlf_terminiert():
+    """SMTP verlangt CRLF am Zeilenende — ein nacktes LF ist ein Protokollfehler.
+
+    Aus dem Betrieb: „554 SMTP protocol violation: A header line must be
+    terminated by CRLF". `send_message` hat das früher selbst erledigt;
+    seit hier `sendmail` mit fertigen Bytes verschickt — nötig, damit die
+    DKIM-Signatur unangetastet bleibt — muss die Nachricht es mitbringen.
+    """
+    from email.message import EmailMessage
+
+    from rechnungsblatt_web import dkim, post
+
+    def nackte_lf(roh: bytes) -> int:
+        return sum(1 for i, b in enumerate(roh)
+                   if b == 0x0A and (i == 0 or roh[i - 1] != 0x0D))
+
+    # Wie post.sende sie baut.
+    from email import policy
+    nachricht = EmailMessage(policy=policy.SMTP)
+    nachricht["From"] = "Rechnungsblatt <no-reply@rechnungsblatt.de>"
+    nachricht["To"] = "kunde@example.org"
+    nachricht["Subject"] = "Ihr Bestätigungscode"
+    nachricht.set_content("Ihr Code lautet 481920.\n\nRechnungsblatt\n")
+
+    assert nackte_lf(nachricht.as_bytes()) == 0
+
+    # Auch mit vorangestellter Signatur.
+    pem = dkim.erzeuge_schluesselpaar()
+    roh = dkim.unterschreibe(nachricht, "rechnungsblatt.de", "rb", pem)
+    assert nackte_lf(roh) == 0
+
+    # Und ohne DKIM, über den Weg in post.
+    ohne = post._unterschreibe(nachricht, "no-reply@rechnungsblatt.de", {})
+    assert nackte_lf(ohne) == 0
