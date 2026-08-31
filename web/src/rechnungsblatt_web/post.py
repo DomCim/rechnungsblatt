@@ -20,6 +20,7 @@ import logging
 import smtplib
 import socket
 import ssl
+from email import policy
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
 
@@ -104,7 +105,13 @@ def sende(an: str, betreff: str, text: str) -> bool:
         )
         return False
 
-    nachricht = EmailMessage()
+    # policy.SMTP statt der Vorgabe: Sie beendet jede Zeile mit CRLF, wie
+    # es das Protokoll verlangt. `send_message` hat das frueher selbst
+    # erledigt; seit hier `sendmail` mit fertigen Bytes verschickt (wegen
+    # der DKIM-Signatur, siehe dkim.unterschreibe), muss es die Nachricht
+    # schon mitbringen — sonst antwortet der Server mit
+    # „554 SMTP protocol violation: A header line must be terminated by CRLF".
+    nachricht = EmailMessage(policy=policy.SMTP)
     nachricht["From"] = absender
     nachricht["To"] = an
     nachricht["Subject"] = betreff
