@@ -37,6 +37,20 @@ def datenbank():
 
 
 @pytest.fixture
+def mit_serverschluessel(datenbank):
+    """Setzt RECHNUNGSBLATT_SCHLUESSEL für die Dauer eines Tests.
+
+    Ohne ihn legt die Anwendung Geheimnisse im Klartext ab — bewusst, damit
+    Entwicklung und CI ohne Schlüssel laufen; der Produktivstack erzwingt
+    ihn. Wer die Verschlüsselung selbst prüfen will, braucht ihn also.
+    """
+    vorher = datenbank.SERVERSCHLUESSEL
+    datenbank.SERVERSCHLUESSEL = "test-serverschluessel-nur-hier"
+    yield datenbank
+    datenbank.SERVERSCHLUESSEL = vorher
+
+
+@pytest.fixture
 def leere_konten(datenbank):
     """Setzt Konten, Sitzungen und Verbrauch vor jedem Test zurück.
 

@@ -19,6 +19,7 @@ import dataclasses
 import datetime as dt
 import hashlib
 import hmac
+import logging
 import os
 import re
 import secrets
@@ -29,6 +30,8 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from . import tresor
+
+protokoll = logging.getLogger("rechnungsblatt.konten")
 
 DATENBANK_URL = os.environ.get(
     "DATENBANK_URL",
@@ -891,7 +894,21 @@ def setze_einstellungen(werte: dict[str, str]) -> None:
 
 
 def _verpacke_geheimnis(klartext: str) -> str:
+    """Verschlüsselt ein Geheimnis für die Datenbank.
+
+    **Ohne RECHNUNGSBLATT_SCHLUESSEL liegt es im Klartext.** Das hält
+    Entwicklung und CI am Laufen, wo es nichts zu schützen gibt; im
+    Produktivstack erzwingt `docker-compose.yml` die Variable. Der
+    Rückfall bleibt, weil ein harter Abbruch hier bedeutete, dass ein
+    frisch aufgesetzter Stack ohne die Variable gar nicht erst startet —
+    aber er sagt es jetzt, statt still Klartext abzulegen.
+    """
     if not SERVERSCHLUESSEL:
+        protokoll.warning(
+            "RECHNUNGSBLATT_SCHLUESSEL ist nicht gesetzt — Geheimnisse "
+            "(SMTP-Passwort, Stripe-Schlüssel, DKIM-Schlüssel) liegen im "
+            "Klartext in der Datenbank."
+        )
         return klartext
     roh = tresor.verpacke(klartext.encode("utf-8"), SERVERSCHLUESSEL)
     return "v1:" + roh.hex()
