@@ -58,11 +58,23 @@ Zwei Workflows mit klarer Aufgabenteilung:
 `ci.yml` bleibt manuell, um Actions-Minuten zu sparen; getestet wird lokal
 vor jedem Push.
 
+**Claude startet `ci.yml` nicht** — weder über die Oberfläche noch mit
+`workflow run`. Actions-Minuten kosten Geld, und dieselben Tests laufen
+hier umsonst. Ob ein Lauf sich lohnt, entscheidet Dominik.
+
+Zwei Dinge kann die CI, die der lokale Lauf nicht kann — wer lokal prüft,
+muss sie von Hand nachstellen:
+
+| | |
+|---|---|
+| Sie fährt **ohne `RECHNUNGSBLATT_SCHLUESSEL`** | Ohne ihn legt die App Geheimnisse im Klartext ab. Lokal ist er im Container gesetzt, in der CI nicht — das hat schon einen roten Lauf verursacht, der lokal grün war. Also zusätzlich mit `-e RECHNUNGSBLATT_SCHLUESSEL=` testen. |
+| Sie prüft die **Referenzfälle** gegen den Mustang-Validator | Nur nötig, wenn sich am Beleg etwas geändert hat. |
+
 **Der Ablauf eines Release**
 
 1. Release-PR `develop` → `main` stellen.
-2. `ci.yml` von Hand auf dem PR-Stand starten — die letzte Prüfung, bevor
-   etwas auf den Server geht.
+2. Falls gewünscht `ci.yml` von Hand starten — **das macht Dominik**,
+   nicht Claude (siehe oben).
 3. Mergen. Der Push auf `main` löst `veroeffentlichen.yml` aus; das Image
    erscheint als `latest`, als Datum und als `sha-<commit>`.
 4. **Ausgerollt ist damit noch nichts.** In Portainer den Stack neu
