@@ -310,7 +310,7 @@
     </p>
     <div class="zeile" style="margin-top:12px;">
       <button type="button" class="knopf" id="postSpeichern" data-i18n="speichern">Speichern</button>
-      <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Testnachricht schicken</button>
+      <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Sichern und testen</button>
     </div>
     <div class="meldung" id="postMeldung" role="status" aria-live="polite"></div>
   </section>
@@ -498,7 +498,7 @@
       fTls: "Verschlüsselt ab Verbindungsaufbau (Port 465)",
       fTestZiel: "Testnachricht an",
       testZielHinweis: "Leer lassen schickt an Ihre Kontoadresse — die muss dann aber als Postfach existieren.",
-      postTest: "Testnachricht schicken", testOk: "Verschickt an",
+      postTest: "Sichern und testen", testOk: "Verschickt an",
       gespeichert: "Gespeichert.",
       tarifNeuTitel: "Neuen Tarif anlegen",
       fNeuSchluessel: "Schlüssel", fNeuName: "Name",
@@ -583,7 +583,7 @@
       fTls: "Encrypted from connect (port 465)",
       fTestZiel: "Send test message to",
       testZielHinweis: "Leave empty to use your account address — but then that mailbox has to exist.",
-      postTest: "Send a test message", testOk: "Sent to",
+      postTest: "Save and test", testOk: "Sent to",
       gespeichert: "Saved.",
       tarifNeuTitel: "Add a plan",
       fNeuSchluessel: "Key", fNeuName: "Name",
@@ -1255,6 +1255,26 @@
 
   el("postTest").addEventListener("click", async function () {
     postMelde(RB.t("laedt"), true);
+    // Erst sichern, dann testen: Der Versand liest den gespeicherten
+    // Stand, nicht das Formular. Wer etwas eintippt und gleich testet,
+    // bekam sonst eine Meldung ueber den alten Zugang -- im schlimmsten
+    // Fall "Kein SMTP eingerichtet", obwohl alle Felder ausgefuellt sind.
+    var gesichert = await sende("/api/verwaltung/einstellungen", {
+      smtp_host: el("smtpHost").value.trim(),
+      smtp_port: el("smtpPort").value.trim(),
+      smtp_benutzer: el("smtpBenutzer").value.trim(),
+      smtp_passwort: el("smtpPasswort").value,
+      smtp_absender: el("smtpAbsender").value.trim(),
+      smtp_tls: el("smtpTls").checked ? "1" : "",
+      oeffentliche_adresse: el("oeffAdresse").value.trim(),
+      dkim_domain: el("dkimDomain").value.trim(),
+      dkim_selektor: el("dkimSelektor").value.trim(),
+      dkim_schluessel: el("dkimSchluessel").value
+    }, "PUT");
+    if (!gesichert) return;
+    postFuellen(gesichert);
+    ladeDkim();
+
     var antwort = await RB.api("/api/verwaltung/testmail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
