@@ -230,6 +230,69 @@ def anmeldeseite() -> HTMLResponse:
 # von der Wurzel kommen: sein Geltungsbereich ist sonst auf /seiten/
 # begrenzt und die Navigation unter /app/… liefe daran vorbei.
 
+# ---------------------------------------------------------------- Suchmaschinen
+
+def _oeffentliche_adresse(anfrage: Request) -> str:
+    """Die Adresse, unter der die Seite von außen erreichbar ist.
+
+    Steht im Adminbereich; ohne Eintrag fällt sie auf die Adresse zurück,
+    über die die Anfrage kam. Hinter einem Reverse Proxy kann das die
+    interne sein — deshalb ist der Eintrag dort die verlässlichere Quelle.
+    """
+    try:
+        gesetzt = konten.einstellungen().get("oeffentliche_adresse", "")
+    except Exception:
+        gesetzt = ""
+    return (gesetzt or str(anfrage.base_url)).rstrip("/")
+
+
+@app.get("/robots.txt")
+def robots(anfrage: Request) -> Response:
+    """Was Suchmaschinen sehen dürfen — und was nicht.
+
+    Nur die öffentliche Seite gehört in den Index. Der Arbeitsbereich
+    verlangt ohnehin eine Anmeldung; ein Crawler bekäme dort nur
+    Weiterleitungen und würde Kontingent kosten. Die Anmeldeseite selbst
+    hat als Suchtreffer keinen Wert.
+    """
+    basis = _oeffentliche_adresse(anfrage)
+    return Response(
+        "User-agent: *\n"
+        "Allow: /$\n"
+        "Disallow: /app/\n"
+        "Disallow: /api/\n"
+        "Disallow: /anmelden\n"
+        "Disallow: /passwort-neu\n"
+        "Disallow: /seiten/\n"
+        "\n"
+        f"Sitemap: {basis}/sitemap.xml\n",
+        media_type="text/plain; charset=utf-8",
+    )
+
+
+@app.get("/sitemap.xml")
+def sitemap(anfrage: Request) -> Response:
+    """Eine einzige Seite — mehr ist öffentlich nicht zu holen.
+
+    Die Sprachfassungen sind keine eigenen Adressen (der Umschalter
+    tauscht nur Text im Browser), deshalb kein hreflang je URL.
+    """
+    basis = _oeffentliche_adresse(anfrage)
+    heute = dt.date.today().isoformat()
+    return Response(
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        "  <url>\n"
+        f"    <loc>{basis}/</loc>\n"
+        f"    <lastmod>{heute}</lastmod>\n"
+        "    <changefreq>monthly</changefreq>\n"
+        "    <priority>1.0</priority>\n"
+        "  </url>\n"
+        "</urlset>\n",
+        media_type="application/xml",
+    )
+
+
 @app.get("/manifest.webmanifest")
 def manifest() -> FileResponse:
     return FileResponse(
@@ -704,6 +767,17 @@ def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
     return {"geloescht": nutzer_id}
 
 
+@app.get("/api/verwaltung/dubletten")
+def verwaltung_dubletten(_: Nutzer = Depends(verwalter)) -> list[dict]:
+    """Konten, die sich ein Steuermerkmal teilen.
+
+    Nur eine Meldung — wer hier auftaucht, ist nicht zwingend ein
+    Missbrauchsfall: Betriebsübergaben und Steuernummernwechsel sehen
+    genauso aus.
+    """
+    return konten.konten_mit_gleichem_steuermerkmal()
+
+
 @app.get("/api/verwaltung/zahlen")
 def verwaltung_zahlen(_: Nutzer = Depends(verwalter)) -> dict:
     """Konten und Belege in Zahlen. Plausible zählt daneben die Aufrufe."""
@@ -1124,7 +1198,11 @@ def gestaltung_vorschau(
 # ---------------------------------------------------------------- Stammdaten
 
 @app.put("/api/stammdaten")
-def stammdaten_setzen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
+def stammdaten_setzen(
+    daten: dict,
+    person: Nutzer = Depends(freigegeben),
+    wurzel: Path = Depends(mandant),
+) -> dict:
     try:
         _stammdaten_aus_json(daten)  # Strukturprüfung; §14 blockiert erst je Rechnung
     except (KeyError, TypeError) as fehler:
@@ -1137,6 +1215,14 @@ def stammdaten_setzen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
                 422, detail={"code": "nummern_muster", "grund": str(fehler)}
             ) from fehler
     _schreibe_json(wurzel / "stammdaten.json", daten)
+    # Blind Index nachziehen: Er erlaubt die Frage, ob ein anderes Konto
+    # dasselbe Steuermerkmal führt, ohne die Nummer lesbar abzulegen.
+    # Bei jedem Speichern neu — Firmen wechseln ihre Steuernummer, etwa
+    # beim Umzug in einen anderen Finanzamtsbezirk.
+    konten.setze_steuer_index(
+        person.id,
+        konten.steuer_index(daten.get("ust_idnr"), daten.get("steuernummer")),
+    )
     return daten
 
 

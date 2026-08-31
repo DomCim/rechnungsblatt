@@ -473,6 +473,61 @@ def test_nutzdaten_liegen_verschluesselt_auf_der_platte(klient, leere_konten, tm
     assert klient.get("/api/kunden").json()[0]["name"] == "Streng Geheim GmbH"
 
 
+def test_steuer_index_normalisiert_und_bleibt_unlesbar(leere_konten):
+    """Blind Index: vergleichbar, aber nicht rückrechenbar.
+
+    Steuernummern werden je Finanzamt unterschiedlich geschrieben — ohne
+    Normalisierung fände der Vergleich dieselbe Nummer nicht wieder.
+    """
+    gleich = (
+        leere_konten.steuer_index("DE123456789", None),
+        leere_konten.steuer_index("de 123 456 789", None),
+        leere_konten.steuer_index("DE-123456789", None),
+    )
+    assert len(set(gleich)) == 1, "Schreibweise ändert den Abdruck"
+
+    # Steuernummer mit und ohne Schrägstriche.
+    assert (leere_konten.steuer_index(None, "123/456/78901")
+            == leere_konten.steuer_index(None, "12345678901"))
+
+    # Verschiedene Nummern bleiben verschieden.
+    assert (leere_konten.steuer_index("DE111111111", None)
+            != leere_konten.steuer_index("DE999999999", None))
+
+    # Die USt-IdNr. hat Vorrang; Kleinunternehmer ohne sie werden über die
+    # Steuernummer erfasst (Befund S3 verlangt eines von beidem).
+    assert (leere_konten.steuer_index("DE111111111", "999")
+            == leere_konten.steuer_index("DE111111111", None))
+    assert leere_konten.steuer_index(None, None) is None
+
+    # Die Nummer darf im Abdruck nicht auftauchen.
+    abdruck = leere_konten.steuer_index("DE123456789", None)
+    assert "123456789" not in abdruck
+
+
+def test_doppeltes_steuermerkmal_wird_gemeldet(admin_klient, klient, leere_konten):
+    """Zwei Konten mit derselben Nummer tauchen im Adminbereich auf.
+
+    Gemeldet, nicht gesperrt: Betriebsübergabe und Steuernummernwechsel
+    sehen genauso aus wie ein zweites Konto für die freien Rechnungen.
+    """
+    einer = lege_kunden_an(leere_konten, "einer@example.de", "langgenug12")
+    zwei = lege_kunden_an(leere_konten, "zwei@example.de", "langgenug12")
+    abdruck = leere_konten.steuer_index("DE123456789", None)
+    leere_konten.setze_steuer_index(einer.id, abdruck)
+    leere_konten.setze_steuer_index(zwei.id, abdruck)
+
+    treffer = admin_klient.get("/api/verwaltung/dubletten").json()
+    assert len(treffer) == 1
+    assert set(treffer[0]["konten"]) == {"einer@example.de", "zwei@example.de"}
+    # Der Abdruck selbst geht nicht nach draußen.
+    assert "steuer_index" not in treffer[0]
+
+    # Ein einzelnes Konto meldet nichts.
+    leere_konten.setze_steuer_index(zwei.id, None)
+    assert admin_klient.get("/api/verwaltung/dubletten").json() == []
+
+
 def test_loeschen_entfernt_auch_die_nutzdaten(admin_klient, leere_konten, tmp_path):
     """Konto weg heißt Daten weg — nicht nur die Zeile in der Datenbank.
 

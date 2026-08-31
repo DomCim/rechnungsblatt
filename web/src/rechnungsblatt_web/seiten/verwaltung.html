@@ -6,6 +6,11 @@
 <title>Rechnungsblatt — Verwaltung</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nicht in den Suchindex: Der Arbeitsbereich verlangt eine Anmeldung,
+     ein Treffer darauf führte ins Leere. robots.txt allein genügt nicht —
+     sie verhindert das Crawlen, nicht das Indexieren eines verlinkten
+     Fundes. -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
@@ -154,6 +159,10 @@
     </p>
     <div class="kennzahlen" id="zahlen"></div>
     <div id="verlauf" class="verlauf"></div>
+    <!-- Erscheint nur, wenn es etwas zu melden gibt. Ein dauerhaft
+         sichtbarer leerer Kasten „keine Auffälligkeiten" macht die Seite
+         länger, ohne etwas zu sagen. -->
+    <div id="dubletten" hidden style="margin-top:16px;"></div>
   </section>
 
   <section class="karte">
@@ -248,6 +257,8 @@
       loeschen: "Löschen",
       loeschenFrage: "Konto und alle zugehörigen Rechnungsdaten endgültig löschen?",
       guthabenFrage: "Guthaben in Cent buchen (negativ zum Abziehen):",
+      dublettenTitel: "Gleiches Steuermerkmal",
+      dublettenText: "Diese Konten führen dieselbe USt-IdNr. oder Steuernummer. Das kann eine Betriebsübergabe sein oder ein Wechsel der Steuernummer — oder ein zweites Konto für die freien Rechnungen. Bitte prüfen.",
       zahlenTitel: "Im Überblick",
       zahlenText: "Was im eigenen Haus messbar ist. Seitenaufrufe zählt Plausible daneben.",
       zKonten: "Konten", zWartet: "warten auf Freigabe",
@@ -287,6 +298,8 @@
       loeschen: "Delete",
       loeschenFrage: "Permanently delete the account and all its invoice data?",
       guthabenFrage: "Book credit in cents (negative to deduct):",
+      dublettenTitel: "Same tax identifier",
+      dublettenText: "These accounts share a VAT ID or tax number. That can be a handover or a changed tax number — or a second account for the free invoices. Please check.",
       zahlenTitel: "At a glance",
       zahlenText: "What is measurable in-house. Page views are counted by Plausible alongside.",
       zKonten: "Accounts", zWartet: "awaiting approval",
@@ -595,6 +608,31 @@
   }
   RB.beiSprachwechsel(zeichneZahlen);
 
+  // ---------- Doppelte Steuermerkmale ----------
+  function zeichneDubletten(liste) {
+    var ziel = el("dubletten");
+    ziel.textContent = "";
+    if (!liste || !liste.length) { ziel.hidden = true; return; }
+    ziel.hidden = false;
+    var kasten = document.createElement("div");
+    kasten.className = "hinweis";
+    var kopf = document.createElement("strong");
+    kopf.textContent = RB.t("dublettenTitel");
+    kasten.appendChild(kopf);
+    var text = document.createElement("p");
+    text.style.margin = "6px 0 8px";
+    text.textContent = RB.t("dublettenText");
+    kasten.appendChild(text);
+    liste.forEach(function (gruppe) {
+      var zeile = document.createElement("div");
+      zeile.className = "kennung";
+      zeile.style.fontSize = "13px";
+      zeile.textContent = gruppe.konten.join("  ·  ");
+      kasten.appendChild(zeile);
+    });
+    ziel.appendChild(kasten);
+  }
+
   // ---------- Postausgang ----------
   function postMelde(text, gut) {
     var ziel = el("postMeldung");
@@ -660,6 +698,8 @@
     if (antwortPost.ok) postFuellen(antwortPost.daten);
     var antwortZahlen = await RB.api("/api/verwaltung/zahlen");
     if (antwortZahlen.ok) { zahlenStand = antwortZahlen.daten; zeichneZahlen(); }
+    var antwortDub = await RB.api("/api/verwaltung/dubletten");
+    if (antwortDub.ok) zeichneDubletten(antwortDub.daten);
 
     zeichneNutzer();
     zeichneTarife();
