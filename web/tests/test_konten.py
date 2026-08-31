@@ -747,3 +747,110 @@ def test_webhook_findet_den_tarif_ueber_die_preis_id(leere_konten):
         assert konten.nutzer(person.id).tarif == "monat"
     finally:
         konten.speichere_tarif(monat)
+
+
+# ------------------------------------------------------------ Besucher
+
+def test_besucher_ohne_schluessel_ist_kein_fehler(leere_konten):
+    """Ohne API-Schlüssel bleibt die Auswertung leer — gezählt wird trotzdem.
+
+    Der Unterschied zählt: „nicht eingerichtet" ist ein Zustand, den der
+    Betreiber selbst beheben kann; ein Fehler sähe nach einem Defekt aus.
+    """
+    from rechnungsblatt_web import statistik
+
+    konten = leere_konten
+    konten.setze_einstellungen({
+        "plausible_url": "https://plausible.example.org",
+        "plausible_domain": "beispiel.de",
+        "plausible_api_key": "",
+    })
+    try:
+        assert statistik.zugang() is None
+        lege_kunden_an(konten, "chef@example.org", "geheim-genug-123")
+        konten.setze_rolle(konten.nutzer_zu_email("chef@example.org").id, "admin")
+        klient = TestClient(main.app)
+        melde_an(klient, "chef@example.org", "geheim-genug-123")
+        antwort = klient.get("/api/verwaltung/besucher")
+        assert antwort.status_code == 200
+        assert antwort.json() == {"eingerichtet": False}
+    finally:
+        konten.setze_einstellungen({
+            "plausible_url": "", "plausible_domain": "", "plausible_api_key": "",
+        })
+
+
+def test_besucher_weist_erfundenen_zeitraum_ab(leere_konten):
+    """Ein unbekannter Zeitraum wird abgewiesen, nicht stillschweigend ersetzt.
+
+    Mit einer Vorgabe käme bei ``?zeitraum=constructor`` klaglos die
+    30-Tage-Auswertung zurück — und niemand merkte den Tippfehler.
+    """
+    konten = leere_konten
+    lege_kunden_an(konten, "chef2@example.org", "geheim-genug-123")
+    konten.setze_rolle(konten.nutzer_zu_email("chef2@example.org").id, "admin")
+    klient = TestClient(main.app)
+    melde_an(klient, "chef2@example.org", "geheim-genug-123")
+    assert klient.get("/api/verwaltung/besucher?zeitraum=constructor").status_code == 422
+
+
+def test_plausible_schluessel_wird_verschluesselt_abgelegt(leere_konten):
+    """Der Schlüssel liest zwar nur — aber die Zahlen aller Seiten des Kontos."""
+    konten = leere_konten
+    konten.setze_einstellungen({"plausible_api_key": "geheimer-lese-schluessel"})
+    try:
+        with konten.verbindung() as verb:
+            roh = verb.execute(
+                "SELECT wert FROM einstellungen WHERE schluessel = 'plausible_api_key'"
+            ).fetchone()["wert"]
+        assert "geheimer-lese-schluessel" not in roh
+        assert roh.startswith("v1:")
+        # Für die Anwendung ist er trotzdem lesbar.
+        werte = konten.einstellungen(mit_geheimnissen=True)
+        assert werte["plausible_api_key"] == "geheimer-lese-schluessel"
+        # Ohne ausdrücklichen Wunsch nicht.
+        assert "geheim" not in konten.einstellungen()["plausible_api_key"]
+    finally:
+        konten.setze_einstellungen({"plausible_api_key": ""})
+
+
+def test_verlauf_fuellt_die_tage_die_plausible_auslaesst():
+    """Plausible liefert nur Tage mit Ereignissen — die Lücken fehlen sonst.
+
+    Ohne das Auffüllen wäre ein besucherloser Tag gar kein Balken, und der
+    Verlauf sähe kürzer aus, als er ist.
+    """
+    from rechnungsblatt_web import statistik
+
+    antwort = {
+        "results": [
+            {"metrics": [12], "dimensions": ["2026-08-01"]},
+            {"metrics": [7], "dimensions": ["2026-08-03"]},
+        ],
+        "meta": {"time_labels": ["2026-08-01", "2026-08-02", "2026-08-03"]},
+    }
+    assert statistik._verlauf(antwort) == [
+        {"tag": "2026-08-01", "besucher": 12},
+        {"tag": "2026-08-02", "besucher": 0},
+        {"tag": "2026-08-03", "besucher": 7},
+    ]
+
+
+def test_geheimnis_laesst_sich_wieder_entfernen(leere_konten):
+    """Leer heißt entfernen, Punkte heißen unverändert.
+
+    Ohne den Unterschied ließe sich ein einmal gesetzter Zugang über die
+    Oberfläche nie wieder abschalten: Sie schickt die Maskierung zurück,
+    die sie angezeigt bekommen hat.
+    """
+    konten = leere_konten
+    konten.setze_einstellungen({"stripe_secret": "sk_test_abc"})
+    assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == "sk_test_abc"
+
+    # Punkte: bleibt stehen
+    konten.setze_einstellungen({"stripe_secret": "••••••"})
+    assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == "sk_test_abc"
+
+    # Leer: weg
+    konten.setze_einstellungen({"stripe_secret": ""})
+    assert konten.einstellungen(mit_geheimnissen=True)["stripe_secret"] == ""

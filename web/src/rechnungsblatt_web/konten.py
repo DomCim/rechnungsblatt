@@ -831,13 +831,16 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # Plausible gehört in dieselbe Kategorie wie der Postausgang:
                # Betriebseinstellung, die sich ändern lässt, ohne den Stack
                # neu zu deployen.
-               "plausible_url", "plausible_domain",
+               # Der API-Schluessel liegt verschluesselt: Er liest zwar nur,
+               # aber er liest die Zahlen aller Seiten des Kontos.
+               "plausible_url", "plausible_domain", "plausible_api_key",
                # Stripe. Der geheime Schluessel und das Webhook-Geheimnis
                # liegen verschluesselt (siehe _GEHEIME_FELDER).
                # Die Preis-ID eines Abos steht am Tarif, nicht hier: Es gibt
                # mehr als einen Abo-Tarif.
                "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen")
-_GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret"}
+_GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
+                   "plausible_api_key"}
 
 
 def einstellungen(mit_geheimnissen: bool = False) -> dict[str, str]:
@@ -865,11 +868,15 @@ def setze_einstellungen(werte: dict[str, str]) -> None:
                 continue
             geheim = feld in _GEHEIME_FELDER
             if geheim:
-                # Leer heißt „unverändert lassen" — die Oberfläche schickt
-                # Punkte zurück, nicht das echte Passwort.
-                if not wert or set(wert) <= {"•"}:
+                # Punkte heißen „unverändert lassen": Die Oberfläche bekommt
+                # das Geheimnis nie im Klartext zurück und schickt daher die
+                # Maskierung, die sie angezeigt hat.
+                if wert and set(wert) <= {"•"}:
                     continue
-                wert = _verpacke_geheimnis(wert)
+                # Leer heißt dagegen „entfernen". Ohne diesen Weg ließe sich
+                # ein einmal gesetzter Zugang über die Oberfläche nie wieder
+                # abschalten — der Haken zum Ausschalten fehlte.
+                wert = _verpacke_geheimnis(wert) if wert else ""
             verb.execute(
                 """INSERT INTO einstellungen (schluessel, wert, geheim)
                    VALUES (%s, %s, %s)

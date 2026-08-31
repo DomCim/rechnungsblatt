@@ -65,7 +65,7 @@ from rechnungsblatt_kern import (
     verfuegbare_schriften,
 )
 
-from . import bezahlen, konten, post, tresor
+from . import bezahlen, konten, post, statistik, tresor
 from .konten import KontingentErschoepft, KontoFehler, Nutzer
 
 DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
@@ -929,6 +929,32 @@ def verwaltung_testmail(daten: dict, person: Nutzer = Depends(verwalter)) -> dic
             422, detail={"grund": "Kein SMTP eingerichtet — nichts verschickt."}
         )
     return {"verschickt": True, "an": ziel}
+
+
+@app.get("/api/verwaltung/besucher")
+def verwaltung_besucher(
+    zeitraum: str = "30t", _: Nutzer = Depends(verwalter)
+) -> dict:
+    """Besucherzahlen aus Plausible.
+
+    Getrennt von den Betriebszahlen: Die kommen aus der eigenen Datenbank
+    und sind immer da; diese hier hängen an einem fremden Dienst und
+    fallen aus, ohne dass deshalb die Übersicht leer bleiben darf.
+    """
+    if zeitraum not in statistik.ZEITRAEUME:
+        # Nicht `in` auf ein dict mit Vorgabewert: Ein erfundener Zeitraum
+        # soll abgewiesen werden, nicht stillschweigend zu 30 Tagen werden.
+        raise HTTPException(422, detail={"grund": "Unbekannter Zeitraum."})
+    if statistik.zugang() is None:
+        # Kein Fehler, sondern ein Zustand: Gezählt wird trotzdem, es fehlt
+        # nur der Schlüssel zum Lesen.
+        return {"eingerichtet": False}
+    try:
+        daten = statistik.auswertung(zeitraum)
+    except statistik.StatistikFehler as fehler:
+        protokoll.warning("Besucherzahlen nicht lesbar: %s", fehler)
+        return {"eingerichtet": True, "fehler": str(fehler)}
+    return {"eingerichtet": True, **daten}
 
 
 @app.get("/api/verwaltung/tarife")
