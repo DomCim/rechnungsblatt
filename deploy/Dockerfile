@@ -18,7 +18,7 @@ COPY web/ web/
 
 RUN pip install --no-cache-dir ./kern \
     && pip install --no-cache-dir fastapi "uvicorn[standard]" python-multipart \
-       "psycopg[binary,pool]>=3.1" "cryptography>=42"
+       "psycopg[binary,pool]>=3.1" "cryptography>=42" "stripe>=9"
 
 # App läuft aus dem Quellbaum (Seiten und Zonen-Editor liegen neben dem Paket)
 ENV PYTHONPATH=/srv/web/src \

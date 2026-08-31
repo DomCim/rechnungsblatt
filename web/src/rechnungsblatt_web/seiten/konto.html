@@ -96,6 +96,23 @@
     </p>
   </section>
 
+  <!-- Erscheint nur, wenn Zahlungen eingerichtet sind. Solange der
+       Betreiber Tarife von Hand vergibt, wäre ein Bezahlknopf irreführend. -->
+  <section class="karte" id="bezahlKarte" hidden>
+    <h2 data-i18n="bezahlTitel">Guthaben und Abo</h2>
+    <p class="beschreibung" data-i18n="bezahlText">
+      Bezahlt wird über Stripe. Zahlungsdaten liegen dort, nicht hier.
+    </p>
+    <div id="aufladungen" class="zeile"></div>
+    <div class="zeile" style="margin-top:12px;">
+      <button type="button" class="knopf" id="aboStarten" hidden
+              data-i18n="aboStarten">Abo abschließen</button>
+      <button type="button" class="knopf leise" id="bezahlVerwalten" hidden
+              data-i18n="bezahlVerwalten">Zahlungen verwalten</button>
+    </div>
+    <div class="meldung" id="bezahlMeldung" role="status" aria-live="polite"></div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="passwortTitel">Passwort ändern</h2>
     <form id="passwortForm" novalidate>
@@ -173,6 +190,12 @@
       passwortGut: "Passwort geändert.",
       wechselHinweis: "Dieses Konto benutzt noch das vergebene Startpasswort. Bitte jetzt ändern.",
       verbrauchTitel: "Erzeugte Rechnungen",
+      bezahlTitel: "Guthaben und Abo",
+      bezahlText: "Bezahlt wird über Stripe. Zahlungsdaten liegen dort, nicht hier.",
+      aufladen: "Aufladen", aboStarten: "Abo abschließen",
+      bezahlVerwalten: "Zahlungen verwalten",
+      bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
+      abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
       sitzungTitel: "Sitzung",
       sitzungText: "Abmelden beendet die Sitzung auf diesem Gerät. Ihre Daten bleiben verschlüsselt liegen und sind nach der nächsten Anmeldung wieder da.",
       abmeldenKnopf: "Abmelden", zurStartseite: "Öffentliche Seite",
@@ -199,6 +222,12 @@
       passwortGut: "Password changed.",
       wechselHinweis: "This account still uses the password it was issued with. Please change it now.",
       verbrauchTitel: "Invoices produced",
+      bezahlTitel: "Credit and subscription",
+      bezahlText: "Payment runs through Stripe. Payment details stay there, not here.",
+      aufladen: "Top up", aboStarten: "Start subscription",
+      bezahlVerwalten: "Manage payments",
+      bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
+      abgebrochen: "Cancelled. Nothing was charged.",
       sitzungTitel: "Session",
       sitzungText: "Signing out ends the session on this device. Your data stays encrypted and is back after the next sign-in.",
       abmeldenKnopf: "Sign out", zurStartseite: "Public page",
@@ -282,12 +311,75 @@
     ziel.appendChild(kasten);
   });
 
+  // ---------- Bezahlen ----------
+  function bezahlMelde(text, gut) {
+    var ziel = el("bezahlMeldung");
+    ziel.className = "meldung hinweis" + (gut ? " gut" : "");
+    ziel.textContent = text;
+  }
+
+  async function weiterZu(pfad, koerper) {
+    bezahlMelde(RB.t("laedt"), true);
+    var antwort = await RB.api(pfad, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(koerper || {})
+    });
+    if (antwort.ok && antwort.daten && antwort.daten.weiter) {
+      // Stripe uebernimmt ab hier; die Rueckkehr fuehrt auf diese Seite.
+      window.location.href = antwort.daten.weiter;
+      return;
+    }
+    var d = antwort.daten;
+    bezahlMelde((d && d.detail && d.detail.grund) || RB.t("fehlerAllgemein"), false);
+  }
+
+  async function ladeBezahlen() {
+    var antwort = await RB.api("/api/bezahlen/angebot");
+    if (!antwort.ok || !antwort.daten.eingerichtet) return;
+    var a = antwort.daten;
+    el("bezahlKarte").hidden = false;
+
+    var ziel = el("aufladungen");
+    ziel.textContent = "";
+    a.aufladungen.forEach(function (cent) {
+      var knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "knopf leise";
+      knopf.textContent = RB.t("aufladen") + " " + (cent / 100).toLocaleString(
+        RB.sprache() === "de" ? "de-DE" : "en-GB",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " \u20ac";
+      knopf.addEventListener("click", function () {
+        weiterZu("/api/bezahlen/guthaben", { betrag_cent: cent });
+      });
+      ziel.appendChild(knopf);
+    });
+
+    el("aboStarten").hidden = !a.abo_moeglich;
+    el("bezahlVerwalten").hidden = !a.hat_kunde;
+
+    // Rueckkehr von Stripe: Die Gutschrift kommt ueber den Webhook, nicht
+    // ueber diese Weiterleitung -- sie kann also kurz nachlaufen.
+    var frage = new URLSearchParams(window.location.search);
+    if (frage.get("bezahlt")) bezahlMelde(RB.t("bezahltDanke"), true);
+    if (frage.get("abgebrochen")) bezahlMelde(RB.t("abgebrochen"), false);
+  }
+
+  el("aboStarten").addEventListener("click", function () {
+    weiterZu("/api/bezahlen/abo");
+  });
+  el("bezahlVerwalten").addEventListener("click", function () {
+    weiterZu("/api/bezahlen/verwalten");
+  });
+
   el("abmelden").addEventListener("click", async function () {
     // Der Server loescht die Sitzung; danach ist der Datenschluessel
     // ebenfalls weg -- er lag nur dort, verpackt.
     await RB.api("/api/abmelden", { method: "POST" });
     window.location.href = "/";
   });
+
+  ladeBezahlen();
 
   RB.starte(texte);
   RB.beiSprachwechsel(lade);

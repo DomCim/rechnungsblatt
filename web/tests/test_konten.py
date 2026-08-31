@@ -528,6 +528,40 @@ def test_doppeltes_steuermerkmal_wird_gemeldet(admin_klient, klient, leere_konte
     assert admin_klient.get("/api/verwaltung/dubletten").json() == []
 
 
+def test_zahlung_wird_genau_einmal_gebucht(leere_konten):
+    """Doppelzustellung darf kein zweites Mal Guthaben geben.
+
+    Stripe sichert Webhook-Zustellungen ausdrücklich MEHRFACH zu — bei
+    Zustellproblemen wird wiederholt. Ohne Sperre bekäme derselbe Kauf
+    mehrfach Guthaben gutgeschrieben.
+    """
+    person = lege_kunden_an(leere_konten, "zahler@example.de", "langgenug12")
+
+    assert leere_konten.verbuche_zahlung("cs_1", person.id, "guthaben", 2500) is True
+    # Zweite Zustellung derselben Zahlung.
+    assert leere_konten.verbuche_zahlung("cs_1", person.id, "guthaben", 2500) is False
+
+    stand = leere_konten.nutzer(person.id)
+    assert stand.guthaben_cent == 2500, "doppelt gebucht"
+
+    # Eine andere Zahlung geht durch.
+    assert leere_konten.verbuche_zahlung("cs_2", person.id, "guthaben", 1000) is True
+    assert leere_konten.nutzer(person.id).guthaben_cent == 3500
+
+
+def test_abo_ende_setzt_tarif_zurueck_ohne_guthaben_zu_loeschen(leere_konten):
+    """Ein gekündigtes Abo nimmt kein bezahltes Guthaben mit."""
+    person = lege_kunden_an(leere_konten, "abo@example.de", "langgenug12")
+    leere_konten.verbuche_zahlung("cs_g", person.id, "guthaben", 2000)
+    leere_konten.setze_abo(person.id, "sub_1", "monat")
+    assert leere_konten.nutzer(person.id).tarif == "monat"
+
+    leere_konten.setze_abo(person.id, None, leere_konten.STANDARD_TARIF)
+    danach = leere_konten.nutzer(person.id)
+    assert danach.tarif == leere_konten.STANDARD_TARIF
+    assert danach.guthaben_cent == 2000, "Guthaben beim Abo-Ende verloren"
+
+
 def test_loeschen_entfernt_auch_die_nutzdaten(admin_klient, leere_konten, tmp_path):
     """Konto weg heißt Daten weg — nicht nur die Zeile in der Datenbank.
 
