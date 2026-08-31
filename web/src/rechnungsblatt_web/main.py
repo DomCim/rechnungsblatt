@@ -925,9 +925,23 @@ def verwaltung_testmail(daten: dict, person: Nutzer = Depends(verwalter)) -> dic
     except post.PostFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
     if not verschickt:
-        raise HTTPException(
-            422, detail={"grund": "Kein SMTP eingerichtet — nichts verschickt."}
-        )
+        # Sagen, WAS fehlt, und zwar aus dem Stand, den der Versand
+        # gerade gelesen hat. „Kein SMTP eingerichtet" vor einem
+        # ausgefüllten Formular ist nicht nur unhilfreich, sondern
+        # irreführend — dann steht in der Datenbank etwas anderes als
+        # auf dem Bildschirm, und genau das gehört gezeigt.
+        werte = konten.einstellungen()
+        stand = {name: (werte.get(schluessel) or "").strip()
+                 for schluessel, name in (("smtp_host", "Server"),
+                                          ("smtp_absender", "Absender"))}
+        fehlt = [name for name, wert in stand.items() if not wert]
+        raise HTTPException(422, detail={"grund":
+            f"Es fehlt noch: {' und '.join(fehlt)}. Gespeichert ist gerade: "
+            + ", ".join(f"{n}={w or '(leer)'}" for n, w in stand.items())
+            + ". Zuerst „Speichern“ drücken — der Versand liest den "
+              "gespeicherten Stand, nicht das Formular."
+            if fehlt else
+            "Kein SMTP eingerichtet — nichts verschickt."})
     return {"verschickt": True, "an": ziel}
 
 
