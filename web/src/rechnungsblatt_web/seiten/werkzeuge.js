@@ -11,7 +11,7 @@ window.RB = (function () {
       // Eintrag rund 70 px, "Neue Rechnung" passt da nicht hinein.
       navKurzEinrichtung: "Einrichtung", navKurzRechnung: "Rechnung",
       navKurzStamm: "Stammdaten", navKurzAblage: "Ablage",
-      navKurzKonto: "Konto",
+      navKurzKonto: "Konto", navKurzVerwaltung: "Verwaltung",
       navRechnung: "Neue Rechnung",
       navAblage: "Ablage",
       navStamm: "Stammdaten",
@@ -55,7 +55,7 @@ window.RB = (function () {
       navEinrichtung: "Setup",
       navKurzEinrichtung: "Setup", navKurzRechnung: "Invoice",
       navKurzStamm: "Master data", navKurzAblage: "Archive",
-      navKurzKonto: "Account",
+      navKurzKonto: "Account", navKurzVerwaltung: "Admin",
       navRechnung: "New invoice",
       navAblage: "Archive",
       navStamm: "Master data",
@@ -150,15 +150,22 @@ window.RB = (function () {
     "/app/rechnung": "M6 3h9l5 5v13H6zM15 3v5h5M9 13h7M9 17h5",
     "/app/stamm": "M4 6h16M4 12h16M4 18h9M18 15v6M15 18h6",
     "/app/ablage": "M3 7h18v12H3zM3 7l2-3h6l2 3",
-    "/app/konto": "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6"
+    "/app/konto": "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 3.6-6 8-6s8 2 8 6",
+    // Schieberegler fuer die Verwaltung -- sie erscheint nur bei Admins.
+    "/app/verwaltung": "M4 7h6M14 7h6M4 17h10M18 17h2M12 5v4M16 15v4"
   };
+
+  // Bei sechs Eintraegen wird die Leiste eng. Abmelden gehoert ohnehin
+  // nicht dorthin -- es steht in der Ueberblende und im Konto.
+  var NICHT_IN_LEISTE = ["#"];
 
   function kurzName(verweis) {
     // Die Leiste unten hat je Eintrag rund 70 px — der volle Name passt
     // dort nicht. Der Schluessel steht in den Seitentexten.
     var kurz = { navRechnung: "navKurzRechnung", navEinrichtung: "navKurzEinrichtung",
                  navStamm: "navKurzStamm", navAblage: "navKurzAblage",
-                 navKonto: "navKurzKonto" };
+                 navKonto: "navKurzKonto",
+                 navVerwaltung: "navKurzVerwaltung" };
     var schluessel = verweis.getAttribute("data-i18n");
     var ersatz = kurz[schluessel];
     var text = ersatz ? t(ersatz) : "";
@@ -168,6 +175,17 @@ window.RB = (function () {
   function baueNavigation() {
     var reiter = document.querySelector("nav.reiter");
     var zeile = null;
+    // Mehrfach aufrufbar: kopfKonto() haengt Verwaltung und Abmelden erst
+    // nachtraeglich an die Reiter -- ohne Neuaufbau fehlten beide in
+    // Ueberblende und Tableiste, und der Adminbereich waere in der App
+    // ueberhaupt nicht erreichbar gewesen.
+    var altSchicht = document.querySelector(".menue-schicht");
+    if (altSchicht) altSchicht.remove();
+    var altLeiste = document.querySelector(".kopfleiste");
+    var altTab = document.querySelector(".tableiste");
+    if (altTab) altTab.remove();
+    var altKnopf = document.querySelector("header.kopf .menue-knopf");
+    if (altKnopf) altKnopf.remove();
     var kopf = document.querySelector("header.kopf");
     if (!reiter || !kopf) return;
     var verweise = Array.prototype.slice.call(reiter.querySelectorAll("a"));
@@ -209,8 +227,9 @@ window.RB = (function () {
     });
 
     // --- Schmale Kopfleiste (nur am Handy sichtbar, per CSS) ---
-    var leiste = document.createElement("div");
+    var leiste = altLeiste || document.createElement("div");
     leiste.className = "kopfleiste";
+    leiste.textContent = "";
     // Das Zeichen statt des Namens: In einer 42 px hohen Leiste braucht
     // "Rechnungsblatt" den halben Platz, den der Seitenname noetiger hat.
     // Als SVG nachgezeichnet, nicht als PNG -- so bleibt es auf jedem
@@ -257,7 +276,7 @@ window.RB = (function () {
       else if (zeile) zeile.insertBefore(sprachen, zeile.firstChild);
     }
     leiste.appendChild(knopf);
-    kopf.parentNode.insertBefore(leiste, kopf);
+    if (!altLeiste) kopf.parentNode.insertBefore(leiste, kopf);
 
     // Am Rechner steht der Knopf neben der Sprachumschaltung; dort ist
     // die Kopfleiste ausgeblendet, der Knopf aber weiterhin noetig.
@@ -289,6 +308,7 @@ window.RB = (function () {
     unten.setAttribute("aria-label", "Bereiche");
     verweise.forEach(function (a) {
       var ziel = a.getAttribute("href");
+      if (NICHT_IN_LEISTE.indexOf(ziel) >= 0) return;
       var eintrag = document.createElement("a");
       eintrag.href = ziel;
       if (a.getAttribute("aria-current")) eintrag.setAttribute("aria-current", "page");
@@ -404,12 +424,14 @@ window.RB = (function () {
     var antwort = await api("/api/ich");
     if (!antwort.ok || !leiste) return antwort.ok ? antwort.daten : null;
     var person = antwort.daten;
+    var neuAufbauen = false;
     if (person.rolle === "admin" && !leiste.querySelector('a[href="/app/verwaltung"]')) {
       var verweis = document.createElement("a");
       verweis.href = "/app/verwaltung";
       verweis.setAttribute("data-i18n", "navVerwaltung");
       verweis.textContent = t("navVerwaltung");
       leiste.appendChild(verweis);
+      neuAufbauen = true;
     }
     if (!leiste.querySelector("[data-abmelden]")) {
       var knopf = document.createElement("a");
@@ -423,7 +445,12 @@ window.RB = (function () {
         window.location.href = "/";
       });
       leiste.appendChild(knopf);
+      neuAufbauen = true;
     }
+    // Erst jetzt stehen alle Reiter fest -- Ueberblende und Tableiste
+    // muessen sie uebernehmen, sonst fehlt in der App der Weg in die
+    // Verwaltung und zum Abmelden.
+    if (neuAufbauen) baueNavigation();
     return person;
   }
 

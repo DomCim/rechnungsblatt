@@ -6,6 +6,11 @@
 <title>Rechnungsblatt — Stammdaten</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nicht in den Suchindex: Der Arbeitsbereich verlangt eine Anmeldung,
+     ein Treffer darauf führte ins Leere. robots.txt allein genügt nicht —
+     sie verhindert das Crawlen, nicht das Indexieren eines verlinkten
+     Fundes. -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
@@ -18,18 +23,84 @@
   /* Einträge als Karten statt Tabelle: auf dem Telefon bedienbar, und
      ein Kunde hat ohnehin mehr Felder, als in eine Zeile passen. */
   .eintraege { display: grid; gap: 10px; }
+  /* Ein Eintrag ist zunächst eine Zeile. Vorher stand jeder Kunde mit
+     sieben aufgeklappten Feldern da — bei drei Kunden scrollte man an
+     einer Wand aus Eingabefeldern vorbei, statt eine Liste zu sehen. */
   .eintrag {
     border: 1px solid var(--linie);
     border-radius: var(--radius);
-    padding: 14px;
     background: var(--grund);
   }
+  .eintrag + .eintrag { margin-top: 8px; }
   .eintrag-kopf {
-    display: flex; align-items: baseline; gap: 10px;
-    justify-content: space-between; margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding-right: 6px;
   }
-  .eintrag-kopf strong { font-size: 15.5px; }
+  /* Die ganze Zeile ist der Aufklapp-Knopf — auf dem Telefon trifft man
+     eine schmale Fläche sonst nicht. */
+  .eintrag-kopf .auf {
+    all: unset;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 13px 4px 13px 13px;
+  }
+  .eintrag-kopf .auf:focus-visible {
+    outline: 2px solid var(--akzent);
+    outline-offset: -2px;
+    border-radius: var(--radius);
+  }
+  .eintrag-kopf .pfeil {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid var(--tinte-2);
+    border-bottom: 1.5px solid var(--tinte-2);
+    transform: rotate(-45deg);
+    transition: transform 300ms var(--kurve);
+  }
+  .eintrag-kopf .auf[aria-expanded="true"] .pfeil { transform: rotate(45deg); }
+  .eintrag-kopf .titel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .eintrag-kopf strong {
+    font-size: 15px;
+    /* Lange Firmennamen kürzen statt umbrechen — sonst wird aus der
+       Zeile wieder ein Block. */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .eintrag-kopf .unter {
+    font-size: 12.5px;
+    color: var(--tinte-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .eintrag-kopf .preis-zeile {
+    flex: none;
+    font-size: 13.5px;
+    color: var(--tinte);
+    font-variant-numeric: tabular-nums;
+  }
   .eintrag-kopf .kennung { color: var(--tinte-2); font-size: 12.5px; }
+  /* Die Felder sitzen unter der Zeile, abgesetzt durch eine Linie. */
+  .eintrag .felder {
+    padding: 0 13px 14px;
+    border-top: 1px solid var(--linie);
+    padding-top: 13px;
+    margin-top: 2px;
+  }
   .weg {
     all: unset; cursor: pointer; color: var(--tinte-2);
     font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px;
@@ -199,12 +270,21 @@
     el("kundenLeer").hidden = liste.length > 0;
     el("kunden").innerHTML = liste.map(function (k, i) {
       var a = k.anschrift || {};
+      // Zusammengefasst: Anschrift in einer Zeile, damit die Liste
+      // ueberblickbar bleibt. Die Felder stehen erst beim Aufklappen da.
+      var zeile = [a.plz, a.ort].filter(Boolean).join(" ");
+      var unten = [a.strasse, zeile].filter(Boolean).join(" · ");
       return '<div class="eintrag" data-nr="' + i + '">' +
-        '<div class="eintrag-kopf"><strong>' +
-          (k.name || w.neuerKunde) + "</strong>" +
+        '<div class="eintrag-kopf">' +
+          '<button type="button" class="auf" aria-expanded="false">' +
+            '<span class="pfeil" aria-hidden="true"></span>' +
+            '<span class="titel"><strong>' + (k.name || w.neuerKunde) + "</strong>" +
+              (unten ? '<span class="unter">' + unten + "</span>" : "") +
+            "</span>" +
+          "</button>" +
           '<button type="button" class="weg k-weg" aria-label="' + w.entfernen + '">×</button>' +
         "</div>" +
-        '<div class="felder">' +
+        '<div class="felder" hidden>' +
           feld(w.fName, k.name, "k-name", true) +
           feld(w.fStrasse, a.strasse, "k-strasse", true) +
           feld(w.fPlz, a.plz, "k-plz") +
@@ -214,6 +294,31 @@
           feld(w.fLeitweg, k.leitweg_id, "k-leitweg", true) +
         "</div></div>";
     }).join("");
+  }
+
+  // Aufklappen. Ein Klick auf die Zeile zeigt die Felder; ein neu
+  // angelegter Eintrag steht sofort offen, weil dort noch nichts drin ist.
+  function haengeAufklappen(behaelter) {
+    behaelter.addEventListener("click", function (ereignis) {
+      var knopf = ereignis.target.closest(".auf");
+      if (!knopf) return;
+      var eintrag = knopf.closest(".eintrag");
+      var felder = eintrag.querySelector(".felder");
+      var offen = felder.hidden;
+      felder.hidden = !offen;
+      knopf.setAttribute("aria-expanded", offen ? "true" : "false");
+    });
+  }
+  haengeAufklappen(el("kunden"));
+  haengeAufklappen(el("artikel"));
+
+  function oeffneLetzten(behaelter) {
+    var eintraege = behaelter.querySelectorAll(".eintrag");
+    if (!eintraege.length) return;
+    var letzter = eintraege[eintraege.length - 1];
+    letzter.querySelector(".felder").hidden = false;
+    letzter.querySelector(".auf").setAttribute("aria-expanded", "true");
+    letzter.scrollIntoView({ block: "nearest" });
   }
 
   function leseKunden() {
@@ -236,13 +341,24 @@
     var w = texte[RB.sprache()];
     el("artikelLeer").hidden = liste.length > 0;
     el("artikel").innerHTML = liste.map(function (a, i) {
+      // Der Preis steht in der Zeile: Beim Durchsehen einer Artikelliste
+      // ist er die Angabe, die man sucht.
+      var preis = a.einzelpreis
+        ? String(a.einzelpreis).replace(".", ",") + " \u20ac" : "";
       return '<div class="eintrag" data-nr="' + i + '">' +
-        '<div class="eintrag-kopf"><strong>' +
-          (a.bezeichnung || w.neuerArtikel) + "</strong>" +
-          (a.artikelnummer ? '<span class="kennung">' + a.artikelnummer + "</span>" : "") +
+        '<div class="eintrag-kopf">' +
+          '<button type="button" class="auf" aria-expanded="false">' +
+            '<span class="pfeil" aria-hidden="true"></span>' +
+            '<span class="titel"><strong>' +
+              (a.bezeichnung || w.neuerArtikel) + "</strong>" +
+              (a.artikelnummer
+                ? '<span class="unter kennung">' + a.artikelnummer + "</span>" : "") +
+            "</span>" +
+            (preis ? '<span class="preis-zeile kennung">' + preis + "</span>" : "") +
+          "</button>" +
           '<button type="button" class="weg a-weg" aria-label="' + w.entfernen + '">×</button>' +
         "</div>" +
-        '<div class="felder">' +
+        '<div class="felder" hidden>' +
           feld(w.fNummer, a.artikelnummer, "a-nummer") +
           feld(w.fBezeichnung, a.bezeichnung, "a-bezeichnung", true) +
           feld(w.fBeschreibung, a.beschreibung, "a-beschreibung", true) +
@@ -297,9 +413,13 @@
 
   el("kundeNeu").addEventListener("click", function () {
     zeichneKunden(leseKunden().concat([{ anschrift: {} }]));
+    // Sofort offen: Ein neuer Eintrag hat noch keinen Namen, den man
+    // anklicken koennte -- er saehe sonst aus wie eine leere Zeile.
+    oeffneLetzten(el("kunden"));
   });
   el("artikelNeu").addEventListener("click", function () {
     zeichneArtikel(leseArtikel().concat([{ einheit: "C62", steuer: "UST_19" }]));
+    oeffneLetzten(el("artikel"));
   });
 
   el("kunden").addEventListener("click", function (e) {

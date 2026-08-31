@@ -197,7 +197,11 @@ CREATE TABLE IF NOT EXISTS nutzer (
     huelle_code        BYTEA,
     -- Wann die Adresse per Code bestätigt wurde. NULL = noch offen.
     -- Getrennt vom Status: Bestätigung macht der Kunde, Freigabe der Admin.
-    email_bestaetigt   TIMESTAMPTZ
+    email_bestaetigt   TIMESTAMPTZ,
+    -- Blind Index über USt-IdNr. bzw. Steuernummer: erlaubt den Vergleich
+    -- zweier Konten, ohne die Nummer lesbar abzulegen. Die Nummer selbst
+    -- steht verschlüsselt in den Stammdaten des Mandanten.
+    steuer_index       TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sitzungen (
@@ -262,6 +266,9 @@ ALTER TABLE tarife ADD COLUMN IF NOT EXISTS
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_passwort BYTEA;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_code     BYTEA;
 ALTER TABLE sitzungen ADD COLUMN IF NOT EXISTS schluessel   BYTEA;
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS steuer_index TEXT;
+CREATE INDEX IF NOT EXISTS nutzer_steuer_index ON nutzer (steuer_index)
+  WHERE steuer_index IS NOT NULL;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS email_bestaetigt TIMESTAMPTZ;
 -- Konten, die es vor der Bestätigungspflicht schon gab, gelten als
 -- bestätigt: Sie haben sich nie registrieren können, ohne dass jemand
@@ -853,6 +860,71 @@ def _entpacke_geheimnis(gespeichert: str) -> str:
                              SERVERSCHLUESSEL).decode("utf-8")
     except (tresor.TresorFehler, ValueError):
         return ""
+
+
+# ---------------------------------------------------------------- Steuer-Index
+
+def steuer_index(ust_idnr: str | None, steuernummer: str | None) -> str | None:
+    """Blind Index über das Steuermerkmal eines Mandanten.
+
+    Erlaubt die Frage „hat ein anderes Konto dieselbe Nummer?", ohne die
+    Nummer lesbar zu speichern. Sie selbst liegt verschlüsselt in den
+    Stammdaten; hier steht nur ein Abdruck.
+
+    **Warum nicht im Klartext**, obwohl eine USt-IdNr. auf jeder Rechnung
+    steht: Öffentlich ist die Nummer, nicht die Verknüpfung. Eine Spalte
+    mit Klartextnummern wäre eine Kundenliste — genau das, was die
+    Verschlüsselung sonst verhindert.
+
+    Der Serverschlüssel geht als Pepper mit ein. Ohne ihn ließe sich der
+    Abdruck durch Ausprobieren zurückrechnen: Der Suchraum einer USt-IdNr.
+    ist klein genug dafür.
+
+    Bevorzugt wird die USt-IdNr.; Kleinunternehmer haben oft keine, tragen
+    aber zwingend eine Steuernummer (Befund S3 verlangt eines von beidem).
+    """
+    roh = (ust_idnr or "").strip() or (steuernummer or "").strip()
+    if not roh:
+        return None
+    # Normalisieren: Steuernummern werden je Finanzamt unterschiedlich
+    # geschrieben (123/456/78901 oder 12345678901). Ohne diesen Schritt
+    # fände der Vergleich dieselbe Nummer nicht wieder.
+    sauber = "".join(z for z in roh.upper() if z.isalnum())
+    if not sauber:
+        return None
+    return hashlib.sha256(
+        (sauber + "|" + SERVERSCHLUESSEL).encode("utf-8")
+    ).hexdigest()
+
+
+def setze_steuer_index(nutzer_id: int, abdruck: str | None) -> None:
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET steuer_index = %s WHERE id = %s",
+            (abdruck, nutzer_id),
+        )
+
+
+def konten_mit_gleichem_steuermerkmal() -> list[dict]:
+    """Konten, die sich ein Steuermerkmal teilen — für den Adminbereich.
+
+    Bewusst nur eine Meldung, keine Sperre: Es gibt echte Doppelfälle
+    (Betriebsübergabe, Wechsel der Steuernummer nach einem Umzug). Eine
+    harte Sperre träfe die und wäre für den Betroffenen nicht erklärbar.
+    """
+    with verbindung() as verb:
+        zeilen = verb.execute(
+            """SELECT steuer_index,
+                      count(*) AS anzahl,
+                      array_agg(email ORDER BY angelegt) AS konten
+               FROM nutzer
+               WHERE steuer_index IS NOT NULL
+               GROUP BY steuer_index
+               HAVING count(*) > 1"""
+        ).fetchall()
+    # Der Abdruck selbst geht nicht nach draußen — er wäre für die
+    # Oberfläche wertlos und im Log ein unnötiges Merkmal.
+    return [{"konten": list(z["konten"]), "anzahl": z["anzahl"]} for z in zeilen]
 
 
 # ---------------------------------------------------------------- Nachweise

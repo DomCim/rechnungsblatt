@@ -6,6 +6,11 @@
 <title>Rechnungsblatt — Konto</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nicht in den Suchindex: Der Arbeitsbereich verlangt eine Anmeldung,
+     ein Treffer darauf führte ins Leere. robots.txt allein genügt nicht —
+     sie verhindert das Crawlen, nicht das Indexieren eines verlinkten
+     Fundes. -->
+<meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
 <link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
@@ -126,6 +131,23 @@
     </div>
   </section>
 
+  <!-- Abmelden und der Weg nach draußen. In der installierten App ist der
+       Hamburger ausgeblendet — ohne diese Knöpfe wäre das Konto dort eine
+       Sackgasse, aus der man nur über die Adresszeile herauskommt. -->
+  <section class="karte">
+    <h2 data-i18n="sitzungTitel">Sitzung</h2>
+    <p class="beschreibung" data-i18n="sitzungText">
+      Abmelden beendet die Sitzung auf diesem Gerät. Ihre Daten bleiben
+      verschlüsselt liegen und sind nach der nächsten Anmeldung wieder da.
+    </p>
+    <div class="zeile">
+      <button type="button" class="knopf" id="abmelden"
+              data-i18n="abmeldenKnopf">Abmelden</button>
+      <a class="knopf leise" href="/" data-i18n="zurStartseite">Öffentliche Seite</a>
+    </div>
+    <div class="meldung" id="sitzungMeldung" role="status" aria-live="polite"></div>
+  </section>
+
 </div>
 
 <script src="/seiten/werkzeuge.js"></script>
@@ -151,6 +173,9 @@
       passwortGut: "Passwort geändert.",
       wechselHinweis: "Dieses Konto benutzt noch das vergebene Startpasswort. Bitte jetzt ändern.",
       verbrauchTitel: "Erzeugte Rechnungen",
+      sitzungTitel: "Sitzung",
+      sitzungText: "Abmelden beendet die Sitzung auf diesem Gerät. Ihre Daten bleiben verschlüsselt liegen und sind nach der nächsten Anmeldung wieder da.",
+      abmeldenKnopf: "Abmelden", zurStartseite: "Öffentliche Seite",
       verbrauchText: "Die letzten Buchungen dieses Kontos.",
       spNummer: "Nummer",
       spZeitpunkt: "Zeitpunkt",
@@ -174,6 +199,9 @@
       passwortGut: "Password changed.",
       wechselHinweis: "This account still uses the password it was issued with. Please change it now.",
       verbrauchTitel: "Invoices produced",
+      sitzungTitel: "Session",
+      sitzungText: "Signing out ends the session on this device. Your data stays encrypted and is back after the next sign-in.",
+      abmeldenKnopf: "Sign out", zurStartseite: "Public page",
       verbrauchText: "The most recent bookings on this account.",
       spNummer: "Number",
       spZeitpunkt: "Time",
@@ -252,6 +280,13 @@
       kasten.textContent = (einzelheit && einzelheit.grund) || RB.t("fehlerAllgemein");
     }
     ziel.appendChild(kasten);
+  });
+
+  el("abmelden").addEventListener("click", async function () {
+    // Der Server loescht die Sitzung; danach ist der Datenschluessel
+    // ebenfalls weg -- er lag nur dort, verpackt.
+    await RB.api("/api/abmelden", { method: "POST" });
+    window.location.href = "/";
   });
 
   RB.starte(texte);

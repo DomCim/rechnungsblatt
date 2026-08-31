@@ -3,7 +3,62 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Rechnungsblatt — E-Rechnung auf Ihrem eigenen Briefpapier</title>
+<title>E-Rechnung auf eigenem Briefpapier schreiben — Rechnungsblatt</title>
+
+<!-- Was Google zeigt und wertet.
+     `keywords` fehlt bewusst: Google wertet es seit 2009 nicht mehr aus.
+     Was zählt, sind Titel, Beschreibung und der Text der Seite selbst —
+     und darin steht, wonach gesucht wird: E-Rechnung, ZUGFeRD, XRechnung,
+     Pflicht 2025, eigenes Briefpapier, § 14 UStG. -->
+<meta name="description" content="E-Rechnungen nach ZUGFeRD und XRechnung auf Ihrem eigenen Briefbogen. PDF und XML entstehen im selben Vorgang, die Pflichtangaben nach § 14 UStG werden vor dem Erzeugen geprüft. Ab 3 Rechnungen kostenlos testen.">
+<link rel="canonical" href="/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<!-- Wie die Seite aussieht, wenn jemand sie in WhatsApp, LinkedIn oder
+     Mastodon teilt. Ohne diese Angaben zieht sich jedes Netz irgendein
+     Bruchstück aus dem Text. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="E-Rechnung auf eigenem Briefpapier">
+<meta property="og:description" content="Ihr Briefbogen bleibt, die Rechnung wird maschinenlesbar. ZUGFeRD und XRechnung aus denselben Daten — mit Prüfung nach § 14 UStG.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Strukturierte Daten: Damit erkennt Google, dass hier Software mit
+     Preisen steht, und nicht irgendeine Seite ueber Rechnungen. Bewusst
+     schmal gehalten — jede Angabe muss stimmen, sonst gilt das Markup
+     als irrefuehrend und schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Rechnungsblatt",
+  "applicationCategory": "BusinessApplication",
+  "applicationSubCategory": "E-Rechnung, Rechnungsprogramm",
+  "operatingSystem": "Web",
+  "inLanguage": ["de", "en"],
+  "description": "E-Rechnungen nach ZUGFeRD (Factur-X) und XRechnung auf dem eigenen Briefbogen. PDF und XML entstehen im selben Vorgang aus denselben Daten; die Pflichtangaben nach § 14 UStG werden vor dem Erzeugen geprueft.",
+  "featureList": [
+    "ZUGFeRD und Factur-X als PDF/A-3B mit eingebettetem XML",
+    "XRechnung fuer Behoerdenkunden, mit Leitweg-ID",
+    "Pruefung der Pflichtangaben nach § 14 UStG vor dem Erzeugen",
+    "Eigenes Briefpapier als Unterlage",
+    "Kleinunternehmerregelung nach § 19 UStG",
+    "Reverse Charge, innergemeinschaftliche Lieferung, Ausfuhr",
+    "GiroCode zum Bezahlen per Banking-App",
+    "Gutschrift und Stornierung mit Bezug zur Ursprungsrechnung",
+    "Mehrseitige Belege mit Uebertrag"
+  ],
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "EUR",
+    "description": "Probekontingent mit drei vollwertigen Rechnungen ohne Zahlungsdaten; danach Guthaben oder Monatsbeitrag."
+  }
+}
+</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="/seiten/basis.css">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -701,9 +756,7 @@
       <p class="vorlauf" data-i18n="heldVorlauf">Pflicht seit 2025 · B2B in Deutschland</p>
       <h1 data-i18n="heldTitel">Ihr Briefbogen bleibt. Die Rechnung wird maschinenlesbar.</h1>
       <p class="fuehrung" data-i18n="heldText">
-        Rechnungsblatt setzt die Rechnung in die freie Fläche Ihres eigenen
-        Briefpapiers und legt die Daten als XML hinein — beides in einem
-        Vorgang, aus derselben Quelle.
+        Rechnungsblatt setzt die Rechnung in die freie Fläche Ihres eigenen Briefpapiers und legt die Daten als ZUGFeRD-XML hinein — beides in einem Vorgang, aus derselben Quelle. Für Handwerk, Freiberufler und kleine Betriebe, die ihren Briefbogen behalten wollen.
       </p>
       <div class="zeile">
         <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
@@ -763,10 +816,7 @@
     <div class="abschnitt-kopf">
       <h2 data-i18n="problemTitel">Warum die Word-Vorlage nicht mehr reicht</h2>
       <p data-i18n="problemText">
-        Eine E-Rechnung ist kein hübsches PDF, sondern ein PDF mit maschinen­lesbaren
-        Daten darin — beides muss zusammenpassen und beides muss vollständig sein.
-        Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst,
-        wenn der Steuerprüfer beim Kunden steht.
+        Eine E-Rechnung nach EN 16931 ist kein hübsches PDF, sondern ein PDF mit maschinen&shy;lesbaren Daten darin — beides muss zusammenpassen und beides muss vollständig sein. Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst, wenn der Steuerprüfer beim Kunden steht.
       </p>
     </div>
     <div class="raster">
@@ -843,7 +893,7 @@
         <div>
           <strong data-i18n="schritt4Titel">Rechnung schreiben</strong>
           <p data-i18n="schritt4Text">
-            Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Wird es lang, bricht der Beleg sauber um: mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Auf Wunsch trägt er einen GiroCode, den Ihr Kunde mit der Banking-App abscannt. Heraus kommt ein PDF/A-3B mit eingebettetem XML, dazu die XRechnung für Behördenkunden.
+            Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Wird es lang, bricht der Beleg sauber um: mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Auf Wunsch trägt er einen GiroCode, den Ihr Kunde mit der Banking-App abscannt. Heraus kommt ein PDF/A-3B mit eingebettetem XML — ZUGFeRD beziehungsweise Factur-X —, dazu die XRechnung für Behördenkunden.
           </p>
         </div>
       </li>
@@ -982,11 +1032,11 @@
       heldVorlauf: "Pflicht seit 2025 · B2B in Deutschland",
       heldTitel: "Ihr Briefbogen bleibt. Die Rechnung wird maschinenlesbar.",
       bogenAlt: "Ein Briefbogen mit Kopf- und Fußzeile; dazwischen entsteht eine Rechnung, darunter das eingebettete XML.",
-      heldText: "Rechnungsblatt setzt die Rechnung in die freie Fläche Ihres eigenen Briefpapiers und legt die Daten als XML hinein — beides in einem Vorgang, aus derselben Quelle.",
+      heldText: "Rechnungsblatt setzt die Rechnung in die freie Fläche Ihres eigenen Briefpapiers und legt die Daten als ZUGFeRD-XML hinein — beides in einem Vorgang, aus derselben Quelle. Für Handwerk, Freiberufler und kleine Betriebe, die ihren Briefbogen behalten wollen.",
       heldKnopf: "Konto anlegen",
       heldMehr: "Wie es funktioniert",
       problemTitel: "Warum die Word-Vorlage nicht mehr reicht",
-      problemText: "Eine E-Rechnung ist kein hübsches PDF, sondern ein PDF mit maschinenlesbaren Daten darin — beides muss zusammenpassen und beides muss vollständig sein. Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst, wenn der Steuerprüfer beim Kunden steht.",
+      problemText: "Eine E-Rechnung nach EN 16931 ist kein hübsches PDF, sondern ein PDF mit maschinenlesbaren Daten darin — beides muss zusammenpassen und beides muss vollständig sein. Wer das per Hand baut, merkt einen fehlenden Pflichtangaben-Eintrag erst, wenn der Steuerprüfer beim Kunden steht.",
       problem1Titel: "Pflichtangaben nach § 14 UStG",
       problem1Text: "Jede einzelne Pflichtangabe muss stimmen. Fehlt eine, ist die Rechnung formal mangelhaft — und der Vorsteuerabzug Ihres Kunden wackelt.",
       problem2Titel: "PDF und XML müssen übereinstimmen",
@@ -1004,7 +1054,7 @@
       schritt3Titel: "Stammdaten hinterlegen",
       schritt3Text: "Firmierung, Anschrift, Steuernummer oder USt-IdNr., IBAN, Zahlungsziel. Einmal eingetragen, stehen sie auf jeder Rechnung. Kunden und wiederkehrende Leistungen merkt sich Rechnungsblatt nebenbei; ganze Positionslisten lassen sich als Vorlage sichern.",
       schritt4Titel: "Rechnung schreiben",
-      schritt4Text: "Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Wird es lang, bricht der Beleg sauber um: mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Auf Wunsch trägt er einen GiroCode, den Ihr Kunde mit der Banking-App abscannt. Heraus kommt ein PDF/A-3B mit eingebettetem XML, dazu die XRechnung für Behördenkunden.",
+      schritt4Text: "Empfänger, Positionen, Steuersatz — das Formular lässt Sie nicht absenden, solange eine Pflichtangabe fehlt. Wird es lang, bricht der Beleg sauber um: mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Auf Wunsch trägt er einen GiroCode, den Ihr Kunde mit der Banking-App abscannt. Heraus kommt ein PDF/A-3B mit eingebettetem XML — ZUGFeRD beziehungsweise Factur-X —, dazu die XRechnung für Behördenkunden.",
       andersTitel: "Was Rechnungsblatt anders macht",
       andersText: "Der Markt ist voll von Werkzeugen, die ein fertiges PDF hochladen lassen und die Daten per KI herauslesen. Das ist bequem — und genau deshalb schwach.",
       andereTitel: "PDF hochladen, KI liest aus",
@@ -1073,11 +1123,11 @@
       heldVorlauf: "Mandatory since 2025 · B2B in Germany",
       heldTitel: "Your letterhead stays. The invoice becomes machine-readable.",
       bogenAlt: "A letterhead with header and footer; an invoice takes shape between them, with the embedded XML below.",
-      heldText: "Rechnungsblatt sets the invoice into the free area of your own letterhead and embeds the data as XML — both in one pass, from the same source.",
+      heldText: "Rechnungsblatt sets the invoice into the free area of your own letterhead and embeds the data as ZUGFeRD XML — both in one pass, from the same source. For tradespeople, freelancers and small businesses who want to keep their letterhead.",
       heldKnopf: "Create account",
       heldMehr: "How it works",
       problemTitel: "Why the Word template no longer does the job",
-      problemText: "An e-invoice is not a pretty PDF but a PDF with machine-readable data inside — the two must match and both must be complete. Build that by hand and you notice a missing mandatory field only once the tax auditor is at your customer’s desk.",
+      problemText: "An e-invoice under EN 16931 is not a pretty PDF but a PDF with machine-readable data inside — the two must match and both must be complete. Build that by hand and you notice a missing mandatory field only once the tax auditor is at your customer’s desk.",
       problem1Titel: "Mandatory fields under § 14 UStG",
       problem1Text: "Every single mandatory entry has to be right. Miss one and the invoice is formally deficient — putting your customer’s input tax deduction at risk.",
       problem2Titel: "PDF and XML have to agree",
@@ -1095,7 +1145,7 @@
       schritt3Titel: "Enter your master data",
       schritt3Text: "Company name, address, tax number or VAT ID, IBAN, payment terms. Entered once, they appear on every invoice. Customers and recurring services are remembered along the way; whole line-item lists can be saved as a template.",
       schritt4Titel: "Write the invoice",
-      schritt4Text: "Recipient, line items, tax rate — the form will not let you submit while a mandatory detail is missing. If it runs long, the document breaks cleanly: with a carry-over, a repeated table header and “Page 1 of 3”. On request it carries a GiroCode your customer scans with their banking app. Out comes a PDF/A-3B with embedded XML, plus the XRechnung for public-sector customers.",
+      schritt4Text: "Recipient, line items, tax rate — the form will not let you submit while a mandatory detail is missing. If it runs long, the document breaks cleanly: with a carry-over, a repeated table header and “Page 1 of 3”. On request it carries a GiroCode your customer scans with their banking app. Out comes a PDF/A-3B with embedded XML — ZUGFeRD, also known as Factur-X —, plus the XRechnung for public-sector customers.",
       andersTitel: "What Rechnungsblatt does differently",
       andersText: "The market is full of tools that let you upload a finished PDF and have an AI read the data out of it. That is convenient — and precisely why it is weak.",
       andereTitel: "Upload a PDF, let AI read it",
