@@ -52,10 +52,19 @@ _ZU_SIGNIEREN = ("from", "to", "subject", "date", "message-id")
 
 
 def domain_von(adresse: str) -> str:
-    """Die Domain einer Adresse, klein geschrieben. Leer, wenn keine drin ist."""
+    """Die Domain einer Adresse, klein geschrieben. Leer, wenn keine drin ist.
+
+    **Ohne ``@`` ist es keine Adresse.** ``rpartition`` allein lieferte
+    sonst den ganzen Text als „Domain": Aus dem Absender
+    ``Rechnungsblatt.de`` — ohne Postfach davor — wurde die Domain
+    ``rechnungsblatt.de``, die Alignment-Prüfung ging durch, und die App
+    hätte gegenüber dem Mailserver einen Absender ohne ``@`` behauptet.
+    """
     treffer = re.search(r"<([^>]+)>", adresse or "")
     reine = (treffer.group(1) if treffer else (adresse or "")).strip()
-    _, _, domain = reine.rpartition("@")
+    postfach, trenner, domain = reine.rpartition("@")
+    if not trenner or not postfach.strip():
+        return ""
     return domain.strip().lower()
 
 
