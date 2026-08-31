@@ -19,7 +19,6 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-from .blatt import registriere_schriften
 
 _LIBERATION_REGULAR = "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf"
 _LIBERATION_BOLD = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"

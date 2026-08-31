@@ -187,6 +187,26 @@ def _pruefe_positionen(rechnung: Rechnung, stammdaten: Stammdaten) -> list[Befun
             befunde.append(
                 Befund("P4", feld, f"Position {index}: Einzelpreis darf nicht negativ sein.")
             )
+        if -position.einzelpreis.as_tuple().exponent > 2:
+            # **Mehr als zwei Nachkommastellen ergeben ein widersprüchliches
+            # XML.** Der Preis wird dort auf zwei Stellen ausgewiesen, der
+            # Positionsbetrag aber aus dem ungerundeten Wert gerechnet: Bei
+            # 0,333 € × 3 rechnet ein Prüfer 0,33 × 3 = 0,99 gegen einen
+            # ausgewiesenen Betrag von 1,00 und beanstandet die Rechnung.
+            #
+            # Abweisen statt still runden: Gerundet stimmte zwar das XML,
+            # die Summe wiche aber von der ab, die der Kunde erwartet — und
+            # er merkte es nicht.
+            befunde.append(
+                Befund(
+                    "P5",
+                    feld,
+                    f"Position {index}: Einzelpreis darf höchstens zwei "
+                    "Nachkommastellen haben. Bei krummen Preisen je Einheit "
+                    "besser die Menge anders wählen (etwa 3 Stück zu 1,00 € "
+                    "statt 1 Stück zu 0,333 €).",
+                )
+            )
 
     kategorien = {position.steuer for position in rechnung.positionen}
     if stammdaten.kleinunternehmer and kategorien != {Steuerkategorie.KLEINUNTERNEHMER}:

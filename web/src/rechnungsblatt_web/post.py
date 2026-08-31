@@ -154,6 +154,7 @@ def sende(an: str, betreff: str, text: str) -> bool:
             f"E-Mail konnte nicht verschickt werden: {fehler}"
             + _hilfe_zum_fehler(fehler, host, port, implizit)
         ) from fehler
+    return True
 
 
 def _hilfe_zum_fehler(fehler: Exception, host: str, port: int,
@@ -198,7 +199,6 @@ def _hilfe_zum_fehler(fehler: Exception, host: str, port: int,
         return (" — das Zertifikat des Servers wurde abgelehnt. Passt der "
                 "Servername zu dem, was der Anbieter nennt?")
     return ""
-    return True
 
 
 # ---------------------------------------------------------------- Vorlagen

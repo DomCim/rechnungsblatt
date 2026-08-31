@@ -245,13 +245,21 @@ def _abrechnung(
             kennzeichen = _el(nachlass, "ram", "ChargeIndicator")
             _el(kennzeichen, "udt", "Indicator", "false")
             if rechnung.rabatt_prozent is not None:
-                # BT-138 vor BT-92 (ActualAmount) — Schemareihenfolge.
+                # BT-138 vor BT-137 vor BT-92 — Schemareihenfolge.
+                #
+                # **Der Basisbetrag muss mit.** Der Nachlass entsteht je
+                # Steuerkorb; ohne BT-137 stünde in beiden Körben derselbe
+                # Satz neben verschiedenen Beträgen (10 % von 800 und 10 %
+                # von 200), und ein Eingangsvalidator kann den Satz nicht
+                # gegenrechnen. Bei einer XRechnung an eine Behörde ist das
+                # ein Grund für die Ablehnung.
                 _el(
                     nachlass,
                     "ram",
                     "CalculationPercent",
                     _betrag(rechnung.rabatt_prozent),
                 )
+                _el(nachlass, "ram", "BasisAmount", _betrag(korb.zeilensumme))
             _el(nachlass, "ram", "ActualAmount", _betrag(korb.rabatt))
             _el(nachlass, "ram", "Reason", rechnung.rabatt_grund)
             korbsteuer = _el(nachlass, "ram", "CategoryTradeTax")
