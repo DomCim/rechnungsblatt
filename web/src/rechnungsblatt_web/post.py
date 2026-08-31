@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import smtplib
+import socket
 import ssl
 from email.message import EmailMessage
 from email.utils import formatdate, make_msgid
@@ -142,7 +143,54 @@ def sende(an: str, betreff: str, text: str) -> bool:
                 server.sendmail(absender, [an], roh)
     except (smtplib.SMTPException, OSError, ssl.SSLError) as fehler:
         protokoll.exception("Versand an %s fehlgeschlagen", an)
-        raise PostFehler(f"E-Mail konnte nicht verschickt werden: {fehler}") from fehler
+        raise PostFehler(
+            f"E-Mail konnte nicht verschickt werden: {fehler}"
+            + _hilfe_zum_fehler(fehler, host, port, implizit)
+        ) from fehler
+
+
+def _hilfe_zum_fehler(fehler: Exception, host: str, port: int,
+                      implizit: bool) -> str:
+    """Ergänzt die Meldung des Servers um die wahrscheinliche Ursache.
+
+    „The read operation timed out" allein sagt niemandem, was zu tun ist.
+    Dieselbe Meldung entsteht bei einem falschen Port wie bei einem toten
+    Server — und der häufigste Fall ist, dass Port 465 unterwegs gesperrt
+    ist: Viele Rechenzentren lassen ihn nicht heraus, 587 dagegen schon.
+    """
+    text = str(fehler).lower()
+    if isinstance(fehler, smtplib.SMTPRecipientsRefused):
+        # Der Zugang stimmt -- der Server hat die Nachricht angenommen und
+        # erst den Empfaenger abgelehnt. Ohne diesen Hinweis sucht man den
+        # Fehler weiter bei Server, Port und Passwort.
+        return (" — der Zugang stimmt, aber diese Empfängeradresse gibt es "
+                "nicht. Die Testnachricht geht an Ihre Kontoadresse, wenn "
+                "kein anderes Ziel eingetragen ist.")
+    if "no such mailbox" in text or "user unknown" in text:
+        return (" — den Zugang hat der Server angenommen; nur die "
+                "Empfängeradresse gibt es nicht.")
+    if isinstance(fehler, smtplib.SMTPSenderRefused):
+        return (" — der Server nimmt diese Absenderadresse nicht an. Sie "
+                "muss zu dem Postfach gehören, mit dem sich die App anmeldet.")
+    if isinstance(fehler, smtplib.SMTPAuthenticationError):
+        return (" — Benutzername oder Passwort stimmen nicht. Bei manchen "
+                "Anbietern ist das nicht das Postfachpasswort, sondern ein "
+                "eigenes für den Programmzugriff.")
+    if "timed out" in text or isinstance(fehler, (TimeoutError, socket.timeout)):
+        if implizit or port == 465:
+            return (f" — Port {port} antwortet nicht. Das ist meist keine "
+                    "falsche Einstellung, sondern eine Sperre auf dem Weg: "
+                    "Viele Rechenzentren lassen 465 nicht heraus. Port 587 "
+                    "mit ausgeschaltetem Schalter probieren.")
+        return (f" — {host}:{port} antwortet nicht. Stimmen Server und Port?")
+    if "connection refused" in text:
+        return f" — {host} nimmt auf Port {port} keine Verbindung an."
+    if "name or service not known" in text or "nodename nor servname" in text:
+        return f" — den Server „{host}“ gibt es nicht (Tippfehler?)."
+    if "certificate" in text:
+        return (" — das Zertifikat des Servers wurde abgelehnt. Passt der "
+                "Servername zu dem, was der Anbieter nennt?")
+    return ""
     return True
 
 

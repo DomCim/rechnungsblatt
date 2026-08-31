@@ -298,7 +298,17 @@
          Zählung und Zahlungen in einer Karte mit einem Knopf ganz unten —
          am Handy 1830 px unter dem ersten Feld, hinter zwei fremden
          Abschnitten. Wer oben etwas änderte, fand ihn nicht. -->
-    <div class="zeile" style="margin-top:14px;">
+    <div class="felder" style="margin-top:14px;">
+      <div class="feld breit">
+        <label for="testZiel" data-i18n="fTestZiel">Testnachricht an</label>
+        <input id="testZiel" type="email" autocapitalize="off" autocorrect="off"
+               spellcheck="false" placeholder="ihre.adresse@example.de"></div>
+    </div>
+    <p class="beschreibung" style="margin-top:6px;" data-i18n="testZielHinweis">
+      Leer lassen schickt an Ihre Kontoadresse — die muss dann aber als
+      Postfach existieren.
+    </p>
+    <div class="zeile" style="margin-top:12px;">
       <button type="button" class="knopf" id="postSpeichern" data-i18n="speichern">Speichern</button>
       <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Testnachricht schicken</button>
     </div>
@@ -446,6 +456,7 @@
       dkimErsetzen: "Ein neuer Schlüssel ersetzt den bisherigen. Bis der neue DNS-Eintrag veröffentlicht ist, gilt keine Unterschrift mehr. Fortfahren?",
       dkimErzeugt: "Schlüssel erzeugt. Jetzt den DNS-Eintrag veröffentlichen.",
       dkimAus: "Nicht eingerichtet — Post geht unsigniert raus.",
+      absenderUngueltig: "Der Absender „%s“ ist keine E-Mail-Adresse — da fehlt das Postfach vor dem @. So weist der Mailserver jede Nachricht ab.",
       dkimHalb: "Nur halb eingerichtet: Domain, Selektor und Schlüssel gehören zusammen. Solange etwas fehlt, wird nicht unterschrieben.",
       dkimAn: "Eingerichtet. Post wird unterschrieben.",
       dkimPasstNicht: "Die Domain passt nicht zum Absender %s — so geht die Post unsigniert raus.",
@@ -485,6 +496,8 @@
       fHost: "Server", fPort: "Port", fBenutzer: "Benutzer", fPasswort: "Passwort",
       fAbsender: "Absender", fAdresse: "Öffentliche Adresse",
       fTls: "Verschlüsselt ab Verbindungsaufbau (Port 465)",
+      fTestZiel: "Testnachricht an",
+      testZielHinweis: "Leer lassen schickt an Ihre Kontoadresse — die muss dann aber als Postfach existieren.",
       postTest: "Testnachricht schicken", testOk: "Verschickt an",
       gespeichert: "Gespeichert.",
       tarifNeuTitel: "Neuen Tarif anlegen",
@@ -528,6 +541,7 @@
       dkimErsetzen: "A new key replaces the current one. Until the new DNS record is published, no signature applies. Continue?",
       dkimErzeugt: "Key generated. Now publish the DNS record.",
       dkimAus: "Not set up — mail goes out unsigned.",
+      absenderUngueltig: "The sender “%s” is not an email address — the mailbox before the @ is missing. The mail server will reject every message.",
       dkimHalb: "Only half set up: domain, selector and key belong together. While anything is missing, nothing is signed.",
       dkimAn: "Set up. Mail is being signed.",
       dkimPasstNicht: "The domain does not match the sender %s — mail goes out unsigned.",
@@ -567,6 +581,8 @@
       fHost: "Server", fPort: "Port", fBenutzer: "User", fPasswort: "Password",
       fAbsender: "Sender", fAdresse: "Public address",
       fTls: "Encrypted from connect (port 465)",
+      fTestZiel: "Send test message to",
+      testZielHinweis: "Leave empty to use your account address — but then that mailbox has to exist.",
       postTest: "Send a test message", testOk: "Sent to",
       gespeichert: "Saved.",
       tarifNeuTitel: "Add a plan",
@@ -934,6 +950,15 @@
     var stand = el("dkimStand");
     var dns = el("dkimDns");
 
+    if (!d.absender_gueltig && d.absender) {
+      // Vor allem anderen: Ohne @ ist es keine Adresse, und der
+      // Mailserver weist sie ab, bevor DKIM ueberhaupt zaehlt.
+      stand.hidden = false;
+      stand.className = "meldung hinweis warn";
+      stand.textContent = RB.t("absenderUngueltig").replace("%s", d.absender);
+      dns.hidden = true;
+      return;
+    }
     if (d.unvollstaendig) {
       // Eine halbe Unterschrift schlaegt beim Empfaenger fehl und sieht
       // dann nach einer Faelschung aus -- schlimmer als gar keine.
@@ -1233,7 +1258,7 @@
     var antwort = await RB.api("/api/verwaltung/testmail", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({})
+      body: JSON.stringify({ an: el("testZiel").value.trim() })
     });
     if (antwort.ok) {
       postMelde(RB.t("testOk") + " " + antwort.daten.an, true);

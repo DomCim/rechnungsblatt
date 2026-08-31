@@ -949,6 +949,10 @@ def verwaltung_dkim(_: Nutzer = Depends(verwalter)) -> dict:
         "unvollstaendig": bool((domain or selektor or pem)
                                and not (domain and selektor and pem)),
         "absender": absender,
+        # Ein Absender ohne @ ist keine Adresse. Der Mailserver lehnt ihn
+        # ab, lange bevor DKIM eine Rolle spielt — das gehört gemeldet,
+        # nicht stillschweigend hingenommen.
+        "absender_gueltig": bool(absender and dkim.domain_von(absender)),
         "passt": bool(domain and absender and dkim.passt(domain, absender)),
     }
     if antwort["eingerichtet"]:
