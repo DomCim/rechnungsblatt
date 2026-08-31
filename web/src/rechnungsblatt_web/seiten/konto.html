@@ -248,13 +248,9 @@
     }
   };
 
-  function el(kennung) { return document.getElementById(kennung); }
+  var el = RB.el;
 
-  function euro(cent) {
-    return (cent / 100).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE", {
-      style: "currency", currency: "EUR"
-    });
-  }
+  var euro = RB.euro;
 
   function zeigeKonto(person) {
     el("kennung").textContent = person.email;

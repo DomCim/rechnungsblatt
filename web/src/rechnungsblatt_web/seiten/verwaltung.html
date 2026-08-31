@@ -605,7 +605,7 @@
     }
   };
 
-  function el(kennung) { return document.getElementById(kennung); }
+  var el = RB.el;
 
   var nutzer = [];
   var tarife = [];
@@ -626,11 +626,7 @@
     return (einzelheit && einzelheit.grund) || RB.t("fehlerAllgemein");
   }
 
-  function euro(cent) {
-    return (cent / 100).toLocaleString(RB.sprache() === "en" ? "en-GB" : "de-DE", {
-      style: "currency", currency: "EUR"
-    });
-  }
+  var euro = RB.euro;
 
   async function sende(pfad, koerper, art) {
     var antwort = await RB.api(pfad, {

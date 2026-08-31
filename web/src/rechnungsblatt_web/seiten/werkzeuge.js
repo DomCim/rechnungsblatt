@@ -456,8 +456,21 @@ window.RB = (function () {
     return person;
   }
 
+  // Zwei Handgriffe, die jede Seite braucht. `el` stand sechsmal
+  // wortgleich in den Seiten, `euro` dreimal — Kopien, die beim naechsten
+  // Waehrungsformat alle einzeln gefunden werden muessten.
+  function el(kennung) { return document.getElementById(kennung); }
+
+  function euro(cent) {
+    return (cent / 100).toLocaleString(sprache === "en" ? "en-GB" : "de-DE", {
+      style: "currency", currency: "EUR"
+    });
+  }
+
   return {
     t: t,
+    el: el,
+    euro: euro,
     starte: starte,
     api: api,
     kopfKonto: kopfKonto,
