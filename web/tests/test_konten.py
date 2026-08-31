@@ -794,7 +794,8 @@ def test_besucher_weist_erfundenen_zeitraum_ab(leere_konten):
     assert klient.get("/api/verwaltung/besucher?zeitraum=constructor").status_code == 422
 
 
-def test_plausible_schluessel_wird_verschluesselt_abgelegt(leere_konten):
+def test_plausible_schluessel_wird_verschluesselt_abgelegt(
+        leere_konten, mit_serverschluessel):
     """Der Schlüssel liest zwar nur — aber die Zahlen aller Seiten des Kontos."""
     konten = leere_konten
     konten.setze_einstellungen({"plausible_api_key": "geheimer-lese-schluessel"})
@@ -930,7 +931,8 @@ def test_dkim_alignment_folgt_dmarc():
     assert not dkim.passt("rechnungsblatt.de", "")
 
 
-def test_dkim_schluessel_wird_verschluesselt_abgelegt(leere_konten):
+def test_dkim_schluessel_wird_verschluesselt_abgelegt(
+        leere_konten, mit_serverschluessel):
     """Wer den privaten Schlüssel hat, verschickt Post in fremdem Namen."""
     from rechnungsblatt_web import dkim
 
@@ -968,3 +970,28 @@ def test_unlesbarer_dkim_schluessel_verhindert_den_versand_nicht(leere_konten):
     })
     assert b"DKIM-Signature" not in roh
     assert b"Hallo" in roh
+
+
+def test_ohne_serverschluessel_warnt_die_ablage(leere_konten, caplog):
+    """Ohne RECHNUNGSBLATT_SCHLUESSEL liegt das Geheimnis im Klartext.
+
+    Der Rückfall bleibt — sonst startete ein frisch aufgesetzter Stack ohne
+    die Variable gar nicht. Aber er darf nicht stillschweigend passieren:
+    Genau so fiel in der CI auf, dass dort nichts verschlüsselt wird.
+    """
+    konten = leere_konten
+    vorher = konten.SERVERSCHLUESSEL
+    konten.SERVERSCHLUESSEL = ""
+    try:
+        with caplog.at_level("WARNING"):
+            konten.setze_einstellungen({"stripe_secret": "sk_test_klartext"})
+        assert "RECHNUNGSBLATT_SCHLUESSEL" in caplog.text
+        with konten.verbindung() as verb:
+            roh = verb.execute(
+                "SELECT wert FROM einstellungen WHERE schluessel = 'stripe_secret'"
+            ).fetchone()["wert"]
+        # Klartext — dokumentiert, nicht behauptet.
+        assert roh == "sk_test_klartext"
+    finally:
+        konten.SERVERSCHLUESSEL = vorher
+        konten.setze_einstellungen({"stripe_secret": ""})
