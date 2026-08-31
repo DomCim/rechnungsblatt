@@ -81,8 +81,13 @@
     padding-top: 10px;
     border-top: 1px solid var(--linie);
   }
-  .verlauf > div { flex: 1; display: flex; flex-direction: column;
+  /* min-width: 0 ist noetig, nicht Zierde: Ohne sie schrumpft eine
+     Flex-Spalte nicht unter die Breite ihres Inhalts. Bei zwoelf Monaten
+     ging das auf, bei dreissig Tagesbalken schob die Ziffer darunter die
+     ganze Seite auf. */
+  .verlauf > div { flex: 1; min-width: 0; display: flex; flex-direction: column;
                    align-items: center; gap: 5px; justify-content: flex-end; }
+  .verlauf .monat { overflow: hidden; }
   .verlauf .balken {
     width: 100%;
     background: var(--akzent);
@@ -95,6 +100,58 @@
     font-size: 9.5px;
     color: var(--tinte-2);
   }
+
+  /* Ranglisten der Besucherstatistik. Der Balken liegt HINTER dem Text,
+     nicht daneben: Seitenpfade und Herkunftsnamen sind lang, und eine
+     halbe Spalte für den Balken liesse zu wenig für den Namen. */
+  .ranglisten {
+    display: grid;
+    /* min() statt einer festen Mindestbreite: Bei 390px bleiben nach der
+       Polsterung keine 240px uebrig, und eine Spalte, die breiter ist als
+       ihr Platz, schiebt die ganze Seite auf. */
+    grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+    gap: 18px;
+    margin-top: 20px;
+  }
+  .rangliste h3 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tinte-2);
+    margin: 0 0 8px;
+  }
+  .rangliste ol { list-style: none; margin: 0; padding: 0; }
+  .rangliste li {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 8px;
+    font-size: 13px;
+    border-radius: 5px;
+    overflow: hidden;
+  }
+  .rangliste li .fuellung {
+    position: absolute;
+    inset: 0 auto 0 0;
+    background: var(--akzent);
+    opacity: 0.14;
+    border-radius: 5px;
+  }
+  .rangliste li .name {
+    position: relative;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rangliste li .zahl {
+    position: relative;
+    font-family: "Spline Sans Mono", ui-monospace, monospace;
+    color: var(--tinte-2);
+    flex: none;
+  }
+  .zeitwahl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .zeitwahl button.aktiv { background: var(--akzent); color: #fff; }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -165,6 +222,23 @@
     <div id="dubletten" hidden style="margin-top:16px;"></div>
   </section>
 
+  <!-- Besucher aus Plausible. Getrennt von den Zahlen darüber: Die kommen
+       aus der eigenen Datenbank und sind immer da; diese hängen an einem
+       fremden Dienst. -->
+  <section class="karte">
+    <h2 data-i18n="besucherTitel">Besucher</h2>
+    <p class="beschreibung" data-i18n="besucherText">
+      Wer wann wie hergefunden hat — gezählt von Plausible, ohne Cookies.
+    </p>
+    <div class="zeitwahl" id="zeitwahl"></div>
+    <div id="besucherHinweis" class="meldung hinweis" hidden></div>
+    <div id="besucherInhalt" hidden>
+      <div class="kennzahlen" id="besucherZahlen"></div>
+      <div id="besucherVerlauf" class="verlauf"></div>
+      <div class="ranglisten" id="ranglisten"></div>
+    </div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="postTitel">Postausgang</h2>
     <p class="beschreibung" data-i18n="postText">
@@ -191,6 +265,35 @@
       <span data-i18n="fTls">Verschlüsselt ab Verbindungsaufbau (Port 465)</span>
     </label>
 
+    <h3 class="zwischentitel" data-i18n="dkimTitel">Unterschrift (DKIM)</h3>
+    <p class="beschreibung" data-i18n="dkimText">
+      Ohne Unterschrift landet Post von einer eigenen Domain regelmäßig im
+      Spam — ein Bestätigungscode im Spamordner ist so gut wie keiner. Die
+      Domain muss zum Absender oben passen.
+    </p>
+    <div class="felder">
+      <div class="feld"><label for="dkimDomain" data-i18n="fDkimDomain">Domain</label>
+        <input id="dkimDomain" placeholder="rechnungsblatt.de"></div>
+      <div class="feld"><label for="dkimSelektor" data-i18n="fDkimSelektor">Selektor</label>
+        <input id="dkimSelektor" placeholder="rb"></div>
+      <div class="feld breit">
+        <label for="dkimSchluessel" data-i18n="fDkimSchluessel">Privater Schlüssel (PEM)</label>
+        <input id="dkimSchluessel" type="password" autocomplete="off"></div>
+    </div>
+    <div class="zeile" style="margin-top:10px;">
+      <button type="button" class="knopf leise" id="dkimErzeugen"
+              data-i18n="dkimErzeugen">Schlüssel erzeugen</button>
+    </div>
+    <div id="dkimStand" class="meldung hinweis" hidden style="margin-top:10px;"></div>
+    <div id="dkimDns" hidden style="margin-top:10px;">
+      <p class="beschreibung" data-i18n="dkimDnsText">
+        Diesen Eintrag im DNS veröffentlichen — ohne ihn nützt die
+        Unterschrift nichts:
+      </p>
+      <pre class="kennung" id="dkimDnsWert"
+           style="white-space:pre-wrap;word-break:break-all;"></pre>
+    </div>
+
     <h2 style="margin-top:22px;" data-i18n="zaehlungTitel">Zählung</h2>
     <p class="beschreibung" data-i18n="zaehlungText">
       Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein
@@ -202,7 +305,15 @@
         <input id="plausUrl" placeholder="https://plausible.example.de"></div>
       <div class="feld breit"><label for="plausDomain" data-i18n="fPlausDomain">Gezählte Domain</label>
         <input id="plausDomain" placeholder="rechnungsblatt.example.de"></div>
+      <div class="feld breit">
+        <label for="plausKey" data-i18n="fPlausKey">API-Schlüssel zum Lesen</label>
+        <input id="plausKey" type="password" autocomplete="off"></div>
     </div>
+    <p class="beschreibung" style="margin-top:10px;" data-i18n="plausKeyHinweis">
+      Den Schlüssel legen Sie in Plausible unter Settings → API Keys an. Er
+      wird nur zum Lesen der Zahlen gebraucht: Ohne ihn zählt die Seite
+      weiter, die Auswertung oben bleibt aber leer.
+    </p>
     <h2 style="margin-top:22px;" data-i18n="stripeTitel">Zahlungen</h2>
     <p class="beschreibung" data-i18n="stripeText">
       Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben
@@ -216,12 +327,6 @@
       <div class="feld breit">
         <label for="stripeHook" data-i18n="fStripeHook">Webhook-Geheimnis (whsec_…)</label>
         <input id="stripeHook" type="password" autocomplete="off"></div>
-      <div class="feld">
-        <label for="stripePreis" data-i18n="fStripePreis">Preis-ID des Abos (price_…)</label>
-        <input id="stripePreis" placeholder="price_..."></div>
-      <div class="feld">
-        <label for="stripeAboTarif" data-i18n="fStripeAboTarif">Tarif beim Abo</label>
-        <input id="stripeAboTarif" placeholder="monat"></div>
       <div class="feld breit">
         <label for="stripeAufladungen" data-i18n="fStripeAufladungen">Wählbare Beträge in Euro</label>
         <input id="stripeAufladungen" placeholder="10, 25, 50"></div>
@@ -230,6 +335,8 @@
       Der Webhook zeigt auf <span class="kennung">/api/bezahlen/webhook</span>.
       Nötige Ereignisse: checkout.session.completed, invoice.paid,
       invoice.payment_failed, customer.subscription.deleted.
+      Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier —
+      so lassen sich mehrere Abos nebeneinander anbieten.
     </p>
 
     <div class="zeile" style="margin-top:12px;">
@@ -257,6 +364,7 @@
             <th data-i18n="spReihenfolge">Reihung</th>
             <th data-i18n="spSichtbar">Sichtbar</th>
             <th data-i18n="spHervorheben">Empfohlen</th>
+            <th data-i18n="spStripePreis">Stripe-Preis</th>
             <th data-i18n="spAktion">Aktion</th>
           </tr>
         </thead>
@@ -288,6 +396,29 @@
       guthabenFrage: "Guthaben in Cent buchen (negativ zum Abziehen):",
       dublettenTitel: "Gleiches Steuermerkmal",
       dublettenText: "Diese Konten führen dieselbe USt-IdNr. oder Steuernummer. Das kann eine Betriebsübergabe sein oder ein Wechsel der Steuernummer — oder ein zweites Konto für die freien Rechnungen. Bitte prüfen.",
+      dkimTitel: "Unterschrift (DKIM)",
+      dkimText: "Ohne Unterschrift landet Post von einer eigenen Domain regelmäßig im Spam — ein Bestätigungscode im Spamordner ist so gut wie keiner. Die Domain muss zum Absender oben passen.",
+      fDkimDomain: "Domain", fDkimSelektor: "Selektor",
+      fDkimSchluessel: "Privater Schlüssel (PEM)",
+      dkimErzeugen: "Schlüssel erzeugen",
+      dkimErsetzen: "Ein neuer Schlüssel ersetzt den bisherigen. Bis der neue DNS-Eintrag veröffentlicht ist, gilt keine Unterschrift mehr. Fortfahren?",
+      dkimErzeugt: "Schlüssel erzeugt. Jetzt den DNS-Eintrag veröffentlichen.",
+      dkimAus: "Nicht eingerichtet — Post geht unsigniert raus.",
+      dkimHalb: "Nur halb eingerichtet: Domain, Selektor und Schlüssel gehören zusammen. Solange etwas fehlt, wird nicht unterschrieben.",
+      dkimAn: "Eingerichtet. Post wird unterschrieben.",
+      dkimPasstNicht: "Die Domain passt nicht zum Absender %s — so geht die Post unsigniert raus.",
+      dkimDnsText: "Diesen Eintrag im DNS veröffentlichen — ohne ihn nützt die Unterschrift nichts:",
+      besucherTitel: "Besucher",
+      besucherText: "Wer wann wie hergefunden hat — gezählt von Plausible, ohne Cookies.",
+      bZeit7t: "7 Tage", bZeit30t: "30 Tage", bZeit90t: "90 Tage", bZeit365t: "1 Jahr",
+      bBesucher: "Besucher", bAufrufe: "Seitenaufrufe", bJeBesucher: "je Besucher",
+      bVerweildauer: "Verweildauer", bMin: "Min.",
+      bNurEine: "Nur eine Seite", bNurEineNeben: "angesehen und wieder weg",
+      bSeiten: "Meistbesuchte Seiten", bQuellen: "Woher sie kommen",
+      bLaender: "Aus welchem Land", bGeraete: "Womit sie lesen",
+      bKeineDaten: "Noch nichts gezählt",
+      bNichtEingerichtet: "Noch kein API-Schlüssel hinterlegt — unten unter Besucherzählung. Gezählt wird trotzdem, hier fehlt nur der Zugang zum Lesen.",
+      bFehler: "Die Statistik antwortet nicht:",
       zahlenTitel: "Im Überblick",
       zahlenText: "Was im eigenen Haus messbar ist. Seitenaufrufe zählt Plausible daneben.",
       zKonten: "Konten", zWartet: "warten auf Freigabe",
@@ -299,14 +430,14 @@
       zaehlungTitel: "Zählung",
       zaehlungText: "Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible über HTTPS erreichbar sein — sonst blockt der Browser.",
       fPlausUrl: "Plausible-Adresse", fPlausDomain: "Gezählte Domain",
+      fPlausKey: "API-Schlüssel zum Lesen",
+      plausKeyHinweis: "Den Schlüssel legen Sie in Plausible unter Settings → API Keys an. Er wird nur zum Lesen der Zahlen gebraucht: Ohne ihn zählt die Seite weiter, die Auswertung oben bleibt aber leer.",
       stripeTitel: "Zahlungen",
       stripeText: "Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden verschlüsselt abgelegt und nie wieder angezeigt.",
       fStripeSecret: "Geheimer Schlüssel (sk_…)",
       fStripeHook: "Webhook-Geheimnis (whsec_…)",
-      fStripePreis: "Preis-ID des Abos (price_…)",
-      fStripeAboTarif: "Tarif beim Abo",
       fStripeAufladungen: "Wählbare Beträge in Euro",
-      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted.",
+      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier — so lassen sich mehrere Abos nebeneinander anbieten.",
       postTitel: "Postausgang",
       postText: "Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll. Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.",
       fHost: "Server", fPort: "Port", fBenutzer: "Benutzer", fPasswort: "Passwort",
@@ -319,6 +450,7 @@
       spSchluessel: "Schlüssel", spName: "Name", spMonatsbeitrag: "Monat (ct)",
       spInklusiv: "Inklusiv", spJeRechnung: "Je Rechnung (ct)",
       spReihenfolge: "Reihung", spSichtbar: "Sichtbar", spHervorheben: "Empfohlen",
+      spStripePreis: "Stripe-Preis",
       gespeichertKurz: "Gespeichert.",
       keine: "Noch keine Konten."
     },
@@ -337,6 +469,29 @@
       guthabenFrage: "Book credit in cents (negative to deduct):",
       dublettenTitel: "Same tax identifier",
       dublettenText: "These accounts share a VAT ID or tax number. That can be a handover or a changed tax number — or a second account for the free invoices. Please check.",
+      dkimTitel: "Signature (DKIM)",
+      dkimText: "Without a signature, mail from your own domain regularly ends up in spam — a confirmation code in the spam folder is as good as none. The domain has to match the sender above.",
+      fDkimDomain: "Domain", fDkimSelektor: "Selector",
+      fDkimSchluessel: "Private key (PEM)",
+      dkimErzeugen: "Generate key",
+      dkimErsetzen: "A new key replaces the current one. Until the new DNS record is published, no signature applies. Continue?",
+      dkimErzeugt: "Key generated. Now publish the DNS record.",
+      dkimAus: "Not set up — mail goes out unsigned.",
+      dkimHalb: "Only half set up: domain, selector and key belong together. While anything is missing, nothing is signed.",
+      dkimAn: "Set up. Mail is being signed.",
+      dkimPasstNicht: "The domain does not match the sender %s — mail goes out unsigned.",
+      dkimDnsText: "Publish this record in DNS — without it the signature is of no use:",
+      besucherTitel: "Visitors",
+      besucherText: "Who came when and how — counted by Plausible, without cookies.",
+      bZeit7t: "7 days", bZeit30t: "30 days", bZeit90t: "90 days", bZeit365t: "1 year",
+      bBesucher: "Visitors", bAufrufe: "Page views", bJeBesucher: "per visitor",
+      bVerweildauer: "Time on site", bMin: "min",
+      bNurEine: "One page only", bNurEineNeben: "looked and left",
+      bSeiten: "Most visited pages", bQuellen: "Where they come from",
+      bLaender: "From which country", bGeraete: "What they read on",
+      bKeineDaten: "Nothing counted yet",
+      bNichtEingerichtet: "No API key stored yet — below under visitor counting. Counting still happens; only read access is missing here.",
+      bFehler: "The statistics are not responding:",
       zahlenTitel: "At a glance",
       zahlenText: "What is measurable in-house. Page views are counted by Plausible alongside.",
       zKonten: "Accounts", zWartet: "awaiting approval",
@@ -348,14 +503,14 @@
       zaehlungTitel: "Analytics",
       zaehlungText: "Plausible counts page views without cookies. Without an address no script is embedded at all. If the site runs over HTTPS, Plausible must be reachable over HTTPS too — otherwise the browser blocks it.",
       fPlausUrl: "Plausible address", fPlausDomain: "Counted domain",
+      fPlausKey: "API key for reading",
+      plausKeyHinweis: "Create the key in Plausible under Settings → API Keys. It is only needed to read the numbers: without it the site keeps counting, but the overview above stays empty.",
       stripeTitel: "Payments",
       stripeText: "Without keys the app offers no payment — you then set plans and credit by hand, as before. The keys are stored encrypted and never shown again.",
       fStripeSecret: "Secret key (sk_…)",
       fStripeHook: "Webhook secret (whsec_…)",
-      fStripePreis: "Price ID of the plan (price_…)",
-      fStripeAboTarif: "Plan on subscription",
       fStripeAufladungen: "Selectable amounts in euro",
-      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted.",
+      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. The price ID of a plan belongs to that plan, not here — so several plans can be offered side by side.",
       postTitel: "Outgoing mail",
       postText: "Without these details Rechnungsblatt sends no confirmation codes and no reset links — the messages only end up in the log. The password is stored encrypted and never shown again.",
       fHost: "Server", fPort: "Port", fBenutzer: "User", fPasswort: "Password",
@@ -368,6 +523,7 @@
       spSchluessel: "Key", spName: "Name", spMonatsbeitrag: "Month (ct)",
       spInklusiv: "Included", spJeRechnung: "Per invoice (ct)",
       spReihenfolge: "Order", spSichtbar: "Visible", spHervorheben: "Recommended",
+      spStripePreis: "Stripe price",
       gespeichertKurz: "Saved.",
       keine: "No accounts yet."
     }
@@ -565,6 +721,12 @@
       hervorheben.style.width = "auto";
       hervorZelle.appendChild(hervorheben);
 
+      // Die Preis-ID aus Stripe macht den Tarif als Abo buchbar. Leer
+      // heisst: nicht buchbar -- der Tarif kann trotzdem auf der
+      // Preistafel stehen und von Hand vergeben werden.
+      var stripePreis = feld(eintrag.stripe_preis || "");
+      stripePreis.placeholder = "price_...";
+
       var aktion = zeile.insertCell();
       aktion.appendChild(knopf(RB.t("speichern"), async function () {
         var ergebnis = await sende("/api/verwaltung/tarife/" + eintrag.schluessel, {
@@ -575,7 +737,8 @@
           preis_je_rechnung_cent: Number(jeRechnung.value || 0),
           reihenfolge: Number(reihenfolge.value || 0),
           sichtbar: sichtbar.checked,
-          hervorheben: hervorheben.checked
+          hervorheben: hervorheben.checked,
+          stripe_preis: stripePreis.value.trim()
         }, "PUT");
         if (ergebnis) lade();
       }));
@@ -653,6 +816,199 @@
   }
   RB.beiSprachwechsel(zeichneZahlen);
 
+  // ---------- DKIM ----------
+  async function ladeDkim() {
+    var antwort = await RB.api("/api/verwaltung/dkim");
+    if (!antwort.ok) return;
+    var d = antwort.daten;
+    var stand = el("dkimStand");
+    var dns = el("dkimDns");
+
+    if (d.unvollstaendig) {
+      // Eine halbe Unterschrift schlaegt beim Empfaenger fehl und sieht
+      // dann nach einer Faelschung aus -- schlimmer als gar keine.
+      stand.hidden = false;
+      stand.className = "meldung hinweis warn";
+      stand.textContent = RB.t("dkimHalb");
+      dns.hidden = true;
+      return;
+    }
+    if (!d.eingerichtet) {
+      stand.hidden = false;
+      stand.className = "meldung hinweis";
+      stand.textContent = RB.t("dkimAus");
+      dns.hidden = true;
+      return;
+    }
+    if (d.fehler) {
+      stand.hidden = false;
+      stand.className = "meldung hinweis warn";
+      stand.textContent = d.fehler;
+      dns.hidden = true;
+      return;
+    }
+    stand.hidden = false;
+    if (!d.passt) {
+      // Technisch gueltig, aber DMARC verlangt, dass Absender und
+      // signierende Domain zusammengehoeren.
+      stand.className = "meldung hinweis warn";
+      stand.textContent = RB.t("dkimPasstNicht").replace("%s", d.absender || "—");
+    } else {
+      stand.className = "meldung hinweis gut";
+      stand.textContent = RB.t("dkimAn");
+    }
+    dns.hidden = false;
+    el("dkimDnsWert").textContent =
+      d.dns.name + "  " + d.dns.typ + "
+" + d.dns.wert;
+  }
+
+  el("dkimErzeugen").addEventListener("click", async function () {
+    if (!window.confirm(RB.t("dkimErsetzen"))) return;
+    var antwort = await RB.api("/api/verwaltung/dkim/schluessel", { method: "POST" });
+    if (!antwort.ok) {
+      var g = antwort.daten && antwort.daten.detail && antwort.daten.detail.grund;
+      postMelde(g || RB.t("fehlerAllgemein"), false);
+      return;
+    }
+    postMelde(RB.t("dkimErzeugt"), true);
+    ladeDkim();
+  });
+
+  // ---------- Besucher ----------
+  var ZEITRAEUME = ["7t", "30t", "90t", "365t"];
+  var zeitraum = "30t";
+
+  function dauerText(sekunden) {
+    var m = Math.floor(sekunden / 60), r = sekunden % 60;
+    return m + ":" + (r < 10 ? "0" : "") + r + " " + RB.t("bMin");
+  }
+
+  function rangliste(titel, reihen) {
+    var kasten = document.createElement("div");
+    kasten.className = "rangliste";
+    var h = document.createElement("h3");
+    h.textContent = titel;
+    kasten.appendChild(h);
+    var liste = document.createElement("ol");
+    if (!reihen.length) {
+      var leer = document.createElement("li");
+      leer.textContent = RB.t("bKeineDaten");
+      liste.appendChild(leer);
+    }
+    // Alle Balken beziehen sich auf den groessten Wert der Liste, nicht
+    // auf die Gesamtzahl: Sonst waere bei breiter Streuung jeder Balken
+    // ein Strich.
+    var groesster = reihen.reduce(function (a, z) {
+      return Math.max(a, z.besucher); }, 0) || 1;
+    reihen.forEach(function (z) {
+      var eintrag = document.createElement("li");
+      var fuellung = document.createElement("div");
+      fuellung.className = "fuellung";
+      fuellung.style.width = Math.round((z.besucher / groesster) * 100) + "%";
+      var name = document.createElement("span");
+      name.className = "name";
+      name.textContent = z.name;
+      name.title = z.name;
+      var zahl = document.createElement("span");
+      zahl.className = "zahl";
+      zahl.textContent = z.besucher;
+      eintrag.appendChild(fuellung);
+      eintrag.appendChild(name);
+      eintrag.appendChild(zahl);
+      liste.appendChild(eintrag);
+    });
+    kasten.appendChild(liste);
+    return kasten;
+  }
+
+  function zeichneBesucher(d) {
+    var zahlen = el("besucherZahlen");
+    zahlen.textContent = "";
+    zahlen.appendChild(kachel(d.besucher, RB.t("bBesucher")));
+    zahlen.appendChild(kachel(d.aufrufe, RB.t("bAufrufe"),
+      d.besucher ? (d.aufrufe / d.besucher).toFixed(1) + " " + RB.t("bJeBesucher") : ""));
+    zahlen.appendChild(kachel(dauerText(d.verweildauer_s), RB.t("bVerweildauer")));
+    // "Absprungrate" sagt ausserhalb der Marketingwelt niemandem etwas.
+    zahlen.appendChild(kachel(d.nur_eine_seite + " %", RB.t("bNurEine"),
+      RB.t("bNurEineNeben")));
+
+    var v = el("besucherVerlauf");
+    v.textContent = "";
+    var reihe = d.verlauf || [];
+    if (reihe.length < 3) { v.style.display = "none"; }
+    else {
+      v.style.display = "";
+      var groesster = Math.max.apply(null, reihe.map(function (t) {
+        return t.besucher; })) || 1;
+      reihe.forEach(function (t) {
+        var spalte = document.createElement("div");
+        var balken = document.createElement("div");
+        balken.className = "balken";
+        balken.style.height = Math.round((t.besucher / groesster) * 52) + "px";
+        balken.title = t.tag + ": " + t.besucher;
+        spalte.appendChild(balken);
+        // Beschriftung nur bei wenigen Tagen -- bei 365 Balken waere sie
+        // ohnehin ein grauer Streifen.
+        if (reihe.length <= 31) {
+          var text = document.createElement("div");
+          text.className = "monat";
+          text.textContent = t.tag.slice(8);
+          spalte.appendChild(text);
+        }
+        v.appendChild(spalte);
+      });
+    }
+
+    var ziel = el("ranglisten");
+    ziel.textContent = "";
+    ziel.appendChild(rangliste(RB.t("bSeiten"), d.seiten || []));
+    ziel.appendChild(rangliste(RB.t("bQuellen"), d.quellen || []));
+    ziel.appendChild(rangliste(RB.t("bLaender"), d.laender || []));
+    ziel.appendChild(rangliste(RB.t("bGeraete"), d.geraete || []));
+  }
+
+  function zeichneZeitwahl() {
+    var ziel = el("zeitwahl");
+    ziel.textContent = "";
+    ZEITRAEUME.forEach(function (z) {
+      var k = document.createElement("button");
+      k.type = "button";
+      k.className = "knopf leise" + (z === zeitraum ? " aktiv" : "");
+      k.textContent = RB.t("bZeit" + z);
+      k.addEventListener("click", function () {
+        zeitraum = z; zeichneZeitwahl(); ladeBesucher();
+      });
+      ziel.appendChild(k);
+    });
+  }
+
+  async function ladeBesucher() {
+    var hinweis = el("besucherHinweis");
+    var inhalt = el("besucherInhalt");
+    var antwort = await RB.api("/api/verwaltung/besucher?zeitraum=" + zeitraum);
+    if (!antwort.ok) { inhalt.hidden = true; hinweis.hidden = true; return; }
+    var d = antwort.daten;
+    if (!d.eingerichtet) {
+      // Kein Fehler: Gezaehlt wird trotzdem, es fehlt nur der Schluessel.
+      inhalt.hidden = true;
+      hinweis.hidden = false;
+      hinweis.className = "meldung hinweis";
+      hinweis.textContent = RB.t("bNichtEingerichtet");
+      return;
+    }
+    if (d.fehler) {
+      inhalt.hidden = true;
+      hinweis.hidden = false;
+      hinweis.className = "meldung hinweis warn";
+      hinweis.textContent = RB.t("bFehler") + " " + d.fehler;
+      return;
+    }
+    hinweis.hidden = true;
+    inhalt.hidden = false;
+    zeichneBesucher(d);
+  }
+
   // ---------- Doppelte Steuermerkmale ----------
   function zeichneDubletten(liste) {
     var ziel = el("dubletten");
@@ -692,13 +1048,15 @@
     el("smtpPasswort").value = werte.smtp_passwort || "";
     el("smtpAbsender").value = werte.smtp_absender || "";
     el("oeffAdresse").value = werte.oeffentliche_adresse || "";
+    el("dkimDomain").value = werte.dkim_domain || "";
+    el("dkimSelektor").value = werte.dkim_selektor || "";
+    el("dkimSchluessel").value = werte.dkim_schluessel || "";
     el("smtpTls").checked = werte.smtp_tls === "1";
     el("plausUrl").value = werte.plausible_url || "";
     el("plausDomain").value = werte.plausible_domain || "";
+    el("plausKey").value = werte.plausible_api_key || "";
     el("stripeSecret").value = werte.stripe_secret || "";
     el("stripeHook").value = werte.stripe_webhook_secret || "";
-    el("stripePreis").value = werte.stripe_preis_abo || "";
-    el("stripeAboTarif").value = werte.stripe_abo_tarif || "";
     el("stripeAufladungen").value = werte.stripe_aufladungen || "";
   }
 
@@ -714,14 +1072,17 @@
       smtp_absender: el("smtpAbsender").value.trim(),
       smtp_tls: el("smtpTls").checked ? "1" : "",
       oeffentliche_adresse: el("oeffAdresse").value.trim(),
+      dkim_domain: el("dkimDomain").value.trim(),
+      dkim_selektor: el("dkimSelektor").value.trim(),
+      dkim_schluessel: el("dkimSchluessel").value,
       plausible_url: el("plausUrl").value.trim(),
       plausible_domain: el("plausDomain").value.trim(),
+      // Punkte heissen "unveraendert lassen" -- siehe smtp_passwort.
+      plausible_api_key: el("plausKey").value,
       // Punkte heissen "unveraendert lassen" -- die Geheimnisse kommen nie
       // im Klartext zurueck.
       stripe_secret: el("stripeSecret").value,
       stripe_webhook_secret: el("stripeHook").value,
-      stripe_preis_abo: el("stripePreis").value.trim(),
-      stripe_abo_tarif: el("stripeAboTarif").value.trim(),
       stripe_aufladungen: el("stripeAufladungen").value.trim()
     }, "PUT");
     if (ergebnis) { postFuellen(ergebnis); postMelde(RB.t("gespeichert"), true); }
@@ -757,13 +1118,18 @@
     if (antwortZahlen.ok) { zahlenStand = antwortZahlen.daten; zeichneZahlen(); }
     var antwortDub = await RB.api("/api/verwaltung/dubletten");
     if (antwortDub.ok) zeichneDubletten(antwortDub.daten);
+    zeichneZeitwahl();
+    ladeBesucher();
+    ladeDkim();
 
     zeichneNutzer();
     zeichneTarife();
   }
 
   RB.starte(texte);
-  RB.beiSprachwechsel(function () { zeichneNutzer(); zeichneTarife(); });
+  RB.beiSprachwechsel(function () {
+    zeichneNutzer(); zeichneTarife(); zeichneZeitwahl(); ladeBesucher();
+  });
   lade();
 })();
 </script>

@@ -19,6 +19,7 @@ import dataclasses
 import datetime as dt
 import hashlib
 import hmac
+import logging
 import os
 import re
 import secrets
@@ -29,6 +30,8 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from . import tresor
+
+protokoll = logging.getLogger("rechnungsblatt.konten")
 
 DATENBANK_URL = os.environ.get(
     "DATENBANK_URL",
@@ -79,6 +82,10 @@ class Tarif:
     # Vorgabe False: kein hervorgehobener Tarif ist ein gültiger Zustand,
     # keine Ausnahme. Damit bleiben auch die Standardtarife unverändert.
     hervorheben: bool = False
+    # Die Stripe-Preis-ID des Abos, leer bei Tarifen ohne Abo. Sie gehört
+    # zum Tarif und nicht in eine globale Einstellung: Es gibt mehr als
+    # einen Abo-Tarif, und jeder braucht seinen eigenen Preis bei Stripe.
+    stripe_preis: str = ""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -176,7 +183,8 @@ CREATE TABLE IF NOT EXISTS tarife (
     -- Hebt die öffentliche Preistafel diesen Tarif hervor? Bewusst ein
     -- Datensatz und keine Regel im Code: welcher Tarif empfohlen wird, ist
     -- eine Entscheidung des Betreibers und ändert sich ohne Neubau.
-    hervorheben            BOOLEAN NOT NULL DEFAULT FALSE
+    hervorheben            BOOLEAN NOT NULL DEFAULT FALSE,
+    stripe_preis           TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS nutzer (
@@ -279,6 +287,8 @@ CREATE INDEX IF NOT EXISTS zahlungen_nutzer ON zahlungen (nutzer, zeitpunkt);
 _NACHTRAEGE = """
 ALTER TABLE tarife ADD COLUMN IF NOT EXISTS
     hervorheben BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE tarife ADD COLUMN IF NOT EXISTS
+    stripe_preis TEXT NOT NULL DEFAULT '';
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_passwort BYTEA;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_code     BYTEA;
 ALTER TABLE sitzungen ADD COLUMN IF NOT EXISTS schluessel   BYTEA;
@@ -439,6 +449,7 @@ def _tarif_aus_zeile(zeile: dict) -> Tarif:
         reihenfolge=zeile["reihenfolge"],
         sichtbar=zeile["sichtbar"],
         hervorheben=zeile["hervorheben"],
+        stripe_preis=zeile["stripe_preis"] or "",
     )
 
 
@@ -466,8 +477,9 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
         verb.execute(
             """INSERT INTO tarife (schluessel, name, beschreibung,
                    monatsbeitrag_cent, inklusiv_rechnungen,
-                   preis_je_rechnung_cent, reihenfolge, sichtbar, hervorheben)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   preis_je_rechnung_cent, reihenfolge, sichtbar, hervorheben,
+                   stripe_preis)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (schluessel) DO UPDATE SET
                    name = EXCLUDED.name,
                    beschreibung = EXCLUDED.beschreibung,
@@ -476,7 +488,8 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
                    preis_je_rechnung_cent = EXCLUDED.preis_je_rechnung_cent,
                    reihenfolge = EXCLUDED.reihenfolge,
                    sichtbar = EXCLUDED.sichtbar,
-                   hervorheben = EXCLUDED.hervorheben""",
+                   hervorheben = EXCLUDED.hervorheben,
+                   stripe_preis = EXCLUDED.stripe_preis""",
             (
                 tarif_neu.schluessel,
                 tarif_neu.name,
@@ -487,6 +500,7 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
                 tarif_neu.reihenfolge,
                 tarif_neu.sichtbar,
                 tarif_neu.hervorheben,
+                tarif_neu.stripe_preis,
             ),
         )
     return tarif(tarif_neu.schluessel)
@@ -820,12 +834,20 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # Plausible gehört in dieselbe Kategorie wie der Postausgang:
                # Betriebseinstellung, die sich ändern lässt, ohne den Stack
                # neu zu deployen.
-               "plausible_url", "plausible_domain",
+               # Der API-Schluessel liegt verschluesselt: Er liest zwar nur,
+               # aber er liest die Zahlen aller Seiten des Kontos.
+               "plausible_url", "plausible_domain", "plausible_api_key",
+               # DKIM. Der private Schluessel liegt verschluesselt: Wer ihn
+               # hat, kann in fremdem Namen Post verschicken, die jede
+               # Pruefung besteht.
+               "dkim_domain", "dkim_selektor", "dkim_schluessel",
                # Stripe. Der geheime Schluessel und das Webhook-Geheimnis
                # liegen verschluesselt (siehe _GEHEIME_FELDER).
-               "stripe_secret", "stripe_webhook_secret",
-               "stripe_preis_abo", "stripe_aufladungen", "stripe_abo_tarif")
-_GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret"}
+               # Die Preis-ID eines Abos steht am Tarif, nicht hier: Es gibt
+               # mehr als einen Abo-Tarif.
+               "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen")
+_GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
+                   "plausible_api_key", "dkim_schluessel"}
 
 
 def einstellungen(mit_geheimnissen: bool = False) -> dict[str, str]:
@@ -853,11 +875,15 @@ def setze_einstellungen(werte: dict[str, str]) -> None:
                 continue
             geheim = feld in _GEHEIME_FELDER
             if geheim:
-                # Leer heißt „unverändert lassen" — die Oberfläche schickt
-                # Punkte zurück, nicht das echte Passwort.
-                if not wert or set(wert) <= {"•"}:
+                # Punkte heißen „unverändert lassen": Die Oberfläche bekommt
+                # das Geheimnis nie im Klartext zurück und schickt daher die
+                # Maskierung, die sie angezeigt hat.
+                if wert and set(wert) <= {"•"}:
                     continue
-                wert = _verpacke_geheimnis(wert)
+                # Leer heißt dagegen „entfernen". Ohne diesen Weg ließe sich
+                # ein einmal gesetzter Zugang über die Oberfläche nie wieder
+                # abschalten — der Haken zum Ausschalten fehlte.
+                wert = _verpacke_geheimnis(wert) if wert else ""
             verb.execute(
                 """INSERT INTO einstellungen (schluessel, wert, geheim)
                    VALUES (%s, %s, %s)
@@ -868,7 +894,21 @@ def setze_einstellungen(werte: dict[str, str]) -> None:
 
 
 def _verpacke_geheimnis(klartext: str) -> str:
+    """Verschlüsselt ein Geheimnis für die Datenbank.
+
+    **Ohne RECHNUNGSBLATT_SCHLUESSEL liegt es im Klartext.** Das hält
+    Entwicklung und CI am Laufen, wo es nichts zu schützen gibt; im
+    Produktivstack erzwingt `docker-compose.yml` die Variable. Der
+    Rückfall bleibt, weil ein harter Abbruch hier bedeutete, dass ein
+    frisch aufgesetzter Stack ohne die Variable gar nicht erst startet —
+    aber er sagt es jetzt, statt still Klartext abzulegen.
+    """
     if not SERVERSCHLUESSEL:
+        protokoll.warning(
+            "RECHNUNGSBLATT_SCHLUESSEL ist nicht gesetzt — Geheimnisse "
+            "(SMTP-Passwort, Stripe-Schlüssel, DKIM-Schlüssel) liegen im "
+            "Klartext in der Datenbank."
+        )
         return klartext
     roh = tresor.verpacke(klartext.encode("utf-8"), SERVERSCHLUESSEL)
     return "v1:" + roh.hex()
