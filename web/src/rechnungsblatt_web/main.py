@@ -1014,6 +1014,12 @@ def verwaltung_tarife(_: Nutzer = Depends(verwalter)) -> list[dict]:
 def verwaltung_tarif_speichern(
     schluessel: str, daten: dict, _: Nutzer = Depends(verwalter)
 ) -> dict:
+    # Der Schlüssel steht in der Adresse und haftet an jedem Konto — ein
+    # Leerzeichen oder Umlaut darin fiele erst später auf.
+    if not re.fullmatch(r"[a-z0-9_-]{2,32}", schluessel):
+        raise HTTPException(422, detail={"grund":
+            "Der Schlüssel darf nur Kleinbuchstaben, Ziffern, Bindestrich "
+            "und Unterstrich enthalten (2 bis 32 Zeichen)."})
     inklusiv = daten.get("inklusiv_rechnungen")
     try:
         neu = konten.Tarif(
@@ -1031,6 +1037,18 @@ def verwaltung_tarif_speichern(
     except (TypeError, ValueError) as fehler:
         raise HTTPException(422, detail={"grund": f"Ungültiger Tarif: {fehler}"}) from fehler
     return _tarif_json(konten.speichere_tarif(neu), intern=True)
+
+
+@app.delete("/api/verwaltung/tarife/{schluessel}")
+def verwaltung_tarif_loeschen(
+    schluessel: str, _: Nutzer = Depends(verwalter)
+) -> dict:
+    """Entfernt einen Tarif, auf dem niemand mehr sitzt."""
+    try:
+        konten.loesche_tarif(schluessel)
+    except KontoFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {"geloescht": schluessel}
 
 
 # ---------------------------------------------------------------- Ablage
