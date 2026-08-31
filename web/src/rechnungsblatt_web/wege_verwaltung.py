@@ -68,9 +68,6 @@ def verwaltung_nutzer(_: Nutzer = Depends(verwalter)) -> list[dict]:
     ]
 
 
-
-
-
 def _verwaltung_aendern(aufruf) -> dict:
 
     try:
@@ -98,9 +95,6 @@ def _verwaltung_aendern(aufruf) -> dict:
     }
 
 
-
-
-
 @wege.post("/api/verwaltung/nutzer/{nutzer_id}/status")
 
 def verwaltung_status(
@@ -114,9 +108,6 @@ def verwaltung_status(
         lambda: konten.setze_status(nutzer_id, daten.get("status", ""))
 
     )
-
-
-
 
 
 @wege.post("/api/verwaltung/nutzer/{nutzer_id}/rolle")
@@ -134,9 +125,6 @@ def verwaltung_rolle(
     )
 
 
-
-
-
 @wege.post("/api/verwaltung/nutzer/{nutzer_id}/tarif")
 
 def verwaltung_tarif(
@@ -150,9 +138,6 @@ def verwaltung_tarif(
         lambda: konten.setze_tarif(nutzer_id, daten.get("tarif", ""))
 
     )
-
-
-
 
 
 @wege.post("/api/verwaltung/nutzer/{nutzer_id}/guthaben")
@@ -174,15 +159,11 @@ def verwaltung_guthaben(
     return _verwaltung_aendern(lambda: konten.buche_guthaben(nutzer_id, cent))
 
 
-
-
-
 @wege.delete("/api/verwaltung/nutzer/{nutzer_id}")
 
 def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
 
     """Konto und Nutzdaten entfernen — beides, nicht nur der Datenbankeintrag.
-
 
 
     Bis hierher blieb ``DATEN/nutzer/<id>/`` nach dem Löschen vollständig
@@ -194,7 +175,6 @@ def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
     Platte, und eine spätere Nutzer-ID konnte dasselbe Verzeichnis erben
 
     und damit fremde Belege sehen.
-
 
 
     Reihenfolge: erst die Dateien, dann die Zeile. Scheitert das Löschen
@@ -255,215 +235,11 @@ def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
     return {"geloescht": nutzer_id}
 
 
-
-
-
-# ---------------------------------------------------------------- Zahlungen
-
-
-
-@wege.get("/api/bezahlen/angebot")
-
-def bezahl_angebot(person: Nutzer = Depends(freigegeben)) -> dict:
-
-    """Was der Kunde kaufen kann — und ob überhaupt etwas eingerichtet ist."""
-
-    return {
-
-        "eingerichtet": bezahlen.ist_eingerichtet(),
-
-        "aufladungen": bezahlen.aufladungen(),
-
-        # Jeder buchbare Abo-Tarif einzeln: Es gibt mehr als einen, und
-
-        # der Kunde soll sehen, was er bekommt — nicht nur „Abo".
-
-        "abos": [
-
-            {
-
-                "schluessel": t.schluessel,
-
-                "name": t.name,
-
-                "monatsbeitrag_cent": t.monatsbeitrag_cent,
-
-                "inklusiv_rechnungen": t.inklusiv_rechnungen,
-
-                "laufend": t.schluessel == person.tarif,
-
-            }
-
-            for t in bezahlen.abo_tarife()
-
-        ],
-
-        "tarif": person.tarif,
-
-        "hat_kunde": bool(konten.stripe_kunde_von(person.id)),
-
-        "zahlungen": konten.zahlungen_von(person.id),
-
-    }
-
-
-
-
-
-@wege.post("/api/bezahlen/guthaben")
-
-def bezahl_guthaben(
-
-    daten: dict, anfrage: Request, person: Nutzer = Depends(freigegeben)
-
-) -> dict:
-
-    """Legt eine Checkout-Sitzung an und liefert die Adresse dorthin."""
-
-    try:
-
-        betrag = int(daten.get("betrag_cent", 0))
-
-    except (TypeError, ValueError) as fehler:
-
-        raise HTTPException(422, detail={"grund": "Ungültiger Betrag."}) from fehler
-
-    try:
-
-        ziel = bezahlen.sitzung_guthaben(
-
-            person, betrag, oeffentliche_adresse(anfrage)
-
-        )
-
-    except bezahlen.BezahlFehler as fehler:
-
-        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
-
-    return {"weiter": ziel}
-
-
-
-
-
-@wege.post("/api/bezahlen/abo")
-
-def bezahl_abo(
-
-    daten: dict, anfrage: Request, person: Nutzer = Depends(freigegeben)
-
-) -> dict:
-
-    """Checkout für einen bestimmten Abo-Tarif."""
-
-    schluessel = str(daten.get("tarif", "")).strip()
-
-    if not schluessel:
-
-        raise HTTPException(422, detail={"grund": "Kein Tarif angegeben."})
-
-    try:
-
-        ziel = bezahlen.sitzung_abo(
-
-            person, schluessel, oeffentliche_adresse(anfrage)
-
-        )
-
-    except bezahlen.BezahlFehler as fehler:
-
-        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
-
-    return {"weiter": ziel}
-
-
-
-
-
-@wege.post("/api/bezahlen/verwalten")
-
-def bezahl_verwalten(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> dict:
-
-    """Zu Stripes Portal: Zahlungsmittel ändern, Abo kündigen."""
-
-    try:
-
-        ziel = bezahlen.verwaltungsseite(person, oeffentliche_adresse(anfrage))
-
-    except bezahlen.BezahlFehler as fehler:
-
-        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
-
-    return {"weiter": ziel}
-
-
-
-
-
-@wege.post("/api/bezahlen/webhook")
-
-async def bezahl_webhook(anfrage: Request) -> JSONResponse:
-
-    """Nimmt Zahlungsmeldungen von Stripe entgegen.
-
-
-
-    Öffentlich erreichbar — die Echtheit hängt allein an der Signatur.
-
-    Der Rohkörper wird gebraucht, weil die Signatur über die unveränderten
-
-    Bytes gebildet wird; ein bereits geparstes JSON passte nicht mehr.
-
-    """
-
-    körper = await anfrage.body()
-
-    signatur = anfrage.headers.get("stripe-signature", "")
-
-    try:
-
-        ereignis = bezahlen.pruefe_und_lies(körper, signatur)
-
-    except bezahlen.BezahlFehler as fehler:
-
-        protokoll.warning("Webhook abgewiesen: %s", fehler)
-
-        # 400, damit Stripe es als Fehlschlag anzeigt — bei 200 bliebe eine
-
-        # falsche Einrichtung unbemerkt.
-
-        raise HTTPException(400, detail={"grund": str(fehler)}) from fehler
-
-
-
-    try:
-
-        meldung = bezahlen.verarbeite(ereignis)
-
-    except Exception:
-
-        # Nicht durchreichen: Ein 500 lässt Stripe endlos wiederholen.
-
-        # Der Fehler gehört ins Log, die Quittung geht trotzdem raus.
-
-        protokoll.exception("Webhook konnte nicht verarbeitet werden")
-
-        return JSONResponse({"empfangen": True, "verarbeitet": False})
-
-    protokoll.info("Stripe: %s", meldung)
-
-    return JSONResponse({"empfangen": True})
-
-
-
-
-
 @wege.get("/api/verwaltung/dubletten")
 
 def verwaltung_dubletten(_: Nutzer = Depends(verwalter)) -> list[dict]:
 
     """Konten, die sich ein Steuermerkmal teilen.
-
 
 
     Nur eine Meldung — wer hier auftaucht, ist nicht zwingend ein
@@ -477,9 +253,6 @@ def verwaltung_dubletten(_: Nutzer = Depends(verwalter)) -> list[dict]:
     return konten.konten_mit_gleichem_steuermerkmal()
 
 
-
-
-
 @wege.get("/api/verwaltung/zahlen")
 
 def verwaltung_zahlen(_: Nutzer = Depends(verwalter)) -> dict:
@@ -487,9 +260,6 @@ def verwaltung_zahlen(_: Nutzer = Depends(verwalter)) -> dict:
     """Konten und Belege in Zahlen. Plausible zählt daneben die Aufrufe."""
 
     return konten.betriebszahlen()
-
-
-
 
 
 @wege.get("/api/verwaltung/einstellungen")
@@ -503,9 +273,6 @@ def verwaltung_einstellungen(_: Nutzer = Depends(verwalter)) -> dict:
     werte["eingerichtet"] = post.ist_eingerichtet()
 
     return werte
-
-
-
 
 
 @wege.put("/api/verwaltung/einstellungen")
@@ -523,9 +290,6 @@ def verwaltung_einstellungen_setzen(
     werte["eingerichtet"] = post.ist_eingerichtet()
 
     return werte
-
-
-
 
 
 @wege.post("/api/verwaltung/testmail")
@@ -591,15 +355,11 @@ def verwaltung_testmail(daten: dict, person: Nutzer = Depends(verwalter)) -> dic
     return {"verschickt": True, "an": ziel}
 
 
-
-
-
 @wege.get("/api/verwaltung/dkim")
 
 def verwaltung_dkim(_: Nutzer = Depends(verwalter)) -> dict:
 
     """Zustand der Unterschrift und der DNS-Eintrag, der dazu gehört.
-
 
 
     Ohne den veröffentlichten Eintrag nützt die Unterschrift nichts — der
@@ -617,7 +377,6 @@ def verwaltung_dkim(_: Nutzer = Depends(verwalter)) -> dict:
     pem = (werte.get("dkim_schluessel") or "").strip()
 
     absender = (werte.get("smtp_absender") or "").strip()
-
 
 
     antwort: dict = {
@@ -655,15 +414,11 @@ def verwaltung_dkim(_: Nutzer = Depends(verwalter)) -> dict:
     return antwort
 
 
-
-
-
 @wege.post("/api/verwaltung/dkim/schluessel")
 
 def verwaltung_dkim_schluessel(_: Nutzer = Depends(verwalter)) -> dict:
 
     """Erzeugt ein Schlüsselpaar und legt den privaten Teil ab.
-
 
 
     Bequemer und sicherer, als den Betreiber mit openssl auf der
@@ -695,9 +450,6 @@ def verwaltung_dkim_schluessel(_: Nutzer = Depends(verwalter)) -> dict:
     return {"dns": dkim.dns_eintrag(pem, selektor, domain)}
 
 
-
-
-
 @wege.get("/api/verwaltung/besucher")
 
 def verwaltung_besucher(
@@ -707,7 +459,6 @@ def verwaltung_besucher(
 ) -> dict:
 
     """Besucherzahlen aus Plausible.
-
 
 
     Getrennt von den Betriebszahlen: Die kommen aus der eigenen Datenbank
@@ -747,17 +498,11 @@ def verwaltung_besucher(
     return {"eingerichtet": True, **daten}
 
 
-
-
-
 @wege.get("/api/verwaltung/tarife")
 
 def verwaltung_tarife(_: Nutzer = Depends(verwalter)) -> list[dict]:
 
     return [tarif_json(tarif, intern=True) for tarif in konten.tarife()]
-
-
-
 
 
 @wege.put("/api/verwaltung/tarife/{schluessel}")
@@ -813,9 +558,6 @@ def verwaltung_tarif_speichern(
         raise HTTPException(422, detail={"grund": f"Ungültiger Tarif: {fehler}"}) from fehler
 
     return tarif_json(konten.speichere_tarif(neu), intern=True)
-
-
-
 
 
 @wege.delete("/api/verwaltung/tarife/{schluessel}")

@@ -74,6 +74,7 @@ from . import (
     statistik,
     tresor,
     wege_verwaltung,
+    wege_zahlung,
 )
 from .darstellung import nutzer_json, tarif_json
 from .basis import (
@@ -152,6 +153,7 @@ app = FastAPI(
 # als Präfix hier — so bleibt jeder Endpunkt an seiner Adresse auffindbar,
 # auch wenn man nur den Pfad kennt.
 app.include_router(wege_verwaltung.wege)
+app.include_router(wege_zahlung.wege)
 
 
 # ---------------------------------------------------------------- Seiten
