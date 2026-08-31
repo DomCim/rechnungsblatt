@@ -294,7 +294,19 @@
            style="white-space:pre-wrap;word-break:break-all;"></pre>
     </div>
 
-    <h2 style="margin-top:22px;" data-i18n="zaehlungTitel">Zählung</h2>
+    <!-- Jeder Bereich hat seinen eigenen Knopf. Vorher lagen Postausgang,
+         Zählung und Zahlungen in einer Karte mit einem Knopf ganz unten —
+         am Handy 1830 px unter dem ersten Feld, hinter zwei fremden
+         Abschnitten. Wer oben etwas änderte, fand ihn nicht. -->
+    <div class="zeile" style="margin-top:14px;">
+      <button type="button" class="knopf" id="postSpeichern" data-i18n="speichern">Speichern</button>
+      <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Testnachricht schicken</button>
+    </div>
+    <div class="meldung" id="postMeldung" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="zaehlungTitel">Zählung</h2>
     <p class="beschreibung" data-i18n="zaehlungText">
       Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein
       Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible
@@ -314,7 +326,14 @@
       wird nur zum Lesen der Zahlen gebraucht: Ohne ihn zählt die Seite
       weiter, die Auswertung oben bleibt aber leer.
     </p>
-    <h2 style="margin-top:22px;" data-i18n="stripeTitel">Zahlungen</h2>
+    <div class="zeile" style="margin-top:14px;">
+      <button type="button" class="knopf" id="zaehlungSpeichern" data-i18n="speichern">Speichern</button>
+    </div>
+    <div class="meldung" id="zaehlungMeldung" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="karte">
+    <h2 data-i18n="stripeTitel">Zahlungen</h2>
     <p class="beschreibung" data-i18n="stripeText">
       Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben
       setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden
@@ -340,10 +359,9 @@
     </p>
 
     <div class="zeile" style="margin-top:12px;">
-      <button type="button" class="knopf" id="postSpeichern" data-i18n="speichern">Speichern</button>
-      <button type="button" class="knopf leise" id="postTest" data-i18n="postTest">Testnachricht schicken</button>
+      <button type="button" class="knopf" id="stripeSpeichern" data-i18n="speichern">Speichern</button>
     </div>
-    <div class="meldung" id="postMeldung" role="status" aria-live="polite"></div>
+    <div class="meldung" id="stripeMeldung" role="status" aria-live="polite"></div>
   </section>
 
   <section class="karte">
@@ -371,6 +389,30 @@
         <tbody id="tarifKoerper"></tbody>
       </table>
     </div>
+
+    <!-- Anlegen als eigener Block: In der Tabelle waere eine leere Zeile
+         zwischen den echten Tarifen kaum als Formular zu erkennen. -->
+    <h3 class="zwischentitel" data-i18n="tarifNeuTitel">Neuen Tarif anlegen</h3>
+    <div class="felder">
+      <div class="feld">
+        <label for="neuSchluessel" data-i18n="fNeuSchluessel">Schlüssel</label>
+        <input id="neuSchluessel" placeholder="jahr" autocapitalize="off"
+               autocorrect="off" spellcheck="false"></div>
+      <div class="feld">
+        <label for="neuName" data-i18n="fNeuName">Name</label>
+        <input id="neuName" placeholder="Jährlich"></div>
+    </div>
+    <p class="beschreibung" style="margin-top:8px;" data-i18n="tarifNeuHinweis">
+      Der Schlüssel haftet an jedem Konto und lässt sich später nicht
+      ändern — Kleinbuchstaben, Ziffern, Bindestrich. Preise und
+      Sichtbarkeit stellen Sie danach in der Tabelle ein; ein neuer Tarif
+      ist zunächst unsichtbar.
+    </p>
+    <div class="zeile" style="margin-top:10px;">
+      <button type="button" class="knopf" id="tarifAnlegen"
+              data-i18n="tarifAnlegen">Tarif anlegen</button>
+    </div>
+    <div class="meldung" id="tarifMeldung" role="status" aria-live="polite"></div>
   </section>
 
 </div>
@@ -445,6 +487,15 @@
       fTls: "Verschlüsselt ab Verbindungsaufbau (Port 465)",
       postTest: "Testnachricht schicken", testOk: "Verschickt an",
       gespeichert: "Gespeichert.",
+      tarifNeuTitel: "Neuen Tarif anlegen",
+      fNeuSchluessel: "Schlüssel", fNeuName: "Name",
+      tarifNeuHinweis: "Der Schlüssel haftet an jedem Konto und lässt sich später nicht ändern — Kleinbuchstaben, Ziffern, Bindestrich. Preise und Sichtbarkeit stellen Sie danach in der Tabelle ein; ein neuer Tarif ist zunächst unsichtbar.",
+      tarifAnlegen: "Tarif anlegen",
+      tarifAngelegt: "Angelegt. Preise und Sichtbarkeit stehen jetzt in der Tabelle.",
+      tarifOhneSchluessel: "Ohne Schlüssel geht es nicht.",
+      tarifSchonDa: "Den Schlüssel „%s“ gibt es schon.",
+      tarifLoeschenFrage: "Tarif „%s“ wirklich löschen?",
+      tarifGeloescht: "Gelöscht.",
       tarifeTitel: "Tarife",
       tarifeText: "Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900 bedeutet 9,00 €. Inklusivmenge leer lassen heißt „unbegrenzt“.",
       spSchluessel: "Schlüssel", spName: "Name", spMonatsbeitrag: "Monat (ct)",
@@ -518,6 +569,15 @@
       fTls: "Encrypted from connect (port 465)",
       postTest: "Send a test message", testOk: "Sent to",
       gespeichert: "Saved.",
+      tarifNeuTitel: "Add a plan",
+      fNeuSchluessel: "Key", fNeuName: "Name",
+      tarifNeuHinweis: "The key stays with every account and cannot be changed later — lowercase letters, digits, hyphen. Prices and visibility are set in the table afterwards; a new plan starts hidden.",
+      tarifAnlegen: "Add plan",
+      tarifAngelegt: "Added. Prices and visibility are now in the table.",
+      tarifOhneSchluessel: "A key is required.",
+      tarifSchonDa: "The key “%s” already exists.",
+      tarifLoeschenFrage: "Really delete the plan “%s”?",
+      tarifGeloescht: "Deleted.",
       tarifeTitel: "Plans",
       tarifeText: "What stands here is what the public page shows. Amounts in cents — 900 means € 9.00. Leave the included allowance empty for “unlimited”.",
       spSchluessel: "Key", spName: "Name", spMonatsbeitrag: "Month (ct)",
@@ -676,6 +736,42 @@
     });
   }
 
+  function tarifMelde(text, gut) {
+    var ziel = el("tarifMeldung");
+    ziel.className = "meldung hinweis" + (gut ? " gut" : " warn");
+    ziel.textContent = text;
+  }
+
+  async function tarifAnlegen() {
+    var schluessel = el("neuSchluessel").value.trim().toLowerCase();
+    var name = el("neuName").value.trim();
+    if (!schluessel) { tarifMelde(RB.t("tarifOhneSchluessel"), false); return; }
+    if (tarife.some(function (t) { return t.schluessel === schluessel; })) {
+      // Sonst ueberschriebe das PUT stillschweigend den bestehenden Tarif.
+      tarifMelde(RB.t("tarifSchonDa").replace("%s", schluessel), false);
+      return;
+    }
+    var ergebnis = await sende("/api/verwaltung/tarife/" + encodeURIComponent(schluessel), {
+      name: name || schluessel,
+      beschreibung: "",
+      monatsbeitrag_cent: 0,
+      inklusiv_rechnungen: 0,
+      preis_je_rechnung_cent: 0,
+      reihenfolge: (tarife.reduce(function (a, t) {
+        return Math.max(a, t.reihenfolge); }, 0) + 10),
+      // Unsichtbar starten: Ein Tarif ohne Preise gehoert nicht auf die
+      // oeffentliche Seite.
+      sichtbar: false,
+      hervorheben: false,
+      stripe_preis: ""
+    }, "PUT");
+    if (!ergebnis) return;
+    el("neuSchluessel").value = "";
+    el("neuName").value = "";
+    tarifMelde(RB.t("tarifAngelegt"), true);
+    lade();
+  }
+
   function zeichneTarife() {
     var koerper = el("tarifKoerper");
     koerper.textContent = "";
@@ -728,6 +824,20 @@
       stripePreis.placeholder = "price_...";
 
       var aktion = zeile.insertCell();
+      aktion.appendChild(knopf(RB.t("loeschen"), async function () {
+        if (!window.confirm(RB.t("tarifLoeschenFrage").replace("%s", eintrag.name)))
+          return;
+        var antwort = await RB.api(
+          "/api/verwaltung/tarife/" + encodeURIComponent(eintrag.schluessel),
+          { method: "DELETE" });
+        if (!antwort.ok) {
+          var g = antwort.daten && antwort.daten.detail && antwort.daten.detail.grund;
+          tarifMelde(g || RB.t("fehlerAllgemein"), false);
+          return;
+        }
+        tarifMelde(RB.t("tarifGeloescht"), true);
+        lade();
+      }, true));
       aktion.appendChild(knopf(RB.t("speichern"), async function () {
         var ergebnis = await sende("/api/verwaltung/tarife/" + eintrag.schluessel, {
           name: name.value,
@@ -859,8 +969,7 @@
     }
     dns.hidden = false;
     el("dkimDnsWert").textContent =
-      d.dns.name + "  " + d.dns.typ + "
-" + d.dns.wert;
+      d.dns.name + "  " + d.dns.typ + String.fromCharCode(10) + d.dns.wert;
   }
 
   el("dkimErzeugen").addEventListener("click", async function () {
@@ -1060,8 +1169,30 @@
     el("stripeAufladungen").value = werte.stripe_aufladungen || "";
   }
 
-  el("postSpeichern").addEventListener("click", async function () {
-    var ergebnis = await sende("/api/verwaltung/einstellungen", {
+  // Jeder Bereich schickt nur seine eigenen Felder. Der Endpunkt nimmt
+  // Teilmengen entgegen -- was nicht mitkommt, bleibt unveraendert.
+  function melder(feldName) {
+    return function (text, gut) {
+      var ziel = el(feldName);
+      ziel.className = "meldung hinweis" + (gut ? " gut" : " warn");
+      ziel.textContent = text;
+    };
+  }
+  var zaehlungMelde = melder("zaehlungMeldung");
+  var stripeMelde = melder("stripeMeldung");
+
+  function speichernMit(werte, melde, danach) {
+    return async function () {
+      var ergebnis = await sende("/api/verwaltung/einstellungen", werte(), "PUT");
+      if (!ergebnis) return;
+      postFuellen(ergebnis);
+      melde(RB.t("gespeichert"), true);
+      if (danach) danach();
+    };
+  }
+
+  el("postSpeichern").addEventListener("click", speichernMit(function () {
+    return {
       smtp_host: el("smtpHost").value.trim(),
       smtp_port: el("smtpPort").value.trim(),
       smtp_benutzer: el("smtpBenutzer").value.trim(),
@@ -1074,19 +1205,28 @@
       oeffentliche_adresse: el("oeffAdresse").value.trim(),
       dkim_domain: el("dkimDomain").value.trim(),
       dkim_selektor: el("dkimSelektor").value.trim(),
-      dkim_schluessel: el("dkimSchluessel").value,
+      dkim_schluessel: el("dkimSchluessel").value
+    };
+  }, postMelde, ladeDkim));
+
+  el("zaehlungSpeichern").addEventListener("click", speichernMit(function () {
+    return {
       plausible_url: el("plausUrl").value.trim(),
       plausible_domain: el("plausDomain").value.trim(),
       // Punkte heissen "unveraendert lassen" -- siehe smtp_passwort.
-      plausible_api_key: el("plausKey").value,
+      plausible_api_key: el("plausKey").value
+    };
+  }, zaehlungMelde, ladeBesucher));
+
+  el("stripeSpeichern").addEventListener("click", speichernMit(function () {
+    return {
       // Punkte heissen "unveraendert lassen" -- die Geheimnisse kommen nie
       // im Klartext zurueck.
       stripe_secret: el("stripeSecret").value,
       stripe_webhook_secret: el("stripeHook").value,
       stripe_aufladungen: el("stripeAufladungen").value.trim()
-    }, "PUT");
-    if (ergebnis) { postFuellen(ergebnis); postMelde(RB.t("gespeichert"), true); }
-  });
+    };
+  }, stripeMelde));
 
   el("postTest").addEventListener("click", async function () {
     postMelde(RB.t("laedt"), true);
@@ -1125,6 +1265,8 @@
     zeichneNutzer();
     zeichneTarife();
   }
+
+  el("tarifAnlegen").addEventListener("click", tarifAnlegen);
 
   RB.starte(texte);
   RB.beiSprachwechsel(function () {
