@@ -506,6 +506,40 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
     return tarif(tarif_neu.schluessel)
 
 
+def loesche_tarif(schluessel: str) -> None:
+    """Entfernt einen Tarif — wenn niemand mehr darauf sitzt.
+
+    `nutzer.tarif` verweist per Fremdschlüssel hierher; ohne die Prüfung
+    schlüge das Löschen mit einem Datenbankfehler fehl, den niemand lesen
+    kann. Wer einen Tarif loswerden will, auf dem noch Konten liegen,
+    schaltet ihn besser unsichtbar: Bestehende behalten ihn, neue bekommen
+    ihn nicht mehr angeboten.
+    """
+    if schluessel == STANDARD_TARIF:
+        raise KontoFehler(
+            f"„{schluessel}“ ist der Standardtarif — auf ihn fallen "
+            "Konten zurück, deren Abo endet. Er lässt sich nicht löschen."
+        )
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT count(*) AS wieviele FROM nutzer WHERE tarif = %s",
+            (schluessel,),
+        ).fetchone()
+        wieviele = zeile["wieviele"]
+        if wieviele:
+            raise KontoFehler(
+                ("Auf diesem Tarif liegt noch ein Konto. " if wieviele == 1
+                 else f"Auf diesem Tarif liegen noch {wieviele} Konten. ")
+                + "Erst umstellen — oder den Tarif unsichtbar schalten, dann "
+                "behalten ihn die bestehenden und neue bekommen ihn nicht."
+            )
+        if not verb.execute(
+            "DELETE FROM tarife WHERE schluessel = %s RETURNING schluessel",
+            (schluessel,),
+        ).fetchone():
+            raise KontoFehler(f"Unbekannter Tarif: {schluessel!r}.")
+
+
 # ---------------------------------------------------------------- Nutzer
 
 _NUTZER_SPALTEN = (

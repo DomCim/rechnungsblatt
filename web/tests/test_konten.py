@@ -995,3 +995,89 @@ def test_ohne_serverschluessel_warnt_die_ablage(leere_konten, caplog):
     finally:
         konten.SERVERSCHLUESSEL = vorher
         konten.setze_einstellungen({"stripe_secret": ""})
+
+
+# ------------------------------------------------------------ Tarife pflegen
+
+def test_neuer_tarif_ueber_die_api(leere_konten):
+    """Ein Tarif lässt sich anlegen — vorher gab es dafür keinen Weg.
+
+    Das PUT konnte es schon (INSERT … ON CONFLICT), aber die Oberfläche
+    lief nur über bestehende Zeilen; ein fünfter Tarif war damit nicht
+    erreichbar.
+    """
+    konten = leere_konten
+    lege_kunden_an(konten, "admin2@example.org", "geheim-genug-123")
+    konten.setze_rolle(konten.nutzer_zu_email("admin2@example.org").id, "admin")
+    klient = TestClient(main.app)
+    melde_an(klient, "admin2@example.org", "geheim-genug-123")
+    try:
+        antwort = klient.put("/api/verwaltung/tarife/jahr", json={
+            "name": "Jährlich", "beschreibung": "", "monatsbeitrag_cent": 0,
+            "inklusiv_rechnungen": 0, "preis_je_rechnung_cent": 0,
+            "reihenfolge": 50, "sichtbar": False, "hervorheben": False,
+            "stripe_preis": "",
+        })
+        assert antwort.status_code == 200, antwort.text
+        assert konten.tarif("jahr").name == "Jährlich"
+    finally:
+        with konten.verbindung() as verb:
+            verb.execute("DELETE FROM tarife WHERE schluessel = 'jahr'")
+
+
+def test_unbrauchbarer_tarifschluessel_wird_abgewiesen(leere_konten):
+    """Der Schlüssel steht in der Adresse und haftet an jedem Konto.
+
+    Ein Leerzeichen oder Umlaut darin fiele erst auf, wenn ein Konto ihn
+    schon trägt — dann ist er nicht mehr zu ändern.
+    """
+    konten = leere_konten
+    lege_kunden_an(konten, "admin3@example.org", "geheim-genug-123")
+    konten.setze_rolle(konten.nutzer_zu_email("admin3@example.org").id, "admin")
+    klient = TestClient(main.app)
+    melde_an(klient, "admin3@example.org", "geheim-genug-123")
+    daten = {
+        "name": "X", "beschreibung": "", "monatsbeitrag_cent": 0,
+        "inklusiv_rechnungen": 0, "preis_je_rechnung_cent": 0,
+        "reihenfolge": 50, "sichtbar": False, "hervorheben": False,
+        "stripe_preis": "",
+    }
+    for schluessel in ("Mein Tarif", "jähr", "A", "x" * 33):
+        antwort = klient.put(f"/api/verwaltung/tarife/{schluessel}", json=daten)
+        assert antwort.status_code == 422, f"{schluessel}: {antwort.status_code}"
+
+
+def test_tarif_mit_konten_darauf_bleibt_stehen(leere_konten):
+    """Löschen darf keinen Fremdschlüsselfehler auslösen.
+
+    `nutzer.tarif` verweist auf `tarife`; ohne die Prüfung schlüge das
+    Löschen mit einer Datenbankmeldung fehl, die niemand lesen kann.
+    """
+    konten = leere_konten
+    konten.speichere_tarif(konten.Tarif(
+        schluessel="weg", name="Weg", beschreibung="",
+        monatsbeitrag_cent=0, inklusiv_rechnungen=0,
+        preis_je_rechnung_cent=0, reihenfolge=99, sichtbar=False,
+    ))
+    lege_kunden_an(konten, "drauf@example.org", "geheim-genug-123", tarif="weg")
+    try:
+        with pytest.raises(konten.KontoFehler) as fehler:
+            konten.loesche_tarif("weg")
+        assert "noch ein Konto" in str(fehler.value)
+        # Nach dem Umstellen geht es.
+        person = konten.nutzer_zu_email("drauf@example.org")
+        konten.setze_tarif(person.id, "probe")
+        konten.loesche_tarif("weg")
+        with pytest.raises(konten.KontoFehler):
+            konten.tarif("weg")
+    finally:
+        with konten.verbindung() as verb:
+            verb.execute("DELETE FROM tarife WHERE schluessel = 'weg'")
+
+
+def test_standardtarif_laesst_sich_nicht_loeschen(leere_konten):
+    """Auf ihn fallen Konten zurück, deren Abo endet."""
+    konten = leere_konten
+    with pytest.raises(konten.KontoFehler) as fehler:
+        konten.loesche_tarif(konten.STANDARD_TARIF)
+    assert "Standardtarif" in str(fehler.value)
