@@ -65,32 +65,53 @@ from rechnungsblatt_kern import (
     verfuegbare_schriften,
 )
 
-from . import bezahlen, dkim, konten, post, statistik, tresor
+from . import ablage, bezahlen, dkim, konten, post, statistik, tresor
+from .basis import (
+    DATEN,
+    MAX_UPLOAD_BYTES,
+    PLAUSIBLE_DOMAIN,
+    PLAUSIBLE_URL,
+    SEITEN,
+    SITZUNG_COOKIE,
+    SITZUNG_KOPFZEILE,
+    SPAETER,
+    ZONEN_EDITOR,
+    angemeldet,
+    angemeldeter,
+    freigegeben,
+    mandant,
+    oeffentliche_adresse,
+    protokoll,
+    setze_sitzungscookie,
+    verwalter,
+    wurzel_von,
+)
+from .ablage import (
+    Mandantenpfad,
+    ablage_ordner,
+    briefpapier_pfad,
+    im_klartext,
+    ist_bereit,
+    lese_json,
+    lies_datei,
+    schreibe_datei,
+    schreibe_json,
+    vorschau_pfad,
+)
 from .konten import KontingentErschoepft, KontoFehler, Nutzer
 
-DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
-_WEB_WURZEL = Path(__file__).resolve().parents[2]  # …/web
-SEITEN = Path(__file__).resolve().parent / "seiten"
-ZONEN_EDITOR = _WEB_WURZEL / "zonen-editor"
 
-PLAUSIBLE_URL = os.environ.get("PLAUSIBLE_URL", "").rstrip("/")
-PLAUSIBLE_DOMAIN = os.environ.get("PLAUSIBLE_DOMAIN", "")
 
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024
-SITZUNG_COOKIE = "rb_sitzung"
 # Nur für die lokale Entwicklung: den Sitzungsschlüssel auch aus einer
 # Kopfzeile lesen. iOS leert bei Web-Apps über HTTP den Cookie-Speicher
 # beim Schließen — im Portainer-Stack (HTTPS) ist das nicht nötig und
 # bleibt deshalb aus.
-SITZUNG_KOPFZEILE = os.environ.get("SITZUNG_KOPFZEILE", "") == "1"
 
-protokoll = logging.getLogger("rechnungsblatt")
 
 # Wiederherstellungscodes zwischen Registrierung und Bestätigung.
 # Bewusst nur im Speicher: Der Code darf nirgends abgelegt werden, sonst
 # wäre der ganze Aufwand umsonst. Startet der Dienst dazwischen neu, ist
 # er weg — dann hilft „neuen Code erzeugen" im Konto.
-_SPAETER: dict[int, str] = {}
 
 
 @contextlib.asynccontextmanager
@@ -116,81 +137,6 @@ async def _lebenszyklus(app: FastAPI):
 app = FastAPI(
     title="Rechnungsblatt", docs_url=None, redoc_url=None, lifespan=_lebenszyklus
 )
-
-
-# ---------------------------------------------------------------- Anmeldung
-
-def _angemeldeter(anfrage: Request) -> Nutzer | None:
-    schluessel = anfrage.cookies.get(SITZUNG_COOKIE)
-    if not schluessel and SITZUNG_KOPFZEILE:
-        # Ersatzweg, wenn der Browser das Cookie verworfen hat.
-        schluessel = anfrage.headers.get("X-Rb-Sitzung")
-    return konten.nutzer_zu_sitzung(schluessel)
-
-
-def angemeldet(anfrage: Request) -> Nutzer:
-    """Abhängigkeit für JSON-Endpunkte: 401, wenn keine gültige Sitzung."""
-    person = _angemeldeter(anfrage)
-    if person is None:
-        raise HTTPException(401, detail={"grund": "Bitte zuerst anmelden."})
-    return person
-
-
-def freigegeben(person: Nutzer = Depends(angemeldet)) -> Nutzer:
-    """Wie `angemeldet`, verlangt aber ein freigeschaltetes Konto."""
-    if person.status == konten.STATUS_WARTET:
-        raise HTTPException(
-            403,
-            detail={
-                "code": "wartet_auf_freigabe",
-                "grund": "Ihr Konto wartet noch auf die Freigabe.",
-            },
-        )
-    if person.status == konten.STATUS_GESPERRT:
-        raise HTTPException(
-            403, detail={"code": "gesperrt", "grund": "Ihr Konto ist gesperrt."}
-        )
-    return person
-
-
-def verwalter(person: Nutzer = Depends(angemeldet)) -> Nutzer:
-    if not person.ist_admin:
-        raise HTTPException(403, detail={"grund": "Dieser Bereich ist Admins vorbehalten."})
-    return person
-
-
-def _wurzel(person: Nutzer) -> Path:
-    """Datenverzeichnis eines Mandanten."""
-    return DATEN / "nutzer" / str(person.id)
-
-
-def mandant(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> Path:
-    """Datenverzeichnis des Mandanten — und sein Schlüssel für diese Anfrage.
-
-    Der Datenschlüssel liegt verpackt in der Sitzung und lässt sich nur
-    mit dem Sitzungsschlüssel aus dem Cookie öffnen. Er wandert in eine
-    Kontextvariable, aus der `_lies_datei` und `_schreibe_datei` ihn holen
-    — sonst müsste er durch jede Hilfsfunktion durchgereicht werden.
-    """
-    wurzel = Mandantenpfad(_wurzel(person))
-    wurzel.mkdir(parents=True, exist_ok=True)
-    sitzung = anfrage.cookies.get(SITZUNG_COOKIE)
-    if not sitzung and SITZUNG_KOPFZEILE:
-        sitzung = anfrage.headers.get("X-Rb-Sitzung")
-    wurzel.schluessel = konten.datenschluessel_der_sitzung(sitzung)
-    return wurzel
-
-
-def _setze_sitzungscookie(antwort: Response, schluessel: str, anfrage: Request) -> None:
-    antwort.set_cookie(
-        SITZUNG_COOKIE,
-        schluessel,
-        max_age=konten.SITZUNG_TAGE * 24 * 3600,
-        httponly=True,
-        samesite="lax",
-        secure=anfrage.url.scheme == "https",
-        path="/",
-    )
 
 
 # ---------------------------------------------------------------- Seiten
@@ -232,20 +178,6 @@ def anmeldeseite() -> HTMLResponse:
 
 # ---------------------------------------------------------------- Suchmaschinen
 
-def _oeffentliche_adresse(anfrage: Request) -> str:
-    """Die Adresse, unter der die Seite von außen erreichbar ist.
-
-    Steht im Adminbereich; ohne Eintrag fällt sie auf die Adresse zurück,
-    über die die Anfrage kam. Hinter einem Reverse Proxy kann das die
-    interne sein — deshalb ist der Eintrag dort die verlässlichere Quelle.
-    """
-    try:
-        gesetzt = konten.einstellungen().get("oeffentliche_adresse", "")
-    except Exception:
-        gesetzt = ""
-    return (gesetzt or str(anfrage.base_url)).rstrip("/")
-
-
 @app.get("/robots.txt")
 def robots(anfrage: Request) -> Response:
     """Was Suchmaschinen sehen dürfen — und was nicht.
@@ -255,7 +187,7 @@ def robots(anfrage: Request) -> Response:
     Weiterleitungen und würde Kontingent kosten. Die Anmeldeseite selbst
     hat als Suchtreffer keinen Wert.
     """
-    basis = _oeffentliche_adresse(anfrage)
+    basis = oeffentliche_adresse(anfrage)
     return Response(
         "User-agent: *\n"
         "Allow: /$\n"
@@ -277,7 +209,7 @@ def sitemap(anfrage: Request) -> Response:
     Die Sprachfassungen sind keine eigenen Adressen (der Umschalter
     tauscht nur Text im Browser), deshalb kein hreflang je URL.
     """
-    basis = _oeffentliche_adresse(anfrage)
+    basis = oeffentliche_adresse(anfrage)
     heute = dt.date.today().isoformat()
     return Response(
         '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -320,7 +252,7 @@ def favicon() -> FileResponse:
 
 def _seite_mit_konto(anfrage: Request, name: str) -> Response:
     """Liefert eine Arbeitsseite oder schickt zur Anmeldung bzw. zum Wartehinweis."""
-    person = _angemeldeter(anfrage)
+    person = angemeldeter(anfrage)
     if person is None:
         return RedirectResponse("/anmelden", status_code=303)
     if not person.ist_frei:
@@ -331,12 +263,12 @@ def _seite_mit_konto(anfrage: Request, name: str) -> Response:
 @app.get("/app")
 def arbeitsbereich(anfrage: Request) -> Response:
     """Landung nach der Anmeldung: Formular, sobald die Einrichtung steht."""
-    person = _angemeldeter(anfrage)
+    person = angemeldeter(anfrage)
     if person is None:
         return RedirectResponse("/anmelden", status_code=303)
     if not person.ist_frei:
         return _seite("warten.html")
-    ziel = "/app/rechnung" if _ist_bereit(_wurzel(person)) else "/app/einrichtung"
+    ziel = "/app/rechnung" if ist_bereit(wurzel_von(person)) else "/app/einrichtung"
     return RedirectResponse(ziel, status_code=303)
 
 
@@ -362,7 +294,7 @@ def ablageseite(anfrage: Request) -> Response:
 
 @app.get("/app/konto", response_class=HTMLResponse)
 def kontoseite(anfrage: Request) -> Response:
-    person = _angemeldeter(anfrage)
+    person = angemeldeter(anfrage)
     if person is None:
         return RedirectResponse("/anmelden", status_code=303)
     return _seite("konto.html")
@@ -370,7 +302,7 @@ def kontoseite(anfrage: Request) -> Response:
 
 @app.get("/app/verwaltung", response_class=HTMLResponse)
 def verwaltungsseite(anfrage: Request) -> Response:
-    person = _angemeldeter(anfrage)
+    person = angemeldeter(anfrage)
     if person is None:
         return RedirectResponse("/anmelden", status_code=303)
     if not person.ist_admin:
@@ -462,7 +394,7 @@ def registrieren(daten: dict) -> JSONResponse:
     # Adresse bestätigt sein. So steht er später allein auf der Seite,
     # statt neben einem Eingabefeld unterzugehen — und er erreicht nur
     # jemanden, der das Postfach wirklich hat.
-    _SPAETER[person.id] = code
+    SPAETER[person.id] = code
     nachweis = konten.lege_nachweis_an(person.id, konten.ZWECK_EMAIL)
     try:
         verschickt = post.sende_bestaetigungscode(person.email, nachweis)
@@ -498,7 +430,7 @@ def email_bestaetigen(daten: dict) -> JSONResponse:
     # zu sehen. Er steht nirgends in der Datenbank — nur seine Hülle.
     return JSONResponse({
         "bestaetigt": True,
-        "wiederherstellungscode": _SPAETER.pop(nutzer_id, None),
+        "wiederherstellungscode": SPAETER.pop(nutzer_id, None),
     })
 
 
@@ -620,7 +552,7 @@ def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
         # falls iOS das Cookie verworfen hat.
         nutzdaten["sitzung"] = schluessel
     antwort = JSONResponse(nutzdaten)
-    _setze_sitzungscookie(antwort, schluessel, anfrage)
+    setze_sitzungscookie(antwort, schluessel, anfrage)
     return antwort
 
 
@@ -817,7 +749,7 @@ def bezahl_guthaben(
         raise HTTPException(422, detail={"grund": "Ungültiger Betrag."}) from fehler
     try:
         ziel = bezahlen.sitzung_guthaben(
-            person, betrag, _oeffentliche_adresse(anfrage)
+            person, betrag, oeffentliche_adresse(anfrage)
         )
     except bezahlen.BezahlFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
@@ -834,7 +766,7 @@ def bezahl_abo(
         raise HTTPException(422, detail={"grund": "Kein Tarif angegeben."})
     try:
         ziel = bezahlen.sitzung_abo(
-            person, schluessel, _oeffentliche_adresse(anfrage)
+            person, schluessel, oeffentliche_adresse(anfrage)
         )
     except bezahlen.BezahlFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
@@ -845,7 +777,7 @@ def bezahl_abo(
 def bezahl_verwalten(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> dict:
     """Zu Stripes Portal: Zahlungsmittel ändern, Abo kündigen."""
     try:
-        ziel = bezahlen.verwaltungsseite(person, _oeffentliche_adresse(anfrage))
+        ziel = bezahlen.verwaltungsseite(person, oeffentliche_adresse(anfrage))
     except bezahlen.BezahlFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
     return {"weiter": ziel}
@@ -1074,148 +1006,20 @@ def verwaltung_tarif_loeschen(
 
 # ---------------------------------------------------------------- Ablage
 
-# --- Verschlüsselte Ablage --------------------------------------------
-#
-# Die Nutzdaten liegen verschlüsselt auf der Platte; der Schlüssel kommt
-# aus der Sitzung (siehe `tresor`). Ohne Schlüssel wird im Klartext
-# gelesen und geschrieben — das betrifft nur Konten aus der Zeit davor und
-# die Tests.
-#
-# Der Schlüssel hängt am Mandantenverzeichnis, nicht an einer
-# Kontextvariablen: FastAPI führt synchrone Endpunkte in einem Threadpool
-# aus, und eine in `mandant` gesetzte ContextVar erreicht den Endpunkt
-# dort nicht. `mandant` liefert ohnehin genau dieses Pfadobjekt an jeden
-# Endpunkt — der Schlüssel reist damit mit, ohne durch jede
-# Hilfsfunktion gereicht zu werden.
-class Mandantenpfad(Path):
-    """Pfad des Mandantenverzeichnisses samt seinem Datenschlüssel."""
-
-    _flavour = type(Path())._flavour        # von pathlib verlangt
-    schluessel: bytes | None = None
-
-    def _make_child_relpath(self, name):    # noqa: N802 (pathlib-Vorgabe)
-        kind = super()._make_child_relpath(name)
-        kind.schluessel = self.schluessel
-        return kind
-
-    def __truediv__(self, andere):
-        kind = super().__truediv__(andere)
-        if isinstance(kind, Mandantenpfad):
-            kind.schluessel = self.schluessel
-        return kind
-
-
-def _schluessel_zu(pfad: Path) -> bytes | None:
-    """Findet den Schlüssel zu einem Pfad innerhalb des Mandantenordners."""
-    if isinstance(pfad, Mandantenpfad):
-        return pfad.schluessel
-    for eltern in pfad.parents:
-        if isinstance(eltern, Mandantenpfad):
-            return eltern.schluessel
-    return None
-
-
-def _lies_datei(pfad: Path, schluessel: bytes | None = None) -> bytes:
-    """Rohbytes einer Mandantendatei, entschlüsselt wenn nötig."""
-    inhalt = pfad.read_bytes()
-    if schluessel is None:
-        schluessel = _schluessel_zu(pfad)
-    if schluessel is None:
-        if tresor.ist_verschluesselt(inhalt):
-            raise HTTPException(
-                409,
-                detail={
-                    "code": "kein_schluessel",
-                    "grund": "Die Daten sind verschlüsselt, aber diese Sitzung "
-                    "trägt keinen Schlüssel. Bitte neu anmelden.",
-                },
-            )
-        return inhalt
-    try:
-        return tresor.entschluessle(inhalt, schluessel)
-    except tresor.TresorFehler as fehler:
-        raise HTTPException(
-            409,
-            detail={"code": "schluessel_passt_nicht",
-                    "grund": "Diese Datei lässt sich nicht entschlüsseln."},
-        ) from fehler
-
-
-def _schreibe_datei(pfad: Path, inhalt: bytes,
-                   schluessel: bytes | None = None) -> None:
-    """Schreibt eine Mandantendatei, verschlüsselt wenn ein Schlüssel da ist."""
-    pfad.parent.mkdir(parents=True, exist_ok=True)
-    if schluessel is None:
-        schluessel = _schluessel_zu(pfad)
-    if schluessel is not None:
-        inhalt = tresor.verschluessle(inhalt, schluessel)
-    pfad.write_bytes(inhalt)
-
-
-def _lese_json(pfad: Path) -> dict | None:
-    if not pfad.exists():
-        return None
-    return json.loads(_lies_datei(pfad).decode("utf-8"))
-
-
-def _schreibe_json(pfad: Path, daten: dict) -> None:
-    _schreibe_datei(
-        pfad, json.dumps(daten, ensure_ascii=False, indent=2).encode("utf-8")
-    )
-
-
-@contextlib.contextmanager
-def _im_klartext(pfad: Path):
-    """Stellt eine Mandantendatei kurz entschlüsselt bereit.
-
-    Der Kern nimmt Pfade, keine Bytes — er öffnet das Briefpapier selbst.
-    Ein Schlüssel ist ihm fremd und soll es bleiben: Verschlüsselung ist
-    Sache der Web-Schicht (``docs/uebergabe.md`` §2).
-
-    Die Kopie liegt in einem Temporärverzeichnis **innerhalb** des
-    Mandantenordners und verschwindet mit dem Block — auch bei einer
-    Ausnahme. Nicht in /tmp: dort läge Klartext außerhalb des Volumes.
-    """
-    if not pfad.exists():
-        yield pfad
-        return
-    inhalt = _lies_datei(pfad)
-    with tempfile.TemporaryDirectory(dir=pfad.parent) as arbeit:
-        klar = Path(arbeit) / pfad.name
-        klar.write_bytes(inhalt)
-        yield klar
-
-
-def _briefpapier_pfad(wurzel: Path) -> Path:
-    return wurzel / "briefpapier_norm.pdf"
-
-
-def _vorschau_pfad(wurzel: Path) -> Path:
-    return wurzel / "briefpapier_vorschau.png"
-
-
-def _ist_bereit(wurzel: Path) -> bool:
-    return bool(
-        _lese_json(wurzel / "briefpapier.json")
-        and _lese_json(wurzel / "schreibzone.json")
-        and _lese_json(wurzel / "stammdaten.json")
-    )
-
-
 # ---------------------------------------------------------------- Status
 
 @app.get("/api/status")
 def status(
     person: Nutzer = Depends(freigegeben), wurzel: Path = Depends(mandant)
 ) -> dict:
-    zone = _lese_json(wurzel / "schreibzone.json")
-    briefpapier = _lese_json(wurzel / "briefpapier.json")
+    zone = lese_json(wurzel / "schreibzone.json")
+    briefpapier = lese_json(wurzel / "briefpapier.json")
     return {
         "briefpapier": briefpapier,
         "schreibzone": zone,
-        "stammdaten": _lese_json(wurzel / "stammdaten.json"),
-        "gestaltung": _lese_json(wurzel / "gestaltung.json"),
-        "bereit": bool(briefpapier and zone and _lese_json(wurzel / "stammdaten.json")),
+        "stammdaten": lese_json(wurzel / "stammdaten.json"),
+        "gestaltung": lese_json(wurzel / "gestaltung.json"),
+        "bereit": bool(briefpapier and zone and lese_json(wurzel / "stammdaten.json")),
         "konto": _nutzer_json(person),
     }
 
@@ -1259,34 +1063,34 @@ async def briefpapier_hochladen(
         upload = Path(arbeit) / "upload.pdf"
         upload.write_bytes(inhalt)
         try:
-            ergebnis = normalisiere_briefpapier(upload, _briefpapier_pfad(wurzel))
+            ergebnis = normalisiere_briefpapier(upload, briefpapier_pfad(wurzel))
         except NormalisierungAbgelehnt as fehler:
             raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
         except NormalisierungFehlgeschlagen as fehler:
             raise HTTPException(500, detail={"grund": str(fehler)}) from fehler
     # Original bewusst verwerfen — gespeichert wird nur die normalisierte Fassung.
-    erzeuge_vorschau_png(_briefpapier_pfad(wurzel), _vorschau_pfad(wurzel), dpi=150)
+    erzeuge_vorschau_png(briefpapier_pfad(wurzel), vorschau_pfad(wurzel), dpi=150)
     # Der Kern kennt keinen Schlüssel und legt beide Dateien im Klartext ab.
     # Sie tragen den Briefbogen der Firma, also die Identität des Mandanten —
     # hier nachträglich verschlüsseln, sobald sie fertig sind.
-    for datei_pfad in (_briefpapier_pfad(wurzel), _vorschau_pfad(wurzel)):
+    for datei_pfad in (briefpapier_pfad(wurzel), vorschau_pfad(wurzel)):
         if datei_pfad.exists():
-            _schreibe_datei(datei_pfad, datei_pfad.read_bytes())
+            schreibe_datei(datei_pfad, datei_pfad.read_bytes())
     meta = {
         "dateiname": datei.filename,
         "schriften_ersetzt": ergebnis.schriften_ersetzt,
         "hochgeladen": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
     }
-    _schreibe_json(wurzel / "briefpapier.json", meta)
+    schreibe_json(wurzel / "briefpapier.json", meta)
     return meta
 
 
 @app.get("/api/briefpapier/vorschau.png")
 def briefpapier_vorschau(wurzel: Path = Depends(mandant)) -> FileResponse:
-    if not _vorschau_pfad(wurzel).exists():
+    if not vorschau_pfad(wurzel).exists():
         raise HTTPException(404, detail={"grund": "Kein Briefpapier eingerichtet."})
     # Verschlüsselt abgelegt — FileResponse würde Geheimtext ausliefern.
-    return Response(_lies_datei(_vorschau_pfad(wurzel)), media_type="image/png")
+    return Response(lies_datei(vorschau_pfad(wurzel)), media_type="image/png")
 
 
 # ---------------------------------------------------------------- Schreibzone
@@ -1304,7 +1108,7 @@ def schreibzone_setzen(zone: dict, wurzel: Path = Depends(mandant)) -> dict:
         "kopf_ende_mm": geprueft.kopf_ende_mm,
         "fuss_beginn_mm": geprueft.fuss_beginn_mm,
     }
-    _schreibe_json(wurzel / "schreibzone.json", daten)
+    schreibe_json(wurzel / "schreibzone.json", daten)
     return daten
 
 
@@ -1340,7 +1144,7 @@ def _gestaltung_aus_json(daten: dict) -> Blattgestaltung:
 
 
 def _gestaltung_laden(wurzel: Path) -> Blattgestaltung:
-    daten = _lese_json(wurzel / "gestaltung.json")
+    daten = lese_json(wurzel / "gestaltung.json")
     if daten is None:
         return Blattgestaltung()
     return _gestaltung_aus_json(daten)
@@ -1365,7 +1169,7 @@ def gestaltung_setzen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
         "akzent_an": bool(daten.get("akzent_an", False)),
         "akzentfarbe": str(daten.get("akzentfarbe") or "#136f83").strip(),
     }
-    _schreibe_json(wurzel / "gestaltung.json", gespeichert)
+    schreibe_json(wurzel / "gestaltung.json", gespeichert)
     return gespeichert
 
 
@@ -1393,7 +1197,7 @@ def gestaltung_vorschau(
         )
     else:
         gestaltung = _gestaltung_laden(wurzel)
-    zone_json = _lese_json(wurzel / "schreibzone.json")
+    zone_json = lese_json(wurzel / "schreibzone.json")
     zone = (
         Schreibzone(
             kopf_ende_mm=zone_json["kopf_ende_mm"],
@@ -1402,10 +1206,10 @@ def gestaltung_vorschau(
         if zone_json
         else Schreibzone()
     )
-    stammdaten_json = _lese_json(wurzel / "stammdaten.json")
+    stammdaten_json = lese_json(wurzel / "stammdaten.json")
     stammdaten = _stammdaten_aus_json(stammdaten_json) if stammdaten_json else None
-    with _im_klartext(_briefpapier_pfad(wurzel)) as bogen:
-        briefpapier = bogen if _briefpapier_pfad(wurzel).exists() else None
+    with im_klartext(briefpapier_pfad(wurzel)) as bogen:
+        briefpapier = bogen if briefpapier_pfad(wurzel).exists() else None
         pdf = erzeuge_gestaltungsvorschau(
             zone, gestaltung, stammdaten, briefpapier,
             girocode=_girocode_aktiv(wurzel),
@@ -1438,7 +1242,7 @@ def stammdaten_setzen(
             raise HTTPException(
                 422, detail={"code": "nummern_muster", "grund": str(fehler)}
             ) from fehler
-    _schreibe_json(wurzel / "stammdaten.json", daten)
+    schreibe_json(wurzel / "stammdaten.json", daten)
     # Blind Index nachziehen: Er erlaubt die Frage, ob ein anderes Konto
     # dasselbe Steuermerkmal führt, ohne die Nummer lesbar abzulegen.
     # Bei jedem Speichern neu — Firmen wechseln ihre Steuernummer, etwa
@@ -1483,7 +1287,7 @@ STANDARD_VERWENDUNGSZWECK = "{NUMMER}"
 
 
 def _nummern_muster(wurzel: Path) -> str:
-    daten = _lese_json(wurzel / "stammdaten.json") or {}
+    daten = lese_json(wurzel / "stammdaten.json") or {}
     return daten.get("nummern_muster") or STANDARD_NUMMERN_MUSTER
 
 
@@ -1523,7 +1327,7 @@ def _formatiere_nummer(muster: str, jahr: int, laufend: int) -> str:
 
 
 def _nummern_stand(wurzel: Path, jahr: int, jahr_zaehlt: bool) -> dict:
-    stand = _lese_json(wurzel / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
+    stand = lese_json(wurzel / "nummernkreis.json") or {"jahr": jahr, "laufend": 0}
     if jahr_zaehlt and stand["jahr"] != jahr:
         stand = {"jahr": jahr, "laufend": 0}  # Jahreswechsel: Zähler beginnt neu
     return stand
@@ -1553,11 +1357,11 @@ def _nummernkreis_fortschreiben(wurzel: Path, nummer: str) -> None:
     stand = _nummern_stand(wurzel, jahr, hat_jahr)
     stand["jahr"] = jahr
     stand["laufend"] = max(stand["laufend"], int(gruppen["lfd"]))
-    _schreibe_json(wurzel / "nummernkreis.json", stand)
+    schreibe_json(wurzel / "nummernkreis.json", stand)
 
 
 def _girocode_aktiv(wurzel: Path) -> bool:
-    daten = _lese_json(wurzel / "stammdaten.json") or {}
+    daten = lese_json(wurzel / "stammdaten.json") or {}
     return bool(daten.get("girocode", True))
 
 
@@ -1567,7 +1371,7 @@ def _verwendungszweck(wurzel: Path, rechnung: Rechnung, angegeben: str | None) -
     """Verwendungszweck: explizit angegeben oder aus dem Muster erzeugt."""
     if angegeben and angegeben.strip():
         return angegeben.strip()
-    daten = _lese_json(wurzel / "stammdaten.json") or {}
+    daten = lese_json(wurzel / "stammdaten.json") or {}
     muster = daten.get("verwendungszweck_muster", STANDARD_VERWENDUNGSZWECK)
     if not muster:
         return None
@@ -1590,7 +1394,7 @@ def _leer_zu_none(wert) -> str | None:
 
 @app.get("/api/kunden")
 def kunden_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
-    return _lese_json(wurzel / "kunden.json") or []
+    return lese_json(wurzel / "kunden.json") or []
 
 
 @app.put("/api/kunden")
@@ -1615,7 +1419,7 @@ def kunden_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[di
             "leitweg_id": _leer_zu_none(eintrag.get("leitweg_id")),
             "zuletzt": eintrag.get("zuletzt"),
         })
-    _schreibe_json(wurzel / "kunden.json", bereinigt)
+    schreibe_json(wurzel / "kunden.json", bereinigt)
     return bereinigt
 
 
@@ -1623,7 +1427,7 @@ def kunden_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[di
 
 @app.get("/api/artikel")
 def artikel_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
-    return _lese_json(wurzel / "artikel.json") or []
+    return lese_json(wurzel / "artikel.json") or []
 
 
 @app.put("/api/artikel")
@@ -1656,7 +1460,7 @@ def artikel_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[d
             "einzelpreis": preis or "0.00",
             "steuer": steuer,
         })
-    _schreibe_json(wurzel / "artikel.json", bereinigt)
+    schreibe_json(wurzel / "artikel.json", bereinigt)
     return bereinigt
 
 
@@ -1664,7 +1468,7 @@ def artikel_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[d
 
 @app.get("/api/vorlagen")
 def vorlagen_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
-    return _lese_json(wurzel / "vorlagen.json") or []
+    return lese_json(wurzel / "vorlagen.json") or []
 
 
 @app.put("/api/vorlagen")
@@ -1728,13 +1532,13 @@ def vorlagen_setzen(daten: list[dict], wurzel: Path = Depends(mandant)) -> list[
             "rabatt_grund": _leer_zu_none(eintrag.get("rabatt_grund")),
             "freitext": _leer_zu_none(eintrag.get("freitext")),
         })
-    _schreibe_json(wurzel / "vorlagen.json", bereinigt)
+    schreibe_json(wurzel / "vorlagen.json", bereinigt)
     return bereinigt
 
 
 def _kunde_merken(wurzel: Path, rechnung: Rechnung) -> None:
     """Merkliste: Empfänger jeder erzeugten Rechnung wird gepflegt (Upsert)."""
-    kunden = _lese_json(wurzel / "kunden.json") or []
+    kunden = lese_json(wurzel / "kunden.json") or []
     eintrag = {
         "name": rechnung.empfaenger.name,
         "anschrift": {
@@ -1751,7 +1555,7 @@ def _kunde_merken(wurzel: Path, rechnung: Rechnung) -> None:
     schluessel = rechnung.empfaenger.name.casefold()
     kunden = [k for k in kunden if k.get("name", "").casefold() != schluessel]
     kunden.insert(0, eintrag)
-    _schreibe_json(wurzel / "kunden.json", kunden)
+    schreibe_json(wurzel / "kunden.json", kunden)
 
 
 # ---------------------------------------------------------------- Rechnung
@@ -1847,14 +1651,14 @@ def _rechnung_aus_json(daten: dict) -> Rechnung:
 
 
 def _voraussetzungen(wurzel: Path) -> tuple[Stammdaten, Schreibzone]:
-    stammdaten_json = _lese_json(wurzel / "stammdaten.json")
-    zone_json = _lese_json(wurzel / "schreibzone.json")
+    stammdaten_json = lese_json(wurzel / "stammdaten.json")
+    zone_json = lese_json(wurzel / "schreibzone.json")
     fehlend = []
     if stammdaten_json is None:
         fehlend.append("Stammdaten")
     if zone_json is None:
         fehlend.append("Schreibzone")
-    if not _briefpapier_pfad(wurzel).exists():
+    if not briefpapier_pfad(wurzel).exists():
         fehlend.append("Briefpapier")
     if fehlend:
         raise HTTPException(
@@ -1908,7 +1712,7 @@ def rechnung_erzeugen(
             },
         )
     try:
-        with _im_klartext(_briefpapier_pfad(wurzel)) as bogen:
+        with im_klartext(briefpapier_pfad(wurzel)) as bogen:
             ergebnis = erzeuge_rechnung(
                 rechnung,
                 stammdaten,
@@ -1939,9 +1743,9 @@ def rechnung_erzeugen(
     ordner.mkdir(parents=True, exist_ok=True)
     # Auch der Beleg selbst wird verschlüsselt — er ist die Rechnung, nicht
     # bloss ihre Beschreibung.
-    _schreibe_datei(ordner / "rechnung.pdf", ergebnis.pdf)
-    _schreibe_datei(ordner / "factur-x.xml", ergebnis.xml)
-    _schreibe_json(ordner / "daten.json", daten)
+    schreibe_datei(ordner / "rechnung.pdf", ergebnis.pdf)
+    schreibe_datei(ordner / "factur-x.xml", ergebnis.xml)
+    schreibe_json(ordner / "daten.json", daten)
     _nummernkreis_fortschreiben(wurzel, rechnung.nummer)
     _kunde_merken(wurzel, rechnung)
     return JSONResponse(
@@ -1985,18 +1789,6 @@ def xrechnung_erzeugen(daten: dict, wurzel: Path = Depends(mandant)) -> Response
 
 # ---------------------------------------------------------------- Ablage-Zugriff
 
-def _ablage_ordner(wurzel: Path, nummer: str) -> Path:
-    ordner = (wurzel / "ablage" / nummer).resolve()
-    if not ordner.is_relative_to((wurzel / "ablage").resolve()) or not ordner.is_dir():
-        raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
-    # resolve() baut ein neues Pfadobjekt und verliert dabei den Schlüssel
-    # — hier wieder anheften, sonst stehen die Belege ohne ihn da.
-    if isinstance(wurzel, Mandantenpfad):
-        ordner = Mandantenpfad(ordner)
-        ordner.schluessel = wurzel.schluessel
-    return ordner
-
-
 @app.get("/api/ablage")
 def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
     basis = wurzel / "ablage"
@@ -2004,7 +1796,7 @@ def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
         return []
     belege = []
     for ordner in sorted(basis.iterdir(), reverse=True):
-        daten = _lese_json(ordner / "daten.json") or {}
+        daten = lese_json(ordner / "daten.json") or {}
         belege.append(
             {
                 "nummer": ordner.name,
@@ -2019,16 +1811,16 @@ def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
 
 
 # Belege liegen verschlüsselt — FileResponse würde den Geheimtext
-# ausliefern. Sie gehen deshalb durch _lies_datei und als Response
+# ausliefern. Sie gehen deshalb durch lies_datei und als Response
 # hinaus. Rechnungen sind ein paar hundert Kilobyte; sie dabei einmal in
 # den Speicher zu nehmen, ist unkritisch.
 @app.get("/api/ablage/{nummer}/pdf")
 def ablage_pdf(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
-    pfad = _ablage_ordner(wurzel, nummer) / "rechnung.pdf"
+    pfad = ablage_ordner(wurzel, nummer) / "rechnung.pdf"
     if not pfad.exists():
         raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
     return Response(
-        _lies_datei(pfad),
+        lies_datei(pfad),
         media_type="application/pdf",
         headers={"content-disposition": f'inline; filename="{nummer}.pdf"'},
     )
@@ -2036,11 +1828,11 @@ def ablage_pdf(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
 
 @app.get("/api/ablage/{nummer}/xml")
 def ablage_xml(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
-    pfad = _ablage_ordner(wurzel, nummer) / "factur-x.xml"
+    pfad = ablage_ordner(wurzel, nummer) / "factur-x.xml"
     if not pfad.exists():
         raise HTTPException(404, detail={"grund": "Beleg nicht gefunden."})
     return Response(
-        _lies_datei(pfad),
+        lies_datei(pfad),
         media_type="application/xml",
         headers={
             "content-disposition": f'attachment; filename="{nummer}-factur-x.xml"'
@@ -2050,4 +1842,4 @@ def ablage_xml(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
 
 @app.get("/api/ablage/{nummer}/daten")
 def ablage_daten(nummer: str, wurzel: Path = Depends(mandant)) -> dict:
-    return _lese_json(_ablage_ordner(wurzel, nummer) / "daten.json") or {}
+    return lese_json(ablage_ordner(wurzel, nummer) / "daten.json") or {}
