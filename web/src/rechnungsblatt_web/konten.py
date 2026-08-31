@@ -201,7 +201,11 @@ CREATE TABLE IF NOT EXISTS nutzer (
     -- Blind Index über USt-IdNr. bzw. Steuernummer: erlaubt den Vergleich
     -- zweier Konten, ohne die Nummer lesbar abzulegen. Die Nummer selbst
     -- steht verschlüsselt in den Stammdaten des Mandanten.
-    steuer_index       TEXT
+    steuer_index       TEXT,
+    -- Stripe-Kunde und laufendes Abo. Nur Fremdschlüssel, keine
+    -- Zahlungsdaten — die liegen bei Stripe.
+    stripe_kunde       TEXT,
+    stripe_abo         TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sitzungen (
@@ -248,6 +252,18 @@ CREATE TABLE IF NOT EXISTS nachweise (
     laeuft_ab  TIMESTAMPTZ NOT NULL
 );
 CREATE INDEX IF NOT EXISTS nachweise_nutzer ON nachweise (nutzer, zweck);
+
+-- Verbuchte Zahlungen. Der Fremdschluessel von Stripe ist eindeutig:
+-- Webhooks kommen laut Stripe MEHRFACH an, und ohne diese Sperre buchte
+-- dieselbe Zahlung zweimal Guthaben.
+CREATE TABLE IF NOT EXISTS zahlungen (
+    stripe_id  TEXT PRIMARY KEY,
+    nutzer     BIGINT NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+    art        TEXT NOT NULL,
+    betrag_cent INTEGER NOT NULL DEFAULT 0,
+    zeitpunkt  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS zahlungen_nutzer ON zahlungen (nutzer, zeitpunkt);
 """
 
 # Nachträgliche Spalten.
@@ -267,6 +283,10 @@ ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_passwort BYTEA;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_code     BYTEA;
 ALTER TABLE sitzungen ADD COLUMN IF NOT EXISTS schluessel   BYTEA;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS steuer_index TEXT;
+-- Der Stripe-Kunde, damit ein Wiederkaeufer nicht jedes Mal neu angelegt
+-- wird und sein Abo auffindbar bleibt.
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS stripe_kunde TEXT;
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS stripe_abo TEXT;
 CREATE INDEX IF NOT EXISTS nutzer_steuer_index ON nutzer (steuer_index)
   WHERE steuer_index IS NOT NULL;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS email_bestaetigt TIMESTAMPTZ;
@@ -800,8 +820,12 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # Plausible gehört in dieselbe Kategorie wie der Postausgang:
                # Betriebseinstellung, die sich ändern lässt, ohne den Stack
                # neu zu deployen.
-               "plausible_url", "plausible_domain")
-_GEHEIME_FELDER = {"smtp_passwort"}
+               "plausible_url", "plausible_domain",
+               # Stripe. Der geheime Schluessel und das Webhook-Geheimnis
+               # liegen verschluesselt (siehe _GEHEIME_FELDER).
+               "stripe_secret", "stripe_webhook_secret",
+               "stripe_preis_abo", "stripe_aufladungen", "stripe_abo_tarif")
+_GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret"}
 
 
 def einstellungen(mit_geheimnissen: bool = False) -> dict[str, str]:
@@ -925,6 +949,92 @@ def konten_mit_gleichem_steuermerkmal() -> list[dict]:
     # Der Abdruck selbst geht nicht nach draußen — er wäre für die
     # Oberfläche wertlos und im Log ein unnötiges Merkmal.
     return [{"konten": list(z["konten"]), "anzahl": z["anzahl"]} for z in zeilen]
+
+
+# ---------------------------------------------------------------- Zahlungen
+
+def merke_stripe_kunde(nutzer_id: int, kunde: str) -> None:
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET stripe_kunde = %s WHERE id = %s", (kunde, nutzer_id)
+        )
+
+
+def nutzer_zu_stripe_kunde(kunde: str) -> Nutzer | None:
+    with verbindung() as verb:
+        zeile = verb.execute(
+            f"SELECT {_NUTZER_SPALTEN} FROM nutzer WHERE stripe_kunde = %s", (kunde,)
+        ).fetchone()
+    return _nutzer_aus_zeile(zeile) if zeile else None
+
+
+def stripe_kunde_von(nutzer_id: int) -> str | None:
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT stripe_kunde FROM nutzer WHERE id = %s", (nutzer_id,)
+        ).fetchone()
+    return zeile["stripe_kunde"] if zeile else None
+
+
+def verbuche_zahlung(
+    stripe_id: str, nutzer_id: int, art: str, betrag_cent: int
+) -> bool:
+    """Bucht eine Zahlung genau einmal. Liefert False, wenn schon gebucht.
+
+    **Der wichtigste Teil der Stripe-Anbindung.** Webhooks kommen laut
+    Stripe mehrfach an — bei Zustellproblemen wird wiederholt, und auch
+    im Normalbetrieb sind Doppelzustellungen zugesichert möglich. Ohne
+    diese Sperre buchte dieselbe Zahlung zweimal Guthaben.
+
+    Die Eindeutigkeit hängt am Primärschlüssel, nicht an einer Prüfung
+    davor: Zwei gleichzeitige Zustellungen würden eine Abfrage beide
+    passieren, aber nur ein INSERT gewinnt.
+    """
+    with verbindung() as verb:
+        with verb.transaction():
+            try:
+                verb.execute(
+                    "INSERT INTO zahlungen (stripe_id, nutzer, art, betrag_cent) "
+                    "VALUES (%s, %s, %s, %s)",
+                    (stripe_id, nutzer_id, art, betrag_cent),
+                )
+            except psycopg.errors.UniqueViolation:
+                return False
+            if art == "guthaben" and betrag_cent > 0:
+                verb.execute(
+                    "UPDATE nutzer SET guthaben_cent = guthaben_cent + %s "
+                    "WHERE id = %s",
+                    (betrag_cent, nutzer_id),
+                )
+    return True
+
+
+def setze_abo(nutzer_id: int, abo: str | None, tarif_schluessel: str | None) -> None:
+    """Trägt ein laufendes Abo ein und setzt den zugehörigen Tarif.
+
+    ``abo=None`` beendet es: Der Tarif fällt auf den Standard zurück, das
+    vorhandene Guthaben bleibt — es ist bezahlt.
+    """
+    with verbindung() as verb:
+        if tarif_schluessel:
+            verb.execute(
+                "UPDATE nutzer SET stripe_abo = %s, tarif = %s WHERE id = %s",
+                (abo, tarif_schluessel, nutzer_id),
+            )
+        else:
+            verb.execute(
+                "UPDATE nutzer SET stripe_abo = %s WHERE id = %s", (abo, nutzer_id)
+            )
+
+
+def zahlungen_von(nutzer_id: int, grenze: int = 20) -> list[dict]:
+    with verbindung() as verb:
+        zeilen = verb.execute(
+            "SELECT art, betrag_cent, zeitpunkt FROM zahlungen "
+            "WHERE nutzer = %s ORDER BY zeitpunkt DESC LIMIT %s",
+            (nutzer_id, grenze),
+        ).fetchall()
+    return [dict(z) for z in zeilen]
 
 
 # ---------------------------------------------------------------- Nachweise

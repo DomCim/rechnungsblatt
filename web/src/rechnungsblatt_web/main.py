@@ -65,7 +65,7 @@ from rechnungsblatt_kern import (
     verfuegbare_schriften,
 )
 
-from . import konten, post, tresor
+from . import bezahlen, konten, post, tresor
 from .konten import KontingentErschoepft, KontoFehler, Nutzer
 
 DATEN = Path(os.environ.get("DATEN_VERZEICHNIS", "/daten"))
@@ -765,6 +765,89 @@ def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
     except KontoFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
     return {"geloescht": nutzer_id}
+
+
+# ---------------------------------------------------------------- Zahlungen
+
+@app.get("/api/bezahlen/angebot")
+def bezahl_angebot(person: Nutzer = Depends(freigegeben)) -> dict:
+    """Was der Kunde kaufen kann — und ob überhaupt etwas eingerichtet ist."""
+    return {
+        "eingerichtet": bezahlen.ist_eingerichtet(),
+        "aufladungen": bezahlen.aufladungen(),
+        "abo_moeglich": bool(
+            konten.einstellungen().get("stripe_preis_abo", "").strip()
+        ),
+        "hat_kunde": bool(konten.stripe_kunde_von(person.id)),
+        "zahlungen": konten.zahlungen_von(person.id),
+    }
+
+
+@app.post("/api/bezahlen/guthaben")
+def bezahl_guthaben(
+    daten: dict, anfrage: Request, person: Nutzer = Depends(freigegeben)
+) -> dict:
+    """Legt eine Checkout-Sitzung an und liefert die Adresse dorthin."""
+    try:
+        betrag = int(daten.get("betrag_cent", 0))
+    except (TypeError, ValueError) as fehler:
+        raise HTTPException(422, detail={"grund": "Ungültiger Betrag."}) from fehler
+    try:
+        ziel = bezahlen.sitzung_guthaben(
+            person, betrag, _oeffentliche_adresse(anfrage)
+        )
+    except bezahlen.BezahlFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {"weiter": ziel}
+
+
+@app.post("/api/bezahlen/abo")
+def bezahl_abo(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> dict:
+    try:
+        ziel = bezahlen.sitzung_abo(person, _oeffentliche_adresse(anfrage))
+    except bezahlen.BezahlFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {"weiter": ziel}
+
+
+@app.post("/api/bezahlen/verwalten")
+def bezahl_verwalten(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> dict:
+    """Zu Stripes Portal: Zahlungsmittel ändern, Abo kündigen."""
+    try:
+        ziel = bezahlen.verwaltungsseite(person, _oeffentliche_adresse(anfrage))
+    except bezahlen.BezahlFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+    return {"weiter": ziel}
+
+
+@app.post("/api/bezahlen/webhook")
+async def bezahl_webhook(anfrage: Request) -> JSONResponse:
+    """Nimmt Zahlungsmeldungen von Stripe entgegen.
+
+    Öffentlich erreichbar — die Echtheit hängt allein an der Signatur.
+    Der Rohkörper wird gebraucht, weil die Signatur über die unveränderten
+    Bytes gebildet wird; ein bereits geparstes JSON passte nicht mehr.
+    """
+    körper = await anfrage.body()
+    signatur = anfrage.headers.get("stripe-signature", "")
+    try:
+        ereignis = bezahlen.pruefe_und_lies(körper, signatur)
+    except bezahlen.BezahlFehler as fehler:
+        protokoll.warning("Webhook abgewiesen: %s", fehler)
+        # 400, damit Stripe es als Fehlschlag anzeigt — bei 200 bliebe eine
+        # falsche Einrichtung unbemerkt.
+        raise HTTPException(400, detail={"grund": str(fehler)}) from fehler
+
+    abo_tarif = konten.einstellungen().get("stripe_abo_tarif", "") or "monat"
+    try:
+        meldung = bezahlen.verarbeite(ereignis, abo_tarif)
+    except Exception:
+        # Nicht durchreichen: Ein 500 lässt Stripe endlos wiederholen.
+        # Der Fehler gehört ins Log, die Quittung geht trotzdem raus.
+        protokoll.exception("Webhook konnte nicht verarbeitet werden")
+        return JSONResponse({"empfangen": True, "verarbeitet": False})
+    protokoll.info("Stripe: %s", meldung)
+    return JSONResponse({"empfangen": True})
 
 
 @app.get("/api/verwaltung/dubletten")

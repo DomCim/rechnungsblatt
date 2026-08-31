@@ -16,6 +16,10 @@ dependencies = [
     # AES-256-GCM fuer die Mandantendaten. Bewusst eine Bibliothek statt
     # Eigenbau: die Standardbibliothek hat scrypt, aber keine Blockchiffre.
     "cryptography>=42",
+    # Zahlungen. Bewusst die offizielle Bibliothek statt Eigenbau:
+    # Signaturpruefung und API-Versionierung will bei Zahlungsverkehr
+    # niemand selbst pflegen.
+    "stripe>=9",
 ]
 
 [project.optional-dependencies]
