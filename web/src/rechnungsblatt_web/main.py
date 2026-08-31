@@ -407,8 +407,15 @@ def _nutzer_json(person: Nutzer) -> dict:
     }
 
 
-def _tarif_json(tarif: konten.Tarif) -> dict:
-    return {
+def _tarif_json(tarif: konten.Tarif, intern: bool = False) -> dict:
+    """Ein Tarif als JSON.
+
+    ``intern`` gibt zusätzlich die Stripe-Preis-ID heraus. Sie ist kein
+    Geheimnis im Sinne eines Schlüssels, gehört aber nicht auf die
+    öffentliche Preistafel — dort zählt allein, *dass* der Tarif als Abo
+    buchbar ist.
+    """
+    daten = {
         "schluessel": tarif.schluessel,
         "name": tarif.name,
         "beschreibung": tarif.beschreibung,
@@ -419,6 +426,9 @@ def _tarif_json(tarif: konten.Tarif) -> dict:
         "sichtbar": tarif.sichtbar,
         "hervorheben": tarif.hervorheben,
     }
+    if intern:
+        daten["stripe_preis"] = tarif.stripe_preis
+    return daten
 
 
 @app.get("/api/gesundheit")
@@ -775,9 +785,19 @@ def bezahl_angebot(person: Nutzer = Depends(freigegeben)) -> dict:
     return {
         "eingerichtet": bezahlen.ist_eingerichtet(),
         "aufladungen": bezahlen.aufladungen(),
-        "abo_moeglich": bool(
-            konten.einstellungen().get("stripe_preis_abo", "").strip()
-        ),
+        # Jeder buchbare Abo-Tarif einzeln: Es gibt mehr als einen, und
+        # der Kunde soll sehen, was er bekommt — nicht nur „Abo".
+        "abos": [
+            {
+                "schluessel": t.schluessel,
+                "name": t.name,
+                "monatsbeitrag_cent": t.monatsbeitrag_cent,
+                "inklusiv_rechnungen": t.inklusiv_rechnungen,
+                "laufend": t.schluessel == person.tarif,
+            }
+            for t in bezahlen.abo_tarife()
+        ],
+        "tarif": person.tarif,
         "hat_kunde": bool(konten.stripe_kunde_von(person.id)),
         "zahlungen": konten.zahlungen_von(person.id),
     }
@@ -802,9 +822,17 @@ def bezahl_guthaben(
 
 
 @app.post("/api/bezahlen/abo")
-def bezahl_abo(anfrage: Request, person: Nutzer = Depends(freigegeben)) -> dict:
+def bezahl_abo(
+    daten: dict, anfrage: Request, person: Nutzer = Depends(freigegeben)
+) -> dict:
+    """Checkout für einen bestimmten Abo-Tarif."""
+    schluessel = str(daten.get("tarif", "")).strip()
+    if not schluessel:
+        raise HTTPException(422, detail={"grund": "Kein Tarif angegeben."})
     try:
-        ziel = bezahlen.sitzung_abo(person, _oeffentliche_adresse(anfrage))
+        ziel = bezahlen.sitzung_abo(
+            person, schluessel, _oeffentliche_adresse(anfrage)
+        )
     except bezahlen.BezahlFehler as fehler:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
     return {"weiter": ziel}
@@ -838,9 +866,8 @@ async def bezahl_webhook(anfrage: Request) -> JSONResponse:
         # falsche Einrichtung unbemerkt.
         raise HTTPException(400, detail={"grund": str(fehler)}) from fehler
 
-    abo_tarif = konten.einstellungen().get("stripe_abo_tarif", "") or "monat"
     try:
-        meldung = bezahlen.verarbeite(ereignis, abo_tarif)
+        meldung = bezahlen.verarbeite(ereignis)
     except Exception:
         # Nicht durchreichen: Ein 500 lässt Stripe endlos wiederholen.
         # Der Fehler gehört ins Log, die Quittung geht trotzdem raus.
@@ -906,7 +933,7 @@ def verwaltung_testmail(daten: dict, person: Nutzer = Depends(verwalter)) -> dic
 
 @app.get("/api/verwaltung/tarife")
 def verwaltung_tarife(_: Nutzer = Depends(verwalter)) -> list[dict]:
-    return [_tarif_json(tarif) for tarif in konten.tarife()]
+    return [_tarif_json(tarif, intern=True) for tarif in konten.tarife()]
 
 
 @app.put("/api/verwaltung/tarife/{schluessel}")
@@ -925,10 +952,11 @@ def verwaltung_tarif_speichern(
             reihenfolge=int(daten.get("reihenfolge", 0)),
             sichtbar=bool(daten.get("sichtbar", True)),
             hervorheben=bool(daten.get("hervorheben", False)),
+            stripe_preis=str(daten.get("stripe_preis", "")).strip(),
         )
     except (TypeError, ValueError) as fehler:
         raise HTTPException(422, detail={"grund": f"Ungültiger Tarif: {fehler}"}) from fehler
-    return _tarif_json(konten.speichere_tarif(neu))
+    return _tarif_json(konten.speichere_tarif(neu), intern=True)
 
 
 # ---------------------------------------------------------------- Ablage

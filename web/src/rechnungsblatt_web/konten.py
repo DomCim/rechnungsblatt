@@ -79,6 +79,10 @@ class Tarif:
     # Vorgabe False: kein hervorgehobener Tarif ist ein gültiger Zustand,
     # keine Ausnahme. Damit bleiben auch die Standardtarife unverändert.
     hervorheben: bool = False
+    # Die Stripe-Preis-ID des Abos, leer bei Tarifen ohne Abo. Sie gehört
+    # zum Tarif und nicht in eine globale Einstellung: Es gibt mehr als
+    # einen Abo-Tarif, und jeder braucht seinen eigenen Preis bei Stripe.
+    stripe_preis: str = ""
 
 
 @dataclasses.dataclass(frozen=True)
@@ -176,7 +180,8 @@ CREATE TABLE IF NOT EXISTS tarife (
     -- Hebt die öffentliche Preistafel diesen Tarif hervor? Bewusst ein
     -- Datensatz und keine Regel im Code: welcher Tarif empfohlen wird, ist
     -- eine Entscheidung des Betreibers und ändert sich ohne Neubau.
-    hervorheben            BOOLEAN NOT NULL DEFAULT FALSE
+    hervorheben            BOOLEAN NOT NULL DEFAULT FALSE,
+    stripe_preis           TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS nutzer (
@@ -279,6 +284,8 @@ CREATE INDEX IF NOT EXISTS zahlungen_nutzer ON zahlungen (nutzer, zeitpunkt);
 _NACHTRAEGE = """
 ALTER TABLE tarife ADD COLUMN IF NOT EXISTS
     hervorheben BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE tarife ADD COLUMN IF NOT EXISTS
+    stripe_preis TEXT NOT NULL DEFAULT '';
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_passwort BYTEA;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS huelle_code     BYTEA;
 ALTER TABLE sitzungen ADD COLUMN IF NOT EXISTS schluessel   BYTEA;
@@ -439,6 +446,7 @@ def _tarif_aus_zeile(zeile: dict) -> Tarif:
         reihenfolge=zeile["reihenfolge"],
         sichtbar=zeile["sichtbar"],
         hervorheben=zeile["hervorheben"],
+        stripe_preis=zeile["stripe_preis"] or "",
     )
 
 
@@ -466,8 +474,9 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
         verb.execute(
             """INSERT INTO tarife (schluessel, name, beschreibung,
                    monatsbeitrag_cent, inklusiv_rechnungen,
-                   preis_je_rechnung_cent, reihenfolge, sichtbar, hervorheben)
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   preis_je_rechnung_cent, reihenfolge, sichtbar, hervorheben,
+                   stripe_preis)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                ON CONFLICT (schluessel) DO UPDATE SET
                    name = EXCLUDED.name,
                    beschreibung = EXCLUDED.beschreibung,
@@ -476,7 +485,8 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
                    preis_je_rechnung_cent = EXCLUDED.preis_je_rechnung_cent,
                    reihenfolge = EXCLUDED.reihenfolge,
                    sichtbar = EXCLUDED.sichtbar,
-                   hervorheben = EXCLUDED.hervorheben""",
+                   hervorheben = EXCLUDED.hervorheben,
+                   stripe_preis = EXCLUDED.stripe_preis""",
             (
                 tarif_neu.schluessel,
                 tarif_neu.name,
@@ -487,6 +497,7 @@ def speichere_tarif(tarif_neu: Tarif) -> Tarif:
                 tarif_neu.reihenfolge,
                 tarif_neu.sichtbar,
                 tarif_neu.hervorheben,
+                tarif_neu.stripe_preis,
             ),
         )
     return tarif(tarif_neu.schluessel)
@@ -823,8 +834,9 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                "plausible_url", "plausible_domain",
                # Stripe. Der geheime Schluessel und das Webhook-Geheimnis
                # liegen verschluesselt (siehe _GEHEIME_FELDER).
-               "stripe_secret", "stripe_webhook_secret",
-               "stripe_preis_abo", "stripe_aufladungen", "stripe_abo_tarif")
+               # Die Preis-ID eines Abos steht am Tarif, nicht hier: Es gibt
+               # mehr als einen Abo-Tarif.
+               "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen")
 _GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret"}
 
 

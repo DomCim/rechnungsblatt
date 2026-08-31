@@ -1,5 +1,7 @@
 """Tests der Mandantenschicht: Anmeldung, Freigabe, Rollen, Kontingent, Trennung."""
 
+import dataclasses
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -620,3 +622,128 @@ def test_passwort_hash_ist_gesalzen(leere_konten):
     assert erster != zweiter  # eigenes Salz je Hash
     assert leere_konten.passwort_stimmt("dasselbe123", erster)
     assert not leere_konten.passwort_stimmt("etwasanderes", erster)
+
+
+# ------------------------------------------------------------ Abo-Tarife
+
+def test_tarif_traegt_eigene_stripe_preis_id(leere_konten):
+    """Die Preis-ID gehört zum Tarif, nicht in eine globale Einstellung.
+
+    Nur so lassen sich mehrere Abos nebeneinander anbieten — vorher konnte
+    genau ein Tarif als Abo gebucht werden.
+    """
+    konten = leere_konten
+    vorher = konten.tarif("monat")
+    konten.speichere_tarif(dataclasses.replace(vorher, stripe_preis="price_A"))
+    try:
+        assert konten.tarif("monat").stripe_preis == "price_A"
+        # Der zweite Tarif bekommt eine andere ID; sie dürfen sich nicht
+        # gegenseitig überschreiben.
+        zweiter = konten.tarif("unbegrenzt")
+        konten.speichere_tarif(dataclasses.replace(zweiter, stripe_preis="price_B"))
+        assert konten.tarif("monat").stripe_preis == "price_A"
+        assert konten.tarif("unbegrenzt").stripe_preis == "price_B"
+    finally:
+        konten.speichere_tarif(vorher)
+        konten.speichere_tarif(zweiter)
+
+
+def test_tarif_ohne_preis_id_bleibt_leer(leere_konten):
+    """Ein Tarif ohne Abo trägt keine ID — und das ist ein gültiger Zustand."""
+    assert leere_konten.tarif("probe").stripe_preis == ""
+
+
+def test_angebot_zeigt_nur_buchbare_abos(leere_konten):
+    """Buchbar ist ein Tarif erst mit Preis-ID — und nur wenn er sichtbar ist."""
+    konten = leere_konten
+    lege_kunden_an(konten, "abo@example.org", "geheim-genug-123", tarif="probe")
+    monat = konten.tarif("monat")
+    unbegrenzt = konten.tarif("unbegrenzt")
+    konten.speichere_tarif(dataclasses.replace(
+        monat, stripe_preis="price_M", sichtbar=True))
+    konten.speichere_tarif(dataclasses.replace(
+        unbegrenzt, stripe_preis="price_U", sichtbar=False))
+    konten.setze_einstellungen({"stripe_secret": "sk_test_x"})
+    try:
+        klient = TestClient(main.app)
+        melde_an(klient, "abo@example.org", "geheim-genug-123")
+        angebot = klient.get("/api/bezahlen/angebot").json()
+        schluessel = [a["schluessel"] for a in angebot["abos"]]
+        # „monat" ist buchbar, „unbegrenzt" zurückgezogen, „guthaben" und
+        # „probe" haben keine Preis-ID.
+        assert schluessel == ["monat"]
+    finally:
+        konten.speichere_tarif(monat)
+        konten.speichere_tarif(unbegrenzt)
+        konten.setze_einstellungen({"stripe_secret": ""})
+
+
+def test_zurueckgezogener_tarif_ist_nicht_zu_erschleichen(leere_konten):
+    """Ein unsichtbarer Tarif darf auch über einen direkten Aufruf nicht gehen.
+
+    Sonst ließe sich ein zurückgenommenes Angebot weiter buchen, indem man
+    den Schlüssel von Hand einsetzt.
+    """
+    konten = leere_konten
+    lege_kunden_an(konten, "schlau@example.org", "geheim-genug-123", tarif="probe")
+    unbegrenzt = konten.tarif("unbegrenzt")
+    konten.speichere_tarif(dataclasses.replace(
+        unbegrenzt, stripe_preis="price_U", sichtbar=False))
+    konten.setze_einstellungen({"stripe_secret": "sk_test_x"})
+    try:
+        klient = TestClient(main.app)
+        melde_an(klient, "schlau@example.org", "geheim-genug-123")
+        antwort = klient.post("/api/bezahlen/abo", json={"tarif": "unbegrenzt"})
+        assert antwort.status_code == 422
+        assert "nicht angeboten" in antwort.json()["detail"]["grund"]
+    finally:
+        konten.speichere_tarif(unbegrenzt)
+        konten.setze_einstellungen({"stripe_secret": ""})
+
+
+def test_webhook_bucht_den_gewaehlten_tarif(leere_konten):
+    """Der Tarif kommt aus den Metadaten der Sitzung, nicht aus einer Vorgabe.
+
+    Vorher setzte der Webhook für jedes Abo denselben Tarif — bei mehreren
+    Abo-Tarifen hätte das jedem Kunden das falsche Kontingent gegeben.
+    """
+    from rechnungsblatt_web import bezahlen
+
+    konten = leere_konten
+    person = lege_kunden_an(konten, "hook@example.org", "geheim-genug-123",
+                            tarif="probe")
+    ereignis = {
+        "type": "checkout.session.completed",
+        "data": {"object": {
+            "mode": "subscription",
+            "subscription": "sub_1",
+            "metadata": {"nutzer_id": str(person.id), "tarif": "unbegrenzt"},
+        }},
+    }
+    bezahlen.verarbeite(ereignis)
+    assert konten.nutzer(person.id).tarif == "unbegrenzt"
+
+
+def test_webhook_findet_den_tarif_ueber_die_preis_id(leere_konten):
+    """Ohne Metadaten hilft die Preis-ID — etwa bei einem Abo aus Stripe."""
+    from rechnungsblatt_web import bezahlen
+
+    konten = leere_konten
+    person = lege_kunden_an(konten, "direkt@example.org", "geheim-genug-123",
+                            tarif="probe")
+    monat = konten.tarif("monat")
+    konten.speichere_tarif(dataclasses.replace(monat, stripe_preis="price_M"))
+    try:
+        ereignis = {
+            "type": "checkout.session.completed",
+            "data": {"object": {
+                "mode": "subscription",
+                "subscription": "sub_2",
+                "metadata": {"nutzer_id": str(person.id)},
+                "items": {"data": [{"price": {"id": "price_M"}}]},
+            }},
+        }
+        bezahlen.verarbeite(ereignis)
+        assert konten.nutzer(person.id).tarif == "monat"
+    finally:
+        konten.speichere_tarif(monat)
