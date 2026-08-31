@@ -360,7 +360,51 @@ nav.reiter { display: none; }
 /* display-mode: standalone trifft genau dann zu, wenn die Seite als App
    läuft — im Browser gibt es unten schon eine Leiste, eine zweite wäre
    im Weg. */
-.tableiste { display: none; }
+/* Aussehen und Verhalten stehen AUSSERHALB der Media-Query, nur die
+   Sichtbarkeit darin. Vorher lag alles zusammen im standalone-Block: Wo
+   der nicht griff, hatten die SVG keine Groesse und nahmen ihre
+   Vorgabemasse an — die Leiste wurde dadurch mehr als doppelt so hoch,
+   und die Beschriftungen ueberlappten. */
+.tableiste {
+  display: none;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  justify-content: space-around;
+  align-items: stretch;
+  background: color-mix(in srgb, var(--grund) 92%, transparent);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-top: 1px solid var(--linie);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.tableiste a {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 9px 2px 7px;
+  text-decoration: none;
+  color: var(--tinte-2);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  transition: color 200ms var(--kurve-kurz);
+}
+.tableiste a[aria-current="page"] { color: var(--akzent-tinte); }
+/* Feste Masse, nicht nur width/height: Ein SVG ohne beides faellt auf
+   seine Vorgabegroesse von 300x150 zurueck. */
+.tableiste svg {
+  width: 21px;
+  height: 21px;
+  flex: none;
+  stroke-width: 1.4;
+}
 
 @media (display-mode: standalone) and (max-width: 700px) {
   .tableiste {
@@ -370,35 +414,15 @@ nav.reiter { display: none; }
     right: 0;
     bottom: 0;
     z-index: 30;
-    justify-content: space-around;
-    align-items: stretch;
-    background: color-mix(in srgb, var(--grund) 92%, transparent);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    border-top: 1px solid var(--linie);
-    /* Über der Home-Anzeige des Telefons bleiben, nicht darunter. */
-    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-  .tableiste a {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 9px 2px 7px;
-    text-decoration: none;
-    color: var(--tinte-2);
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    transition: color 200ms var(--kurve-kurz);
-  }
-  .tableiste a[aria-current="page"] { color: var(--akzent-tinte); }
-  .tableiste svg { width: 21px; height: 21px; stroke-width: 1.4; }
 
-  /* Platz schaffen, damit die Leiste nichts verdeckt. */
-  .buehne { padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+  /* Platz schaffen, damit die Leiste nichts verdeckt. Dazu eine
+     Mindesthoehe: Bei kurzem Inhalt (leere Ablage) endete die Buehne
+     vorher weit ueber der Leiste, und die stand isoliert am Rand. */
+  .buehne {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    min-height: 100dvh;
+  }
   /* In der App ist der Hamburger überflüssig — unten steht alles. */
   .kopfleiste .menue-knopf { display: none; }
 }
@@ -454,6 +478,9 @@ nav.reiter { display: none; }
 .karte > h2 { margin-bottom: 4px; }
 .karte .beschreibung { color: var(--tinte-2); font-size: 13.5px; margin-bottom: 14px; }
 
+/* [hidden] muss gewinnen: Ein `display: grid` schlaegt das
+   hidden-Attribut, sonst blieben zugeklappte Bloecke sichtbar. */
+[hidden] { display: none !important; }
 .felder { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px 14px; }
 .feld { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .feld.breit { grid-column: 1 / -1; }
