@@ -132,6 +132,12 @@ from .konten import KontingentErschoepft, KontoFehler, Nutzer
 async def _lebenszyklus(app: FastAPI):
     """Schema anlegen und den Admin aus der Umgebung einrichten."""
     konten.richte_schema_ein()
+    # Abgelaufene Sitzungen wegräumen. Sie tragen den verpackten
+    # Datenschlüssel des Kunden; ungenutzt liegen zu bleiben ist kein
+    # Zustand, den man einer Tabelle mit Schlüsseln wünscht.
+    entfernt = konten.raeume_sitzungen_auf()
+    if entfernt:
+        protokoll.info("%d abgelaufene Sitzungen entfernt.", entfernt)
     ergebnis = konten.lege_admin_an()
     if ergebnis is not None:
         person, erzeugtes_passwort = ergebnis

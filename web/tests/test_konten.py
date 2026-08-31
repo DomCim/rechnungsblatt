@@ -1253,3 +1253,52 @@ def test_erfolgreicher_versand_meldet_erfolg(leere_konten):
             assert post.sende("kunde@example.org", "Test", "Hallo\n") is True
     finally:
         konten.setze_einstellungen({"smtp_host": "", "smtp_absender": ""})
+
+
+def test_neuer_wiederherstellungscode_oeffnet_die_daten(leere_konten):
+    """Der neue Code muss denselben Datenschlüssel öffnen wie der alte.
+
+    Sonst wäre er wertlos: Er soll genau dann helfen, wenn das Passwort
+    weg ist — und dann gibt es keinen zweiten Versuch. Der alte Code muss
+    zugleich verfallen, sonst hülfe ein abgeschriebener Zettel weiter.
+    """
+    from rechnungsblatt_web import tresor
+
+    konten = leere_konten
+    person, alter = konten.registriere("code@example.org", "geheim-genug-123")
+    konten.bestaetige_email(person.id)
+    konten.setze_status(person.id, konten.STATUS_FREI)
+
+    _, schluessel = konten.pruefe_anmeldung("code@example.org", "geheim-genug-123")
+    assert schluessel is not None
+
+    neuer = konten.erneuere_code(person.id, schluessel)
+    assert neuer != alter
+
+    def huelle_von(nutzer_id):
+        with konten.verbindung() as verb:
+            return bytes(verb.execute(
+                "SELECT huelle_code FROM nutzer WHERE id = %s", (nutzer_id,)
+            ).fetchone()["huelle_code"])
+
+    # Der neue Code öffnet denselben Schlüssel …
+    assert tresor.oeffne(huelle_von(person.id),
+                         tresor.normalisiere_code(neuer)) == schluessel
+    # … der alte nicht mehr.
+    with pytest.raises(tresor.TresorFehler):
+        tresor.oeffne(huelle_von(person.id), tresor.normalisiere_code(alter))
+
+
+def test_neuer_code_verlangt_das_passwort(leere_konten):
+    """Ein offener Bildschirm soll nicht genügen."""
+    konten = leere_konten
+    lege_kunden_an(konten, "schutz@example.org", "geheim-genug-123")
+    klient = TestClient(main.app)
+    melde_an(klient, "schutz@example.org", "geheim-genug-123")
+
+    assert klient.post("/api/ich/wiederherstellungscode",
+                       json={"passwort": "falsch"}).status_code == 403
+    gut = klient.post("/api/ich/wiederherstellungscode",
+                      json={"passwort": "geheim-genug-123"})
+    assert gut.status_code == 200
+    assert len(gut.json()["wiederherstellungscode"]) >= 20

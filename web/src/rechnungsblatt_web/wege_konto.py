@@ -234,6 +234,38 @@ def passwort_wechseln(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict
     return {"gewechselt": True}
 
 
+@wege.post("/api/ich/wiederherstellungscode")
+def wiederherstellungscode_neu(
+    daten: dict, anfrage: Request, person: Nutzer = Depends(angemeldet)
+) -> dict:
+    """Erzeugt einen neuen Wiederherstellungscode. Der alte verfällt.
+
+    **Der einzige Weg zurück, wenn der Code verloren ging.** Ohne ihn und
+    ohne Passwort sind die Daten endgültig zu — das ist der Zweck des
+    Tresors, aber es macht diesen Endpunkt notwendig: Wer seinen Code
+    verlegt hat, soll ihn ersetzen können, solange er sich noch anmelden
+    kann.
+
+    Das Passwort wird trotzdem verlangt. Es öffnet den Datenschlüssel, aus
+    dem die neue Hülle entsteht — ohne ihn gäbe es nichts zu verpacken.
+    Und es hält jemanden auf, der einen offenen Bildschirm vorfindet.
+    """
+    passwort = str(daten.get("passwort", ""))
+    try:
+        _, schluessel = konten.pruefe_anmeldung(person.email, passwort)
+    except KontoFehler as fehler:
+        raise HTTPException(
+            403, detail={"grund": "Das Passwort stimmt nicht."}
+        ) from fehler
+    if schluessel is None:
+        raise HTTPException(409, detail={
+            "code": "kein_schluessel",
+            "grund": "Für dieses Konto gibt es keinen Datenschlüssel — es "
+                     "stammt aus der Zeit vor der Verschlüsselung.",
+        })
+    return {"wiederherstellungscode": konten.erneuere_code(person.id, schluessel)}
+
+
 @wege.get("/api/ich/verbrauch")
 def eigener_verbrauch(person: Nutzer = Depends(angemeldet)) -> list[dict]:
     return [

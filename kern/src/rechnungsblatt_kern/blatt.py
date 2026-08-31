@@ -5,7 +5,7 @@ Das Blatt ist ein einseitiges A4-Overlay (reportlab), das später per pikepdf
 zwischen Kopf-Ende und Fuß-Beginn der :class:`Schreibzone`.
 
 Gestaltung (:class:`Blattgestaltung`): Schrift aus dem kuratierten Katalog,
-Schriftgrad und eine von drei getesteten Layoutvarianten — bewusst keine
+Schriftgrad und eine von sechs getesteten Layoutvarianten — bewusst keine
 freie Positionierung. PDF/A verlangt eingebettete Schriften, darum sind
 Base-14-Schriften tabu; der Katalog enthält nur mitgelieferte TTFs.
 """
