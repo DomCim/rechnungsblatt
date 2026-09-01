@@ -650,6 +650,43 @@ td input, td select {
   min-width: 70px;
 }
 td input:focus-visible, td select:focus-visible { outline: 2px solid var(--akzent); outline-offset: -1px; }
+
+/* **Auf dem Handy mindestens 16px in jedem Eingabefeld.** Safari auf iOS
+   zoomt beim Antippen automatisch heran, sobald die Schrift kleiner ist —
+   und zoomt danach nicht von selbst zurück. Beim Ausfüllen eines
+   Formulars springt die Ansicht dadurch bei jedem Feld.
+
+   Die Grenze liegt bei genau 16px und lässt sich nicht abschalten;
+   `user-scalable=no` im Viewport täte es zwar, nimmt aber allen die
+   Möglichkeit zu vergrößern — für eine Rechnungsanwendung keine Option.
+
+   Nur für Zeigegeräte ohne feinen Zeiger: Am Schreibtisch bleiben die
+   kompakteren Größen, dort gibt es das Verhalten nicht. */
+/* Auswahlfelder ausserhalb eines .feld-Blocks — etwa die Merkliste und
+   die Vorlagenwahl im Rechnungsformular. Als Klasse statt inline, damit
+   die Regel fuer Zeigegeraete unten sie erreicht: Ein Inline-Stil
+   schlaegt jede Medienregel. */
+select.knappe-wahl {
+  background: var(--grund);
+  border: 1px solid var(--linie);
+  border-radius: 8px;
+  color: var(--tinte);
+  font: 500 14px "Instrument Sans", system-ui, sans-serif;
+  padding: 8px 10px;
+}
+
+@media (pointer: coarse) {
+  .feld input, .feld select, .feld textarea,
+  td input, td select,
+  input[type="text"], input[type="email"], input[type="password"],
+  input[type="number"], input[type="date"], input[type="search"],
+  select, textarea,
+  /* Mit Klasse, weil `select.knappe-wahl` spezifischer ist als `select`
+     allein — Spezifität schlägt die Reihenfolge im Bogen. */
+  select.knappe-wahl {
+    font-size: 16px;
+  }
+}
 td.zahl input { text-align: right; font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 .betrag { font-family: "Spline Sans Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 

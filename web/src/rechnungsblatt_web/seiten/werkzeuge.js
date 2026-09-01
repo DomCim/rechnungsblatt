@@ -427,14 +427,10 @@ window.RB = (function () {
     if (!antwort.ok || !leiste) return antwort.ok ? antwort.daten : null;
     var person = antwort.daten;
     var neuAufbauen = false;
-    if (person.rolle === "admin" && !leiste.querySelector('a[href="/app/verwaltung"]')) {
-      var verweis = document.createElement("a");
-      verweis.href = "/app/verwaltung";
-      verweis.setAttribute("data-i18n", "navVerwaltung");
-      verweis.textContent = t("navVerwaltung");
-      leiste.appendChild(verweis);
-      neuAufbauen = true;
-    }
+    // Die Verwaltung steht NICHT in der Leiste. Sechs Reiter passen am
+    // Handy nicht nebeneinander, und der Adminbereich wird selten
+    // gebraucht — der Verweis liegt im Konto, wo auch alles andere
+    // Persoenliche steht.
     if (!leiste.querySelector("[data-abmelden]")) {
       var knopf = document.createElement("a");
       knopf.href = "#";
