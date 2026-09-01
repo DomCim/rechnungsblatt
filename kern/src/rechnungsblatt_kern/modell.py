@@ -98,6 +98,9 @@ class Stammdaten:
     kontakt_telefon: str | None = None
     kleinunternehmer: bool = False
     artikelnummern: bool = False  # steuert nur die Anzeige in der Vorschau
+    # Die kleine Absenderzeile über dem Anschriftenfeld. Viele Briefbögen
+    # tragen sie schon gedruckt — dann steht sie sonst doppelt.
+    absenderzeile: bool = True
 
 
 @dataclass(frozen=True)

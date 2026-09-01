@@ -7,6 +7,8 @@ eingebettet) — ohne das ließe sich daraus kein PDF/A-3B bauen.
 
 from __future__ import annotations
 
+import dataclasses
+
 import json
 import datetime as dt
 import tempfile
@@ -177,6 +179,15 @@ def gestaltung_vorschau(
     zeile: bool = False,
     akzent: bool = False,
     farbe: str | None = None,
+    # Drei Schalter, die nicht zur Gestaltung gehören, den Beleg aber
+    # sichtbar verändern. Ohne sie zeigte die Vorschau den gespeicherten
+    # Stand, während daneben schon der neue Schalter stand — wer
+    # Artikelnummern einschaltete, sah keinen Unterschied und hielt es
+    # für kaputt. `None` heißt „nimm den gespeicherten Wert".
+    artikelnummern: bool | None = None,
+    kleinunternehmer: bool | None = None,
+    girocode: bool | None = None,
+    absenderzeile: bool | None = None,
     wurzel: Path = Depends(mandant),
 ) -> Response:
     """Musterrechnung mit der (ggf. noch ungespeicherten) Gestaltung als PNG."""
@@ -204,11 +215,25 @@ def gestaltung_vorschau(
     )
     stammdaten_json = lese_json(wurzel / "stammdaten.json")
     stammdaten = _stammdaten_aus_json(stammdaten_json) if stammdaten_json else None
+    # Die Schalter überschreiben den gespeicherten Stand, wenn sie
+    # mitgegeben wurden. Der Kern liest beide aus den Stammdaten.
+    if stammdaten is not None and (artikelnummern is not None
+                                   or kleinunternehmer is not None
+                                   or absenderzeile is not None):
+        stammdaten = dataclasses.replace(
+            stammdaten,
+            artikelnummern=(stammdaten.artikelnummern if artikelnummern is None
+                            else artikelnummern),
+            kleinunternehmer=(stammdaten.kleinunternehmer if kleinunternehmer is None
+                              else kleinunternehmer),
+            absenderzeile=(stammdaten.absenderzeile if absenderzeile is None
+                           else absenderzeile),
+        )
     with im_klartext(briefpapier_pfad(wurzel)) as bogen:
         briefpapier = bogen if briefpapier_pfad(wurzel).exists() else None
         pdf = erzeuge_gestaltungsvorschau(
             zone, gestaltung, stammdaten, briefpapier,
-            girocode=_girocode_aktiv(wurzel),
+            girocode=(_girocode_aktiv(wurzel) if girocode is None else girocode),
         )
     wurzel.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=wurzel) as arbeit:

@@ -190,7 +190,11 @@
     <div class="zeile">
       <button type="button" class="knopf" id="abmelden"
               data-i18n="abmeldenKnopf">Abmelden</button>
-      <a class="knopf leise" href="/" data-i18n="zurStartseite">Öffentliche Seite</a>
+      <!-- Neuer Reiter: Wer die oeffentliche Seite ansieht, will danach
+           meist zurueck ins Konto — und in der installierten App gibt es
+           keinen Zurueck-Knopf. -->
+      <a class="knopf leise" href="/" target="_blank" rel="noopener"
+         data-i18n="zurStartseite">Öffentliche Seite</a>
     </div>
     <div class="meldung" id="sitzungMeldung" role="status" aria-live="polite"></div>
   </section>

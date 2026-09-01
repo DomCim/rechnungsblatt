@@ -346,6 +346,10 @@
           </label>
         </div>
         <label class="schalter" style="margin-bottom:10px;">
+          <input id="absenderzeile" name="absenderzeile" type="checkbox" checked><span class="hebel"></span>
+          <span data-i18n="absenderzeile">Kleine Absenderzeile über dem Empfänger drucken (ausschalten, wenn Ihr Briefbogen sie schon trägt)</span>
+        </label>
+        <label class="schalter" style="margin-bottom:10px;">
           <input id="artikelnummern" name="artikelnummern" type="checkbox"><span class="hebel"></span>
           <span data-i18n="artikelnummern">Artikelnummern verwenden (Spalte im Rechnungsformular und auf dem Beleg)</span>
         </label>
@@ -427,6 +431,7 @@
       kontaktEmail: "E-Mail",
       kontaktTelefon: "Telefon",
       kleinunternehmer: "Kleinunternehmer nach § 19 UStG (kein Umsatzsteuer-Ausweis)",
+      absenderzeile: "Kleine Absenderzeile über dem Empfänger drucken (ausschalten, wenn Ihr Briefbogen sie schon trägt)",
       artikelnummern: "Artikelnummern verwenden (Spalte im Rechnungsformular und auf dem Beleg)",
       girocode: "GiroCode auf Rechnungen drucken (QR-Code — Kunde scannt und überweist mit vorausgefüllten Daten)",
       nummernMuster: "Rechnungsnummern-Muster",
@@ -488,6 +493,7 @@
       kontaktEmail: "E-mail",
       kontaktTelefon: "Phone",
       kleinunternehmer: "Small business under § 19 UStG (no VAT shown)",
+      absenderzeile: "Print the small sender line above the recipient (turn off if your letterhead already has it)",
       artikelnummern: "Use article numbers (column in the invoice form and on the document)",
       girocode: "Print GiroCode on invoices (QR code — customer scans and pays with prefilled details)",
       nummernMuster: "Invoice number pattern",
@@ -555,6 +561,8 @@
     el("kleinunternehmer").checked = !!daten.kleinunternehmer;
     el("girocode").checked = daten.girocode !== false;
     el("artikelnummern").checked = !!daten.artikelnummern;
+    // Vorgabe an: alte Stammdaten ohne das Feld sollen die Zeile behalten.
+    el("absenderzeile").checked = daten.absenderzeile !== false;
     if (daten.nummern_muster !== undefined) el("nummern_muster").value = daten.nummern_muster;
     if (daten.verwendungszweck_muster !== undefined) el("verwendungszweck_muster").value = daten.verwendungszweck_muster;
   }
@@ -689,6 +697,7 @@
       kleinunternehmer: el("kleinunternehmer").checked,
       girocode: el("girocode").checked,
       artikelnummern: el("artikelnummern").checked,
+      absenderzeile: el("absenderzeile").checked,
       nummern_muster: el("nummern_muster").value.trim(),
       verwendungszweck_muster: el("verwendungszweck_muster").value.trim()
     };
@@ -773,7 +782,15 @@
       "&schriftgrad=" + daten.schriftgrad + "&layout=" + daten.layout +
       "&zeile=" + daten.belegdaten_als_zeile +
       "&akzent=" + daten.akzent_an +
-      "&farbe=" + encodeURIComponent(daten.akzentfarbe) + "&t=" + Date.now();
+      "&farbe=" + encodeURIComponent(daten.akzentfarbe) +
+      // Diese drei gehoeren nicht zur Gestaltung, veraendern den Beleg
+      // aber sichtbar. Ohne sie zeigte die Vorschau den gespeicherten
+      // Stand, waehrend daneben schon der neue Schalter stand.
+      "&artikelnummern=" + el("artikelnummern").checked +
+      "&kleinunternehmer=" + el("kleinunternehmer").checked +
+      "&girocode=" + el("girocode").checked +
+      "&absenderzeile=" + el("absenderzeile").checked +
+      "&t=" + Date.now();
     var lader = new Image();
     lader.onload = function () { bild.src = quelle; bild.classList.remove("laedt"); };
     lader.onerror = function () { bild.classList.remove("laedt"); };
@@ -826,6 +843,11 @@
   // Titel der Miniatur beim Sprachwechsel mitziehen (kein data-i18n fuer Attribute).
   RB.beiSprachwechsel(function () {
     el("gVorschau").title = RB.t("vorschauVergroessern");
+  });
+
+  // Die drei Belegschalter zeichnen die Vorschau ebenfalls neu.
+  ["artikelnummern", "kleinunternehmer", "girocode", "absenderzeile"].forEach(function (kennung) {
+    el(kennung).addEventListener("change", gAktualisiere);
   });
 
   ["change", "input"].forEach(function (art) {

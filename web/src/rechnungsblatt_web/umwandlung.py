@@ -75,6 +75,9 @@ def _stammdaten_aus_json(daten: dict) -> Stammdaten:
         kontakt_telefon=daten.get("kontakt_telefon") or None,
         kleinunternehmer=bool(daten.get("kleinunternehmer", False)),
         artikelnummern=bool(daten.get("artikelnummern", False)),
+        # Vorgabe True: Wer nichts einstellt, bekommt die Zeile —
+        # sie gehoert zur Fensterkuvert-Konvention.
+        absenderzeile=bool(daten.get("absenderzeile", True)),
     )
 
 
