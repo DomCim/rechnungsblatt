@@ -156,6 +156,20 @@
   <!-- Abmelden und der Weg nach draußen. In der installierten App ist der
        Hamburger ausgeblendet — ohne diese Knöpfe wäre das Konto dort eine
        Sackgasse, aus der man nur über die Adresszeile herauskommt. -->
+  <!-- Nur fuer Admins. Frueher stand der Adminbereich als sechster
+       Reiter in der Leiste — am Handy passte das nicht nebeneinander,
+       und gebraucht wird er selten. -->
+  <section class="karte" id="adminKarte" hidden>
+    <h2 data-i18n="adminTitel">Verwaltung</h2>
+    <p class="beschreibung" data-i18n="adminText">
+      Konten freischalten, Tarife pflegen, Postausgang und Zahlungen
+      einrichten. Nur für Sie sichtbar.
+    </p>
+    <div class="zeile">
+      <a class="knopf" href="/app/verwaltung" data-i18n="adminKnopf">Zum Adminbereich</a>
+    </div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="sitzungTitel">Sitzung</h2>
     <p class="beschreibung" data-i18n="sitzungText">
@@ -203,6 +217,9 @@
       bezahlVerwalten: "Zahlungen verwalten",
       bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
       abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
+      adminTitel: "Verwaltung",
+      adminText: "Konten freischalten, Tarife pflegen, Postausgang und Zahlungen einrichten. Nur für Sie sichtbar.",
+      adminKnopf: "Zum Adminbereich",
       sitzungTitel: "Sitzung",
       sitzungText: "Abmelden beendet die Sitzung auf diesem Gerät. Ihre Daten bleiben verschlüsselt liegen und sind nach der nächsten Anmeldung wieder da.",
       abmeldenKnopf: "Abmelden", zurStartseite: "Öffentliche Seite",
@@ -237,6 +254,9 @@
       bezahlVerwalten: "Manage payments",
       bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
       abgebrochen: "Cancelled. Nothing was charged.",
+      adminTitel: "Administration",
+      adminText: "Activate accounts, maintain plans, set up outgoing mail and payments. Visible only to you.",
+      adminKnopf: "Open administration",
       sitzungTitel: "Session",
       sitzungText: "Signing out ends the session on this device. Your data stays encrypted and is back after the next sign-in.",
       abmeldenKnopf: "Sign out", zurStartseite: "Public page",
@@ -288,6 +308,7 @@
   async function lade() {
     var person = await RB.kopfKonto();
     if (!person) { window.location.href = "/anmelden"; return; }
+    el("adminKarte").hidden = person.rolle !== "admin";
     zeigeKonto(person);
     var verbrauch = await RB.api("/api/ich/verbrauch");
     zeigeVerbrauch((verbrauch.ok && verbrauch.daten) || []);
