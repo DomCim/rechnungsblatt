@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Ablage</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
 <link rel="stylesheet" href="/seiten/basis.css">
 <!-- Nicht in den Suchindex: Der Arbeitsbereich verlangt eine Anmeldung,
      ein Treffer darauf führte ins Leere. robots.txt allein genügt nicht —
@@ -185,7 +185,7 @@
 
   async function lade() {
     var person = await RB.kopfKonto();
-    if (!person) { window.location.href = "/anmelden"; return; }
+    if (!person) { window.location.href = "/app/anmelden"; return; }
     var antwort = await RB.api("/api/ablage");
     belege = (antwort.ok && antwort.daten) || [];
     zeichne();

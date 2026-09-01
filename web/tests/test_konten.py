@@ -121,9 +121,21 @@ def test_abmelden_beendet_die_sitzung(klient, leere_konten):
 
 
 def test_seiten_leiten_ohne_anmeldung_zur_anmeldung(klient):
+    """Innerhalb des App-Bereichs bleiben — sonst springt die PWA hinaus.
+
+    Der Scope im Manifest endet bei ``/app/``. Eine Weiterleitung auf
+    ``/anmelden`` verließe die installierte App und käme nicht zurück.
+    """
     antwort = klient.get("/app/rechnung", follow_redirects=False)
     assert antwort.status_code == 303
-    assert antwort.headers["location"] == "/anmelden"
+    assert antwort.headers["location"] == "/app/anmelden"
+
+
+def test_alte_anmeldeadresse_leitet_dauerhaft_weiter(klient):
+    """Lesezeichen auf ``/anmelden`` dürfen nicht ins Leere laufen."""
+    antwort = klient.get("/anmelden", follow_redirects=False)
+    assert antwort.status_code == 308
+    assert antwort.headers["location"] == "/app/anmelden"
 
 
 # ---------------------------------------------------------------- Freigabe

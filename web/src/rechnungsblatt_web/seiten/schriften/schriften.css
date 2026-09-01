@@ -1,0 +1,101 @@
+/* Selbst ausgelieferte Webschriften — NICHT von Hand ändern.
+
+   Erzeugt von scripts/hole_schriften.py. Dort steht auch, warum die
+   Schriften nicht mehr von Google kommen und was dabei eingespart wurde.
+*/
+
+/* latin-ext */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/seiten/schriften/fraunces-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url(/seiten/schriften/fraunces-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* latin-ext */
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(/seiten/schriften/instrument-sans-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Instrument Sans';
+  font-style: normal;
+  font-weight: 400 600;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(/seiten/schriften/instrument-sans-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* latin-ext */
+@font-face {
+  font-family: 'Spline Sans Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url(/seiten/schriften/spline-sans-mono-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* latin */
+@font-face {
+  font-family: 'Spline Sans Mono';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url(/seiten/schriften/spline-sans-mono-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
+/* --- Metrisch angeglichene Ersatzschriften ---------------------------
+
+   Bei font-display:swap zeigt der Browser erst die Ersatzschrift und
+   tauscht dann. Weichen die Metriken ab, springt das Layout: gemessen
+   als CLS 0,117 (PageSpeed mobil, 01.09.2026). Vor allem Segoe UI ist
+   schuld — ascent 1,0791 gegen 0,9700 bei Instrument Sans.
+
+   Die Werte unten sind aus den Schriftdateien gerechnet, nicht
+   geschätzt: size-adjust gleicht die x-Höhen an, ascent- und
+   descent-override die Zeilenhöhe. Wer die Schriften wechselt, muss sie
+   neu rechnen — sonst wirken sie in die falsche Richtung.
+
+   Verwendung: In den font-family-Stacks steht "Fraunces Ersatz" bzw.
+   "Instrument Sans Ersatz" VOR der nackten Systemschrift.            */
+
+@font-face {
+  font-family: "Fraunces Ersatz";
+  src: local("Georgia"), local("Times New Roman"), local("Times");
+  size-adjust: 100.12%;
+  ascent-override: 97.68%;
+  descent-override: 25.47%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Instrument Sans Ersatz";
+  src: local("Segoe UI"), local("Helvetica Neue"), local("Arial");
+  size-adjust: 102.00%;
+  ascent-override: 95.10%;
+  descent-override: 24.51%;
+  line-gap-override: 0%;
+}

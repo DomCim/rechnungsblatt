@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Erste Schritte</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
 <link rel="stylesheet" href="/seiten/basis.css">
 <meta name="robots" content="noindex, nofollow">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -498,7 +498,7 @@
   // ---------- Start ----------
   async function starten() {
     var person = await RB.kopfKonto();
-    if (!person) { window.location.href = "/anmelden"; return; }
+    if (!person) { window.location.href = "/app/anmelden"; return; }
 
     var status = await RB.api("/api/status");
     if (status.ok) {

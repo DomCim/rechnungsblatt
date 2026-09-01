@@ -24,6 +24,7 @@ import dataclasses
 import datetime as dt
 import json
 import logging
+import mimetypes
 import os
 import re
 import shutil
@@ -38,6 +39,7 @@ from fastapi.responses import (
     JSONResponse,
     RedirectResponse,
 )
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from rechnungsblatt_kern import (
@@ -158,6 +160,17 @@ app = FastAPI(
     title="Rechnungsblatt", docs_url=None, redoc_url=None, lifespan=_lebenszyklus
 )
 
+# Ohne Kompression gingen die Seiten roh über die Leitung. Gemessen am
+# 01.09.2026: start.html 62,8 -> 18,2 KB (71 %), basis.css 30,6 -> 9,4 KB,
+# werkzeuge.js 20,3 -> 7,0 KB.
+#
+# Die Mindestgröße hält kleine Antworten heraus — bei einer JSON-Antwort
+# von 200 Bytes kostet das Komprimieren mehr, als es einspart. PDF, ZIP
+# und woff2 sind bereits komprimiert; sie werden anhand ihres Medientyps
+# ohnehin übersprungen (bei woff2 nachgemessen: gzip macht die Datei
+# minimal größer).
+app.add_middleware(GZipMiddleware, minimum_size=1024)
+
 # Die Wege je Fachbereich. Die Pfade stehen in den Modulen selbst, nicht
 # als Präfix hier — so bleibt jeder Endpunkt an seiner Adresse auffindbar,
 # auch wenn man nur den Pfad kennt.
@@ -181,6 +194,11 @@ app.include_router(wege_zahlung.wege)
 
 
 app.mount("/zonen-editor", StaticFiles(directory=str(ZONEN_EDITOR), html=True), name="editor")
+# woff2 kennt Pythons mimetypes-Tabelle nicht; ohne diesen Eintrag
+# liefert StaticFiles application/octet-stream, und Browser behandeln die
+# Schriften dann als beliebige Downloads statt als Schriften.
+mimetypes.add_type("font/woff2", ".woff2")
+
 app.mount("/seiten", StaticFiles(directory=str(SEITEN)), name="seiten")
 
 

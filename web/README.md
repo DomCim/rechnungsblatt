@@ -73,6 +73,12 @@ angebunden.
   Gutschrift/Korrektur mit Bezug, Nummernkreis, Merkliste + Duplikat als
   Vorlage aus der Ablage, ZUGFeRD-PDF- und XRechnung-Download.
 - **Ablage** (`/app/ablage`): alle Belege des Kontos mit Suche, PDF und XML.
+  Ein stornierter Beleg ist in der Liste als solcher gekennzeichnet.
+- **Für die Betriebsprüfung** (im Konto): alle Belege eines Zeitraums als ZIP
+  (PDF, XML, Eingabedaten, Belegprotokoll je Beleg, dazu `uebersicht.csv`,
+  die Siegelkette und eine Erläuterung), ein Entwurf der
+  Verfahrensdokumentation mit den eigenen Stammdaten, und die Nachprüfung
+  der Siegelkette.
 
 ```bash
 pip install -e ./kern -e "./web[test]"
@@ -121,4 +127,12 @@ Siehe `docs/uebergabe.md` §8 — Konto (steht), Stammdaten, Briefpapier-Upload,
 Schreibzone, Rechnungsformular, Kundenmerkliste, Nummernkreis, Vorschau,
 ZUGFeRD- und XRechnung-Download, Ablage, Duplikat als Vorlage,
 Gutschrift/Korrektur, Bezahlung je Rechnung. Kein Mailversand, kein Peppol,
-kein GoBD-Archiv-Versprechen, kein Mahnwesen, keine Buchhaltung.
+kein Mahnwesen, keine Buchhaltung.
+
+**Weiterhin kein GoBD-Archiv-Versprechen.** Belegprotokoll, Siegelkette und
+Gesamtexport sind Maßnahmen im Sinne der GoBD Rz. 110 — sie machen
+nachträgliche Änderungen sichtbar. Ob sie im Einzelfall genügen, beurteilt
+der steuerliche Berater; die Verantwortung für die Ordnungsmäßigkeit liegt
+ohnehin allein beim Steuerpflichtigen (Rz. 21). Eine Zertifizierung durch
+die Finanzverwaltung gibt es nicht (Rz. 179–181), und „GoBD-konform" darf
+deshalb nirgends unbedingt zugesichert werden.

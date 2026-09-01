@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rechnungsblatt — Konto</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
 <link rel="stylesheet" href="/seiten/basis.css">
 <!-- Nicht in den Suchindex: Der Arbeitsbereich verlangt eine Anmeldung,
      ein Treffer darauf führte ins Leere. robots.txt allein genügt nicht —
@@ -167,6 +167,47 @@
     </div>
   </section>
 
+  <!-- Die Betriebspruefung kommt selten und dann mit wenig Vorlauf.
+       Deshalb steht hier alles beieinander, was ein Pruefer verlangt:
+       der Bestand am Stueck, der Nachweis der Unveraenderbarkeit und
+       der Entwurf der Verfahrensdokumentation. -->
+  <section class="karte">
+    <h2 data-i18n="pruefungTitel">F&uuml;r die Betriebspr&uuml;fung</h2>
+    <p class="beschreibung" data-i18n="pruefungText">
+      Alle Belege eines Zeitraums am St&uuml;ck, der Nachweis, dass sich
+      nichts ge&auml;ndert hat, und ein Entwurf der
+      Verfahrensdokumentation zum Weiterschreiben.
+    </p>
+
+    <form id="exportForm" autocomplete="off">
+      <label>
+        <span data-i18n="pruefungVon">Von (optional)</span>
+        <input type="date" id="exportVon">
+      </label>
+      <label>
+        <span data-i18n="pruefungBis">Bis (optional)</span>
+        <input type="date" id="exportBis">
+      </label>
+      <p class="beschreibung" data-i18n="pruefungZeitraumHilfe">
+        Ohne Angabe werden alle Belege ausgegeben.
+      </p>
+      <div class="zeile">
+        <button type="submit" class="knopf" data-i18n="pruefungExport">
+          Belege herunterladen
+        </button>
+        <button type="button" class="knopf leise" id="vfdKnopf"
+                data-i18n="pruefungVfd">Verfahrensdokumentation</button>
+      </div>
+    </form>
+
+    <div class="zeile" style="margin-top: 12px;">
+      <button type="button" class="knopf leise" id="siegelKnopf"
+              data-i18n="pruefungSiegel">Unver&auml;ndert? Jetzt pr&uuml;fen</button>
+    </div>
+    <div class="meldung" id="pruefungMeldung" role="status"
+         aria-live="polite"></div>
+  </section>
+
   <!-- Nur fuer Admins. Frueher stand der Adminbereich als sechster
        Reiter in der Leiste — am Handy passte das nicht nebeneinander,
        und gebraucht wird er selten. -->
@@ -232,6 +273,19 @@
       bezahlVerwalten: "Zahlungen verwalten",
       bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
       abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
+      pruefungTitel: "Für die Betriebsprüfung",
+      pruefungText: "Alle Belege eines Zeitraums am Stück, der Nachweis, dass sich nichts geändert hat, und ein Entwurf der Verfahrensdokumentation zum Weiterschreiben.",
+      pruefungVon: "Von (optional)", pruefungBis: "Bis (optional)",
+      pruefungZeitraumHilfe: "Ohne Angabe werden alle Belege ausgegeben.",
+      pruefungExport: "Belege herunterladen",
+      pruefungVfd: "Verfahrensdokumentation",
+      pruefungSiegel: "Unverändert? Jetzt prüfen",
+      pruefungLaeuft: "Wird zusammengestellt …",
+      pruefungFertig: "Die Datei wurde heruntergeladen.",
+      pruefungLeer: "In diesem Zeitraum liegen keine Belege.",
+      pruefungHeil: "Geprüft: {n} Beleg(e), nichts verändert.",
+      pruefungAbweichung: "Achtung: {n} Abweichung(en) gefunden.",
+      pruefungOhneSiegel: "{n} Beleg(e) ohne Siegel — vor Einführung der Prüfung entstanden.",
       einrichtungTitel: "Einrichtung",
       einrichtungText: "Briefpapier, Schreibzone, Ihre Angaben und das Aussehen der Rechnung. Einmal eingestellt, gilt es für jeden Beleg.",
       einrichtungKnopf: "Zur Einrichtung",
@@ -273,6 +327,19 @@
       bezahlVerwalten: "Manage payments",
       bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
       abgebrochen: "Cancelled. Nothing was charged.",
+      pruefungTitel: "For a tax audit",
+      pruefungText: "Every document of a period in one file, proof that nothing was altered, and a draft procedural documentation to build on.",
+      pruefungVon: "From (optional)", pruefungBis: "To (optional)",
+      pruefungZeitraumHilfe: "Leave empty to export all documents.",
+      pruefungExport: "Download documents",
+      pruefungVfd: "Procedural documentation",
+      pruefungSiegel: "Unaltered? Check now",
+      pruefungLaeuft: "Preparing …",
+      pruefungFertig: "The file has been downloaded.",
+      pruefungLeer: "No documents in this period.",
+      pruefungHeil: "Checked: {n} document(s), nothing altered.",
+      pruefungAbweichung: "Warning: {n} discrepancy/discrepancies found.",
+      pruefungOhneSiegel: "{n} document(s) without a seal — created before the check existed.",
       einrichtungTitel: "Setup",
       einrichtungText: "Letterhead, writing area, your details and the look of the invoice. Set once, valid for every document.",
       einrichtungKnopf: "Open setup",
@@ -330,7 +397,7 @@
 
   async function lade() {
     var person = await RB.kopfKonto();
-    if (!person) { window.location.href = "/anmelden"; return; }
+    if (!person) { window.location.href = "/app/anmelden"; return; }
     el("adminKarte").hidden = person.rolle !== "admin";
     zeigeKonto(person);
     var verbrauch = await RB.api("/api/ich/verbrauch");
@@ -443,7 +510,81 @@
     weiterZu("/api/bezahlen/verwalten");
   });
 
-  el("abmelden").addEventListener("click", async function () {
+  // --- Fuer die Betriebspruefung ---------------------------------------
+// Herunterladen ueber fetch statt ueber einen href: Bei "keine Belege im
+// Zeitraum" soll eine Meldung in der Karte stehen und nicht eine
+// JSON-Fehlerseite in einem neuen Reiter.
+function pruefungMeldung(text, istFehler) {
+  var kasten = el("pruefungMeldung");
+  kasten.textContent = text;
+  // .hinweis traegt bereits die Warnfarbe, .gut faerbt gruen — dasselbe
+  // Muster wie bei den Zahlungsmeldungen darueber.
+  kasten.className = "meldung hinweis" + (istFehler ? "" : " gut");
+}
+
+async function ladeDatei(pfad) {
+  pruefungMeldung(RB.t("pruefungLaeuft"), false);
+  var antwort = await RB.api(pfad);
+  if (!antwort.ok) {
+    var grund = antwort.daten && antwort.daten.detail &&
+      antwort.daten.detail.grund;
+    pruefungMeldung(grund || RB.t("pruefungLeer"), true);
+    return;
+  }
+  var blob = await antwort.antwort.blob();
+  // Den Dateinamen nimmt der Server vor; steht dort keiner, faellt der
+  // Browser auf den letzten Pfadteil zurueck.
+  var name = "";
+  var kopf = antwort.antwort.headers.get("content-disposition") || "";
+  var treffer = kopf.match(/filename="([^"]+)"/);
+  if (treffer) name = treffer[1];
+
+  var adresse = URL.createObjectURL(blob);
+  var verweis = document.createElement("a");
+  verweis.href = adresse;
+  verweis.download = name;
+  document.body.appendChild(verweis);
+  verweis.click();
+  document.body.removeChild(verweis);
+  // Freigeben, sonst haelt der Reiter die ganze Datei im Speicher.
+  URL.revokeObjectURL(adresse);
+  pruefungMeldung(RB.t("pruefungFertig"), false);
+}
+
+el("exportForm").addEventListener("submit", function (ereignis) {
+  ereignis.preventDefault();
+  var suche = [];
+  if (el("exportVon").value) suche.push("von=" + el("exportVon").value);
+  if (el("exportBis").value) suche.push("bis=" + el("exportBis").value);
+  ladeDatei("/api/ablage/export.zip" +
+    (suche.length ? "?" + suche.join("&") : ""));
+});
+
+el("vfdKnopf").addEventListener("click", function () {
+  ladeDatei("/api/pruefung/verfahrensdokumentation");
+});
+
+el("siegelKnopf").addEventListener("click", async function () {
+  pruefungMeldung(RB.t("pruefungLaeuft"), false);
+  var antwort = await RB.api("/api/pruefung/siegel");
+  if (!antwort.ok) {
+    pruefungMeldung(RB.t("fehlerAllgemein"), true);
+    return;
+  }
+  var bericht = antwort.daten;
+  var text = bericht.heil
+    ? RB.t("pruefungHeil").replace("{n}", bericht.glieder)
+    : RB.t("pruefungAbweichung").replace("{n}", bericht.befunde.length);
+  // Belege ohne Siegel sind kein Mangel — aber sie gehoeren genannt,
+  // sonst wundert sich der Pruefer ueber die Zahl.
+  if (bericht.ohne_siegel && bericht.ohne_siegel.length) {
+    text += " " + RB.t("pruefungOhneSiegel")
+      .replace("{n}", bericht.ohne_siegel.length);
+  }
+  pruefungMeldung(text, !bericht.heil);
+});
+
+el("abmelden").addEventListener("click", async function () {
     // Der Server loescht die Sitzung; danach ist der Datenschluessel
     // ebenfalls weg -- er lag nur dort, verpackt.
     await RB.api("/api/abmelden", { method: "POST" });

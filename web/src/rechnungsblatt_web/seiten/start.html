@@ -59,7 +59,7 @@
   }
 }
 </script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
 <link rel="stylesheet" href="/seiten/basis.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
@@ -116,8 +116,8 @@
   header.kopf { border-bottom: 1px solid var(--kante); }
   .marke {
     text-transform: none;
-    font-family: "Fraunces", Georgia, serif;
-    font-variation-settings: "opsz" 40, "SOFT" 20;
+    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+    font-variation-settings: "opsz" 40;
     font-weight: 700;
     font-size: 19px;
     letter-spacing: -0.015em;
@@ -133,8 +133,8 @@
 
   /* --- Typografie --------------------------------------------------- */
   h1, h2 {
-    font-family: "Fraunces", Georgia, serif;
-    font-variation-settings: "opsz" 96, "SOFT" 30;
+    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+    font-variation-settings: "opsz" 96;
     letter-spacing: -0.022em;
     color: var(--papier);
     text-wrap: balance;
@@ -222,8 +222,8 @@
     letter-spacing: 0.02em;
   }
   .bogen .band.oben strong {
-    font-family: "Fraunces", Georgia, serif;
-    font-variation-settings: "opsz" 40, "SOFT" 20;
+    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+    font-variation-settings: "opsz" 40;
     font-size: clamp(11px, 2.3vw, 16px);
     font-weight: 700;
   }
@@ -575,8 +575,8 @@
      Hierarchie von 62 auf 34 px und stürzte dann auf 15 — hier schließt
      sich die Lücke. */
   .tarife .preis {
-    font-family: "Fraunces", Georgia, serif;
-    font-variation-settings: "opsz" 96, "SOFT" 30;
+    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+    font-variation-settings: "opsz" 96;
     font-weight: 700;
     font-size: clamp(30px, 3.6vw, 42px);
     line-height: 1;
@@ -588,7 +588,7 @@
   /* Die Einheit wächst NICHT mit: sonst gerät „je Rechnung“ gleichrangig
      neben den Betrag und nimmt ihm die Wucht. */
   .tarife .preis .einheit {
-    font-family: "Instrument Sans", system-ui, sans-serif;
+    font-family: "Instrument Sans", "Instrument Sans Ersatz", system-ui, sans-serif;
     font-variation-settings: normal;
     font-size: 14px;
     font-weight: 500;
@@ -742,7 +742,7 @@
     <div class="marke">Rechnungsblatt</div>
     <div class="zeile">
       <nav class="reiter">
-        <a href="/anmelden" data-i18n="navAnmelden">Anmelden</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
       </nav>
       <div class="sprachen" role="group" aria-label="Sprache / Language">
         <button type="button" data-sprache="de" aria-pressed="true">DE</button>
@@ -1016,7 +1016,7 @@
 
   <footer class="fuss">
     <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
-    <span><a class="verweis" href="/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
   </footer>
 
 </div>
