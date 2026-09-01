@@ -153,8 +153,22 @@ def arbeitsbereich(anfrage: Request) -> Response:
         return RedirectResponse("/anmelden", status_code=303)
     if not person.ist_frei:
         return seite("warten.html")
-    ziel = "/app/rechnung" if ist_bereit(wurzel_von(person)) else "/app/einrichtung"
+    # Wer noch nicht eingerichtet ist, landet im Assistenten — nicht auf
+    # der Einrichtungsseite. Die zeigt alle vier Schritte nebeneinander
+    # und setzt voraus, dass man weiß, womit man anfängt.
+    ziel = "/app/rechnung" if ist_bereit(wurzel_von(person)) else "/app/willkommen"
     return RedirectResponse(ziel, status_code=303)
+
+
+@wege.get("/app/willkommen", response_class=HTMLResponse)
+def willkommensassistent(anfrage: Request) -> Response:
+    """Führt Schritt für Schritt durch die Einrichtung.
+
+    Dieselben Endpunkte wie die Einrichtungsseite, nur einer nach dem
+    anderen. Wer schon etwas gemacht hat, steigt beim ersten offenen
+    Schritt ein — der Stand kommt vom Server, nicht aus dem Browser.
+    """
+    return seite_mit_konto(anfrage, "willkommen.html")
 
 
 @wege.get("/app/einrichtung", response_class=HTMLResponse)
