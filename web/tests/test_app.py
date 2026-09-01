@@ -2,6 +2,10 @@
 
 import shutil
 
+import re
+
+from pathlib import Path
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -366,3 +370,157 @@ def test_gutschrift_traegt_bezug_zur_ursprungsrechnung(client):
     xml = client.get(antwort.json()["xml"]).content
     assert b"<ram:TypeCode>381</ram:TypeCode>" in xml
     assert RECHNUNG["nummer"].encode() in xml
+
+
+def test_beleg_traegt_ein_protokoll(client):
+    """Was mit einem Beleg geschah, muss der Prüfer sehen können.
+
+    Die GoBD verlangen Nachvollziehbarkeit (Rz. 30 ff.). Ohne Protokoll
+    ließe sich zwar nichts ändern — nur belegen könnte man es nicht.
+    """
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+
+    protokoll = client.get(f"/api/ablage/{RECHNUNG['nummer']}/protokoll").json()
+    assert len(protokoll) == 1
+    assert protokoll[0]["ereignis"] == "erzeugt"
+    assert protokoll[0]["nummer"] == RECHNUNG["nummer"]
+    assert protokoll[0]["zeitpunkt"]  # mit Zeitzone, sonst wertlos
+
+
+def test_storno_vermerkt_sich_auf_beiden_belegen(client):
+    """Die Spur muss von beiden Seiten aus lesbar sein.
+
+    Stünde der Bezug nur auf der Gutschrift, sähe die stornierte Rechnung
+    in der Ablage aus wie jede andere — genau das soll sie nicht.
+    """
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+    gutschrift = dict(RECHNUNG, nummer="GS-2026-0001", typ="GUTSCHRIFT",
+                      bezugs_nummer=RECHNUNG["nummer"])
+    assert client.post("/api/rechnung", json=gutschrift).status_code == 200
+
+    # Auf der Gutschrift: der Bezug.
+    neu = client.get("/api/ablage/GS-2026-0001/protokoll").json()
+    assert neu[0]["ereignis"] == "erzeugt"
+    assert neu[0]["bezug"] == RECHNUNG["nummer"]
+
+    # Auf der Urrechnung: die Aufhebung.
+    alt = client.get(f"/api/ablage/{RECHNUNG['nummer']}/protokoll").json()
+    assert [e["ereignis"] for e in alt] == ["erzeugt", "storniert"]
+    assert alt[1]["durch"] == "GS-2026-0001"
+
+    # Und in der Liste, ohne dass man den Beleg öffnen muss.
+    belege = {b["nummer"]: b for b in client.get("/api/ablage").json()}
+    assert belege[RECHNUNG["nummer"]]["aufgehoben"] == "storniert"
+    assert belege[RECHNUNG["nummer"]]["durch"] == "GS-2026-0001"
+
+
+def test_erzeugter_beleg_wird_gesiegelt(client):
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+
+    bericht = client.get("/api/pruefung/siegel").json()
+    assert bericht["heil"]
+    assert bericht["glieder"] == 1
+    assert bericht["ohne_siegel"] == []
+
+
+def test_export_liefert_alles_was_die_pruefung_braucht(client):
+    """PDF, XML, Daten, Protokoll, Übersicht, Kette und eine Erklärung."""
+    import io
+    import zipfile
+
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+
+    antwort = client.get("/api/ablage/export.zip")
+    assert antwort.status_code == 200
+    assert antwort.headers["content-type"] == "application/zip"
+
+    archiv = zipfile.ZipFile(io.BytesIO(antwort.content))
+    namen = set(archiv.namelist())
+    nummer = RECHNUNG["nummer"]
+    assert f"{nummer}/rechnung.pdf" in namen
+    assert f"{nummer}/factur-x.xml" in namen
+    assert f"{nummer}/daten.json" in namen
+    assert f"{nummer}/protokoll.jsonl" in namen
+    assert {"uebersicht.csv", "LIESMICH.txt", "siegel.jsonl"} <= namen
+
+    # Das PDF muss ein PDF sein, nicht ein verschlüsselter Klumpen.
+    assert archiv.read(f"{nummer}/rechnung.pdf").startswith(b"%PDF")
+
+    # Die CSV öffnet Excel in Deutschland nur mit BOM und Semikolon.
+    csv = archiv.read("uebersicht.csv").decode("utf-8-sig")
+    assert csv.startswith("Nummer;Typ;Datum;")
+    assert nummer in csv
+
+
+def test_export_ohne_belege_meldet_das(client):
+    _richte_ein(client)
+    assert client.get("/api/ablage/export.zip").status_code == 404
+
+
+def test_export_grenzt_den_zeitraum_ab(client):
+    _richte_ein(client)
+    assert client.post("/api/rechnung", json=RECHNUNG).status_code == 200
+
+    # Ein Zeitraum, der davor endet, darf den Beleg nicht enthalten.
+    antwort = client.get("/api/ablage/export.zip",
+                         params={"bis": "2020-12-31"})
+    assert antwort.status_code == 404
+
+
+def test_verfahrensdokumentation_kommt_als_datei(client):
+    _richte_ein(client)
+    antwort = client.get("/api/pruefung/verfahrensdokumentation")
+
+    assert antwort.status_code == 200
+    assert "attachment" in antwort.headers["content-disposition"]
+    text = antwort.content.decode("utf-8-sig")
+    assert "VERFAHRENSDOKUMENTATION" in text
+    assert "{" not in text and "}" not in text
+
+def test_seiten_laden_nichts_von_fremden_servern():
+    """Keine Seite darf Schriften oder Skripte von außen ziehen.
+
+    Bis zum 01.09.2026 lud jede Seite von ``fonts.googleapis.com``. Das
+    kostete Zeit (zwei fremde Verbindungen vor dem ersten sichtbaren
+    Zeichen) und überträgt die IP jedes Besuchers an Google — wofür das
+    LG München I Schadensersatz zugesprochen hat (20.01.2022,
+    3 O 17493/20). Die Schriften liegen deshalb unter
+    ``/seiten/schriften/``.
+
+    Dieser Test ist die Sperre dagegen, dass jemand aus Bequemlichkeit
+    wieder ein ``<link>`` nach außen setzt: Ohne ihn fiele es erst beim
+    nächsten Datenschutz-Audit auf.
+    """
+    seiten = Path(__file__).resolve().parents[1] / "src/rechnungsblatt_web/seiten"
+    erlaubt_extern = {
+        # Plausible wird bewusst eingebunden, aber nur wenn konfiguriert;
+        # der Platzhalter steht als Kommentar in den Seiten.
+        "plausible.io",
+    }
+    verstoesse = []
+    for datei in sorted(seiten.glob("*.html")):
+        text = datei.read_text(encoding="utf-8")
+        for treffer in re.findall(r'(?:href|src)="(https?://[^"]+)"', text):
+            if not any(gut in treffer for gut in erlaubt_extern):
+                verstoesse.append(f"{datei.name}: {treffer}")
+
+    assert not verstoesse, "Fremde Ressourcen: " + ", ".join(verstoesse)
+
+
+def test_schriften_liegen_lokal_vor():
+    """Die Schriftdateien müssen im Repository liegen, nicht nur im CSS."""
+    schriften = (Path(__file__).resolve().parents[1]
+                 / "src/rechnungsblatt_web/seiten/schriften")
+    assert (schriften / "schriften.css").exists()
+    dateien = sorted(p.name for p in schriften.glob("*.woff2"))
+    assert dateien, "Keine Schriftdateien — scripts/hole_schriften.py laufen lassen"
+
+    css = (schriften / "schriften.css").read_text(encoding="utf-8")
+    for name in dateien:
+        assert name in css, f"{name} liegt da, wird aber im CSS nicht genannt"
+    for verweis in re.findall(r"url\(/seiten/schriften/([^)]+)\)", css):
+        assert (schriften / verweis).exists(), f"{verweis} fehlt auf der Platte"

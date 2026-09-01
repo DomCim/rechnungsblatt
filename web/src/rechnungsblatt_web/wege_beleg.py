@@ -7,10 +7,13 @@ wird nie nachträglich angereichert.
 
 from __future__ import annotations
 
-import datetime as dt
+import csv
 import dataclasses
+import datetime as dt
+import io
 import json
 import re
+import zipfile
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -32,7 +35,7 @@ from rechnungsblatt_kern import (
     erzeuge_xrechnung,
 )
 
-from . import konten
+from . import konten, protokoll_beleg, siegel, verfahrensdokumentation
 from .ablage import (
     ablage_ordner,
     briefpapier_pfad,
@@ -55,6 +58,12 @@ from .basis import freigegeben, mandant, protokoll
 from .konten import KontingentErschoepft, KontoFehler, Nutzer
 
 wege = APIRouter()
+
+# Als chr() geschrieben und nicht als Escape: Beim Erzeugen dieser Datei
+# wuerde ein Backslash-n leicht zum echten Umbruch — dann stuende der
+# Zeilenwechsel mitten im Quelltext statt in der Ausgabe.
+CRLF = chr(13) + chr(10)
+BOM = chr(65279)          # damit Excel die CSV als UTF-8 liest
 
 
 @wege.get("/api/nummer/vorschlag")
@@ -279,6 +288,36 @@ def rechnung_erzeugen(
     schreibe_datei(ordner / "rechnung.pdf", ergebnis.pdf)
     schreibe_datei(ordner / "factur-x.xml", ergebnis.xml)
     schreibe_json(ordner / "daten.json", daten)
+    # Ins Protokoll, bevor der Nummernkreis fortschreibt: Scheitert das
+    # Schreiben, ist die Nummer noch frei und der Vorgang wiederholbar.
+    protokoll_beleg.haenge_an(
+        ordner,
+        "erzeugt",
+        nummer=rechnung.nummer,
+        typ=rechnung.typ.name,
+        brutto=str(ergebnis.summen.brutto),
+        waehrung=rechnung.waehrung,
+        empfaenger=rechnung.empfaenger.name,
+        # Bei Gutschrift und Korrektur haelt der Bezug fest, worauf sich
+        # der Beleg bezieht — das ist die Spur, die ein Pruefer sucht.
+        **({"bezug": rechnung.bezugs_nummer} if rechnung.bezugs_nummer else {}),
+    )
+    # Erst jetzt siegeln: Der Abdruck soll die Dateien so erfassen, wie
+    # sie am Ende liegen — Protokoll eingeschlossen waere zirkulaer, denn
+    # das Protokoll waechst spaeter noch (Storno).
+    siegel.siegle(wurzel, rechnung.nummer)
+
+    if rechnung.bezugs_nummer:
+        # Auch am Urbeleg vermerken, dass er aufgehoben oder berichtigt
+        # wurde. Sonst stuende die Spur nur auf einer Seite.
+        urbeleg = wurzel / "ablage" / rechnung.bezugs_nummer
+        if urbeleg.is_dir():
+            protokoll_beleg.haenge_an(
+                urbeleg,
+                "storniert" if rechnung.typ is Belegtyp.GUTSCHRIFT else "berichtigt",
+                durch=rechnung.nummer,
+                typ=rechnung.typ.name,
+            )
     _nummernkreis_fortschreiben(wurzel, rechnung.nummer)
     _kunde_merken(wurzel, rechnung)
     return JSONResponse(
@@ -327,6 +366,10 @@ def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
         return []
     belege = []
     for ordner in sorted(basis.iterdir(), reverse=True):
+        # Nur Verzeichnisse sind Belege. Neben ihnen liegt die
+        # Siegelkette als Datei — sie waere sonst ein Geisterbeleg.
+        if not ordner.is_dir():
+            continue
         daten = lese_json(ordner / "daten.json") or {}
         belege.append(
             {
@@ -336,9 +379,21 @@ def ablage_liste(wurzel: Path = Depends(mandant)) -> list[dict]:
                 "empfaenger": (daten.get("empfaenger") or {}).get("name"),
                 "pdf": f"/api/ablage/{ordner.name}/pdf",
                 "xml": f"/api/ablage/{ordner.name}/xml",
+                # Wurde der Beleg aufgehoben oder berichtigt? Das gehoert
+                # in die Liste, nicht erst in die Einzelansicht — sonst
+                # sieht eine stornierte Rechnung aus wie jede andere.
+                **_aufhebung(ordner),
             }
         )
     return belege
+
+
+def _aufhebung(ordner: Path) -> dict:
+    """Der letzte Eintrag, der den Beleg aufhebt oder berichtigt."""
+    for eintrag in reversed(protokoll_beleg.lies(ordner)):
+        if eintrag.get("ereignis") in ("storniert", "berichtigt"):
+            return {"aufgehoben": eintrag["ereignis"], "durch": eintrag.get("durch")}
+    return {}
 
 
 # Belege liegen verschlüsselt — FileResponse würde den Geheimtext
@@ -369,6 +424,198 @@ def ablage_xml(nummer: str, wurzel: Path = Depends(mandant)) -> Response:
             "content-disposition": f'attachment; filename="{nummer}-factur-x.xml"'
         },
     )
+
+
+def _liesmich(anzahl: int, von: str | None, bis: str | None) -> str:
+    """Was im Archiv steht — für jemanden, der es zum ersten Mal öffnet."""
+    zeitraum = (f"Zeitraum: {von or 'Anfang'} bis {bis or 'heute'}"
+                if (von or bis) else "Zeitraum: alle Belege")
+    zeilen = [
+        "Belegausgabe aus Rechnungsblatt",
+        "==============================",
+        "",
+        zeitraum,
+        f"Belege in diesem Archiv: {anzahl}",
+        f"Erstellt am: {dt.datetime.now().astimezone():%d.%m.%Y %H:%M}",
+        "",
+        "Je Beleg ein Ordner, benannt nach der Rechnungsnummer:",
+        "",
+        "  rechnung.pdf     Der Beleg als PDF/A-3B. Das XML steckt",
+        "                   zusätzlich darin (ZUGFeRD/Factur-X).",
+        "  factur-x.xml     Dasselbe XML noch einmal einzeln, zum Einlesen.",
+        "  daten.json       Die Eingaben, aus denen beides entstand.",
+        "  protokoll.jsonl  Was mit dem Beleg geschah — eine Zeile je",
+        "                   Ereignis, nur angehängt, nie geändert.",
+        "",
+        "uebersicht.csv     Alle Belege als Tabelle (Semikolon getrennt).",
+        "siegel.jsonl       Die Siegelkette (siehe unten), vollständig.",
+        "",
+        "Zur Unveränderbarkeit",
+        "---------------------",
+        "PDF und XML entstehen aus denselben Daten im selben Vorgang; ein",
+        "bestehendes PDF wird nie nachträglich angereichert. Eine vergebene",
+        "Rechnungsnummer lässt sich nicht erneut verwenden, und es gibt",
+        "keinen Weg, einen abgelegten Beleg zu löschen oder zu ändern.",
+        "Wird eine Rechnung aufgehoben, entsteht eine Gutschrift mit Bezug;",
+        "beide Protokolle halten das fest.",
+        "",
+        "Zusätzlich trägt jeder Beleg ein Siegel: den SHA-256 über PDF,",
+        "XML und Eingabedaten, verknüpft mit dem Siegel des vorigen",
+        "Belegs. Ändert sich ein Beleg nachträglich, passt sein Siegel",
+        "nicht mehr, und weil die folgenden darauf aufbauen, fällt es an",
+        "allen Nachfolgern auf. Nachrechnen lässt sich das mit den Daten",
+        "in siegel.jsonl allein - ohne Zugang zum System.",
+        "",
+        "Kein Zeitstempel einer anerkannten Stelle: Wer Schreibzugriff auf",
+        "die Ablage hat, könnte die Kette neu bilden. Sie zeigt, dass",
+        "punktuell nichts geändert wurde.",
+        "",
+        "Diese Ausgabe ersetzt keine Verfahrensdokumentation. Einen Entwurf",
+        "dafür gibt es im Konto unter \u201eFür die Betriebsprüfung\u201c.",
+        "",
+    ]
+    return CRLF.join(zeilen)
+
+
+@wege.get("/api/ablage/export.zip")
+def ablage_export(
+    von: str | None = None,
+    bis: str | None = None,
+    wurzel: Path = Depends(mandant),
+) -> Response:
+    """Alle Belege eines Zeitraums als ZIP — PDF, XML, Daten, Protokoll.
+
+    **Der Weg zum Steuerpruefer.** Einzeln herunterzuladen ist bei
+    zweihundert Rechnungen im Jahr keine Option, und wer seine Belege
+    nicht am Stueck herausbekommt, hat sie faktisch nicht.
+
+    Im Archiv liegt je Beleg ein Ordner mit dem, was auch auf der Platte
+    liegt — dazu eine ``uebersicht.csv`` und eine ``LIESMICH.txt``, die
+    erklaert, was der Pruefer vor sich hat. Ohne die steht er vor einem
+    Haufen Dateien.
+
+    Ohne Zeitraum: alles. Mit ``von``/``bis`` (JJJJ-MM-TT) nur, was
+    dazwischen liegt — Betriebspruefungen betreffen meist ein Jahr.
+    """
+    basis = wurzel / "ablage"
+    if not basis.exists():
+        raise HTTPException(404, detail={"grund": "Noch keine Belege abgelegt."})
+
+    def im_zeitraum(datum: str | None) -> bool:
+        if not datum:
+            # Ein Beleg ohne Datum fliegt nicht heraus — lieber zu viel im
+            # Archiv als eine Luecke, die niemand bemerkt.
+            return True
+        if von and datum < von:
+            return False
+        if bis and datum > bis:
+            return False
+        return True
+
+    puffer = io.BytesIO()
+    zeilen = [("Nummer", "Typ", "Datum", "Empfaenger", "Netto", "Steuer",
+               "Brutto", "Waehrung", "Bezug", "Aufgehoben durch")]
+    anzahl = 0
+    with zipfile.ZipFile(puffer, "w", zipfile.ZIP_DEFLATED) as archiv:
+        for ordner in sorted(basis.iterdir()):
+            if not ordner.is_dir():
+                continue
+            daten = lese_json(ordner / "daten.json") or {}
+            if not im_zeitraum(daten.get("rechnungsdatum")):
+                continue
+            anzahl += 1
+            for name in ("rechnung.pdf", "factur-x.xml", "daten.json",
+                         protokoll_beleg.DATEI):
+                quelle = ordner / name
+                if quelle.exists():
+                    archiv.writestr(f"{ordner.name}/{name}", lies_datei(quelle))
+            summen = daten.get("summen") or {}
+            hebung = _aufhebung(ordner)
+            zeilen.append((
+                ordner.name,
+                daten.get("typ", "RECHNUNG"),
+                daten.get("rechnungsdatum", ""),
+                (daten.get("empfaenger") or {}).get("name", ""),
+                str(summen.get("netto", "")),
+                str(summen.get("steuer", "")),
+                str(summen.get("brutto", "")),
+                daten.get("waehrung", "EUR"),
+                daten.get("bezugs_nummer", "") or "",
+                hebung.get("durch", "") or "",
+            ))
+
+        if not anzahl:
+            raise HTTPException(
+                404, detail={"grund": "In diesem Zeitraum liegen keine Belege."})
+
+        # Semikolon und BOM: So oeffnet Excel die Datei in Deutschland
+        # ohne Nachfrage richtig — sonst steht alles in einer Spalte.
+        auszug = io.StringIO()
+        csv.writer(auszug, delimiter=";",
+                   quoting=csv.QUOTE_MINIMAL).writerows(zeilen)
+        archiv.writestr("uebersicht.csv", BOM + auszug.getvalue())
+        # Die Siegelkette komplett, nicht nur die Glieder des Zeitraums:
+        # Sie laesst sich nur im Ganzen nachrechnen, jedes Glied haengt am
+        # vorigen. Ein Ausschnitt waere nicht pruefbar.
+        kette = basis / siegel.DATEI
+        if kette.exists():
+            archiv.writestr(siegel.DATEI, kette.read_bytes())
+        archiv.writestr("LIESMICH.txt", _liesmich(anzahl, von, bis))
+
+    name = "rechnungen"
+    if von or bis:
+        name += f"-{von or 'anfang'}-bis-{bis or 'heute'}"
+    return Response(
+        puffer.getvalue(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{name}.zip"'},
+    )
+
+
+@wege.get("/api/pruefung/siegel")
+def pruefung_siegel(wurzel: Path = Depends(mandant)) -> dict:
+    """Rechnet die Siegelkette nach — wurde an den Belegen etwas geaendert?
+
+    Die Belege liegen als Dateien, und die GoBD halten fest, dass das
+    fuer sich genommen keine Unveraenderbarkeit gewaehrleistet (Rz. 110).
+    Die Kette ist eine der Zusatzmassnahmen, die das aufwiegen: Jeder
+    Beleg traegt einen Abdruck, der am vorigen haengt.
+
+    Ein Beleg ohne Glied ist kein Fehler — er stammt aus der Zeit vor der
+    Kette. Er wird gesondert ausgewiesen, nicht als Befund gezaehlt.
+    """
+    return siegel.pruefe(wurzel)
+
+
+@wege.get("/api/pruefung/verfahrensdokumentation")
+def pruefung_verfahrensdokumentation(wurzel: Path = Depends(mandant)) -> Response:
+    """Ein Entwurf der Verfahrensdokumentation, mit den eigenen Daten gefuellt.
+
+    Die Dokumentation schuldet der Steuerpflichtige, nicht der Hersteller
+    (GoBD Rz. 21, 151) — nur kann er den technischen Teil nicht kennen.
+    Rechnungsblatt schreibt deshalb, was es belegen kann, und laesst den
+    Rest als benannte offene Frage stehen. Ein Entwurf, der so tut, als
+    sei er fertig, waere in der Pruefung schaedlicher als keiner.
+    """
+    text = verfahrensdokumentation.erzeuge(wurzel)
+    name = f"verfahrensdokumentation-{dt.date.today():%Y-%m-%d}.txt"
+    return Response(
+        # BOM, damit der Windows-Editor die Umlaute nicht zerlegt.
+        (BOM + text).encode("utf-8"),
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
+
+
+@wege.get("/api/ablage/{nummer}/protokoll")
+def ablage_protokoll(nummer: str, wurzel: Path = Depends(mandant)) -> list[dict]:
+    """Was mit diesem Beleg geschah — fuer die Betriebspruefung.
+
+    Ein Beleg laesst sich hier nicht aendern und nicht loeschen; wird er
+    aufgehoben, entsteht ein zweiter mit Bezug. Das Protokoll haelt beide
+    Seiten dieser Spur fest.
+    """
+    return protokoll_beleg.lies(ablage_ordner(wurzel, nummer))
 
 
 @wege.get("/api/ablage/{nummer}/daten")

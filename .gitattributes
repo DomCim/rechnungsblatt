@@ -1,0 +1,13 @@
+# Schriftdateien sind binär. Git erkennt das zwar von selbst, aber eine
+# abweichende core.autocrlf-Einstellung auf einem anderen Rechner würde
+# sie sonst beim Auschecken zerstören — und der Schaden fiele erst auf,
+# wenn im Browser die Ersatzschrift steht.
+*.woff2 binary
+*.woff  binary
+*.ttf   binary
+*.otf   binary
+
+# Ebenso alles, was als Beleg oder Vorlage durch das Repository geht.
+*.pdf   binary
+*.png   binary
+*.ico   binary
