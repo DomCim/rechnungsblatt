@@ -58,9 +58,27 @@ def startseite() -> HTMLResponse:
     return seite("start.html")
 
 
-@wege.get("/anmelden", response_class=HTMLResponse)
+@wege.get("/app/anmelden", response_class=HTMLResponse)
 def anmeldeseite() -> HTMLResponse:
+    """Die Anmeldung — innerhalb des App-Bereichs.
+
+    **Unter ``/app/``, weil der Scope im Manifest dort endet.** Alles
+    darunter bleibt in der installierten App, alles darüber öffnet der
+    Browser daneben — so verlässt „Öffentliche Seite" die App und kommt
+    als eigenes Fenster. Läge die Anmeldung außerhalb, spränge die App
+    bei jeder abgelaufenen Sitzung mit hinaus und käme nicht zurück.
+    """
     return seite("anmelden.html")
+
+
+@wege.get("/anmelden")
+def anmelden_alt() -> RedirectResponse:
+    """Alte Adresse — die Anmeldung liegt jetzt unter ``/app/anmelden``.
+
+    Bleibt als Weiterleitung stehen: Lesezeichen und Verweise von außen
+    sollen nicht ins Leere laufen.
+    """
+    return RedirectResponse("/app/anmelden", status_code=308)
 
 
 @wege.get("/robots.txt")
@@ -139,7 +157,7 @@ def seite_mit_konto(anfrage: Request, name: str) -> Response:
     """Liefert eine Arbeitsseite oder schickt zur Anmeldung bzw. zum Wartehinweis."""
     person = angemeldeter(anfrage)
     if person is None:
-        return RedirectResponse("/anmelden", status_code=303)
+        return RedirectResponse("/app/anmelden", status_code=303)
     if not person.ist_frei:
         return seite("warten.html")
     return seite(name)
@@ -150,7 +168,7 @@ def arbeitsbereich(anfrage: Request) -> Response:
     """Landung nach der Anmeldung: Formular, sobald die Einrichtung steht."""
     person = angemeldeter(anfrage)
     if person is None:
-        return RedirectResponse("/anmelden", status_code=303)
+        return RedirectResponse("/app/anmelden", status_code=303)
     if not person.ist_frei:
         return seite("warten.html")
     # Wer noch nicht eingerichtet ist, landet im Assistenten — nicht auf
@@ -195,7 +213,7 @@ def ablageseite(anfrage: Request) -> Response:
 def kontoseite(anfrage: Request) -> Response:
     person = angemeldeter(anfrage)
     if person is None:
-        return RedirectResponse("/anmelden", status_code=303)
+        return RedirectResponse("/app/anmelden", status_code=303)
     return seite("konto.html")
 
 
@@ -203,7 +221,7 @@ def kontoseite(anfrage: Request) -> Response:
 def verwaltungsseite(anfrage: Request) -> Response:
     person = angemeldeter(anfrage)
     if person is None:
-        return RedirectResponse("/anmelden", status_code=303)
+        return RedirectResponse("/app/anmelden", status_code=303)
     if not person.ist_admin:
         return RedirectResponse("/app", status_code=303)
     return seite("verwaltung.html")

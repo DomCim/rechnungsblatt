@@ -1362,7 +1362,7 @@
 
   async function lade() {
     ich = await RB.kopfKonto();
-    if (!ich) { window.location.href = "/anmelden"; return; }
+    if (!ich) { window.location.href = "/app/anmelden"; return; }
     if (ich.rolle !== "admin") { window.location.href = "/app"; return; }
 
     var antwortTarife = await RB.api("/api/verwaltung/tarife");
