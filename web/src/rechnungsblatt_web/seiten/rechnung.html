@@ -189,7 +189,7 @@
     <section class="karte">
       <div class="zeile" style="justify-content:space-between;">
         <h2 data-i18n="empfaengerTitel">Empfänger</h2>
-        <select id="merkliste" style="max-width:260px;background:var(--grund);border:1px solid var(--linie);border-radius:8px;color:var(--tinte);font:500 14px 'Instrument Sans',system-ui,sans-serif;padding:8px 10px;">
+        <select id="merkliste" class="knappe-wahl" style="max-width:260px;">
           <option value="" data-i18n="merkliste">Aus Merkliste übernehmen …</option>
         </select>
       </div>
@@ -238,7 +238,7 @@
       <div class="zeile" style="justify-content:space-between;">
         <h2 data-i18n="positionenTitel">Positionen</h2>
         <div class="zeile" style="gap:8px;">
-          <select id="vorlagenwahl" style="max-width:220px;background:var(--grund);border:1px solid var(--linie);border-radius:8px;color:var(--tinte);font:500 14px 'Instrument Sans',system-ui,sans-serif;padding:8px 10px;">
+          <select id="vorlagenwahl" class="knappe-wahl" style="max-width:220px;">
             <option value="" data-i18n="vorlagenwahl">Vorlage laden …</option>
           </select>
           <button type="button" id="vorlageSichern" class="knopf leise"
@@ -519,7 +519,7 @@
     unter.className = "p-unterzeile";
     unter.innerHTML =
       '<td colspan="' + (artikelnummernAn ? 7 : 6) + '" style="padding-top:0;">' +
-      '<input class="p-beschreibung" style="width:100%;font-size:13px;" ' +
+      '<input class="p-beschreibung" style="width:100%;" ' +
       'placeholder="' + w.beschreibungPlatzhalter + '"></td>';
     if (vorgabe) {
       zeile.querySelector(".p-bezeichnung").value = vorgabe.bezeichnung || "";
