@@ -318,13 +318,18 @@
   <section class="karte">
     <h2 data-i18n="zaehlungTitel">Zählung</h2>
     <p class="beschreibung" data-i18n="zaehlungText">
-      Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein
-      Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible
-      über HTTPS erreichbar sein — sonst blockt der Browser.
+      Plausible z&auml;hlt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar
+      kein Skript eingebunden.
+
+      Hier geh&ouml;rt die <strong>interne</strong> Adresse hin, so wie
+      Rechnungsblatt sie im Docker-Netz erreicht &mdash; etwa
+      <code>http://plausible:8000</code>. Der Browser des Besuchers spricht
+      Plausible nie direkt an: Er holt sein Skript von dieser Seite, und
+      Rechnungsblatt reicht die Z&auml;hlung nach innen weiter.
     </p>
     <div class="felder">
       <div class="feld breit"><label for="plausUrl" data-i18n="fPlausUrl">Plausible-Adresse</label>
-        <input id="plausUrl" placeholder="https://plausible.example.de"></div>
+        <input id="plausUrl" placeholder="http://plausible:8000"></div>
       <div class="feld breit"><label for="plausDomain" data-i18n="fPlausDomain">Gezählte Domain</label>
         <input id="plausDomain" placeholder="rechnungsblatt.example.de"></div>
       <div class="feld breit">
@@ -489,7 +494,7 @@
       zUmsatz: "Verbraucht", zUmsatzNeben: "abgerechnet über Guthaben",
       zUnbestaetigt: "E-Mail offen",
       zaehlungTitel: "Zählung",
-      zaehlungText: "Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein Skript eingebunden. Läuft die Seite über HTTPS, muss auch Plausible über HTTPS erreichbar sein — sonst blockt der Browser.",
+      zaehlungText: "Plausible zählt Seitenaufrufe ohne Cookies. Ohne Adresse wird gar kein Skript eingebunden. Hier gehört die interne Adresse hin, so wie Rechnungsblatt sie im Docker-Netz erreicht — etwa http://plausible:8000. Der Browser des Besuchers spricht Plausible nie direkt an.",
       fPlausUrl: "Plausible-Adresse", fPlausDomain: "Gezählte Domain",
       fPlausKey: "API-Schlüssel zum Lesen",
       plausKeyHinweis: "Den Schlüssel legen Sie in Plausible unter Settings → API Keys an. Er wird nur zum Lesen der Zahlen gebraucht: Ohne ihn zählt die Seite weiter, die Auswertung oben bleibt aber leer.",
@@ -578,7 +583,7 @@
       zUmsatz: "Consumed", zUmsatzNeben: "billed against credit",
       zUnbestaetigt: "E-mail pending",
       zaehlungTitel: "Analytics",
-      zaehlungText: "Plausible counts page views without cookies. Without an address no script is embedded at all. If the site runs over HTTPS, Plausible must be reachable over HTTPS too — otherwise the browser blocks it.",
+      zaehlungText: "Plausible counts page views without cookies. Without an address no script is embedded at all. Enter the internal address here, the one Rechnungsblatt reaches inside the Docker network — for example http://plausible:8000. Visitors' browsers never talk to Plausible directly.",
       fPlausUrl: "Plausible address", fPlausDomain: "Counted domain",
       fPlausKey: "API key for reading",
       plausKeyHinweis: "Create the key in Plausible under Settings → API Keys. It is only needed to read the numbers: without it the site keeps counting, but the overview above stays empty.",

@@ -46,9 +46,17 @@ def seite(name: str) -> HTMLResponse:
     url = (werte.get("plausible_url") or PLAUSIBLE_URL).rstrip("/")
     domain = werte.get("plausible_domain") or PLAUSIBLE_DOMAIN
     if url and domain:
+        # Skript und Zähladresse liegen auf der eigenen Domain und reichen
+        # nach innen weiter (siehe zaehler.py). Das interne Plausible ist
+        # vom Browser aus nicht erreichbar — bis zum 01.09.2026 stand hier
+        # dessen Container-Adresse, und die Zählung lief schlicht nicht.
+        #
+        # data-api muss dabeistehen: Ohne die Angabe schickt das Skript
+        # seine Meldungen dorthin, woher es geladen wurde.
         schnipsel = (
             f'<script defer data-domain="{domain}" '
-            f'src="{url}/js/script.js"></script>'
+            f'src="/statistik/zaehler.js" '
+            f'data-api="/statistik/ereignis"></script>'
         )
     return HTMLResponse(inhalt.replace("<!--PLAUSIBLE-->", schnipsel))
 

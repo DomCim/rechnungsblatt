@@ -78,11 +78,24 @@ services:
       #   openssl rand -base64 32
       RECHNUNGSBLATT_SCHLUESSEL: ${RECHNUNGSBLATT_SCHLUESSEL:?RECHNUNGSBLATT_SCHLUESSEL muss im Stack gesetzt sein}
       # Plausible: Skript wird nur eingebunden, wenn beide Werte gesetzt sind.
-      # Hinweis: Läuft die Seite über HTTPS, muss auch Plausible über HTTPS
-      # erreichbar sein (Mixed Content) — dann hier die HTTPS-Adresse eintragen.
-      # Ohne Wert wird gar kein Skript eingebunden. Vorher stand hier eine
-      # LAN-Adresse als Vorgabe — die ist vom Server aus nicht erreichbar
-      # und lieferte auf jeder Seite einen toten Skriptverweis.
+      #
+      # **Die INTERNE Adresse**, etwa `http://plausible:8000` — nicht eine
+      # öffentliche. Der Browser des Besuchers spricht Plausible nie direkt
+      # an: Er holt sein Skript unter `/statistik/zaehler.js` von dieser
+      # Domain, und Rechnungsblatt reicht die Zählung nach innen weiter
+      # (siehe `web/src/rechnungsblatt_web/zaehler.py`). `http` genügt also,
+      # und ein Werbeblocker erkennt nichts an der Adresse.
+      #
+      # Bis zum 01.09.2026 stand hier die Adresse eines fremden Containers,
+      # die der Browser weder auflösen konnte noch über HTTPS erreichte —
+      # gezählt wurde nichts, und auf jeder Seite stand ein Mixed-Content-
+      # Fehler in der Konsole.
+      #
+      # Diese Variable ist nur der Rückfall: Steht im Adminbereich unter
+      # „Zählung" eine Adresse, gewinnt die.
+      #
+      # Damit Rechnungsblatt Plausible erreicht, muss der Plausible-Stack
+      # im Netz `rechnungsblatt_intern` mitfahren — siehe unten.
       PLAUSIBLE_URL: ${PLAUSIBLE_URL:-}
       PLAUSIBLE_DOMAIN: ${RECHNUNGSBLATT_DOMAIN:-}
     labels:
@@ -114,4 +127,16 @@ volumes:
 networks:
   edge:
     external: true
+  # Datenbank und App unter sich. Portainer nennt es nach dem Stack, bei
+  # einem Stack namens „rechnungsblatt" also `rechnungsblatt_intern`.
+  #
+  # Dieser Name ist die Anschrift für die Besucherzählung: Der
+  # Plausible-Stack trägt ihn als `external: true` ein und fährt hier mit.
+  #
+  # **Die Richtung ist Absicht.** Plausible hängt sich hier ein, nicht
+  # umgekehrt: Angelegt wird das Netz von diesem Stack, der andere benutzt
+  # es nur mit. Fiele die Statistik aus, fehlte Rechnungsblatt nichts —
+  # andersherum könnte ein Fehler im Zähler das Ausrollen der Rechnungen
+  # aufhalten, und ein Betrieb schreibt keine Rechnungen mehr, weil der
+  # Besucherzähler hakt. Dasselbe Muster wie bei vh-website.
   intern:

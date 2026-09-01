@@ -121,6 +121,36 @@ uvicorn rechnungsblatt_web.main:app --reload
 - Pflichtfeld-Erzwingung im Formular, blockierend — Befunde des Kerns 1:1
   am Feld anzeigen (`Befund.feld` adressiert das Formularfeld).
 
+## Besucherzählung
+
+Plausible läuft im internen Netz — ohne Portfreigabe, ohne Zertifikat, für
+den Browser eines Besuchers nicht erreichbar. Rechnungsblatt liefert das
+Zählskript deshalb selbst aus und reicht die Ereignisse nach innen weiter:
+
+    Besucher → rechnungsblatt.de/statistik/zaehler.js → Plausible
+    Besucher → rechnungsblatt.de/statistik/ereignis   → Plausible
+
+Zwei Dinge fallen dabei nebenbei ab: Ein Skript, dessen Adresse
+`plausible` enthält, schlucken die gängigen Werbeblockerlisten — über die
+eigene Adresse ist es eine Datei wie jede andere. Und die
+Sicherheitsrichtlinie braucht keine Ausnahme für einen fremden Host.
+
+**Die Adresse ist die interne** (`http://plausible:8000`), nicht eine
+öffentliche. Sie steht im Adminbereich unter „Zählung"; `PLAUSIBLE_URL` im
+Stack ist nur der Rückfall, falls dort nichts eingetragen ist. Der
+Plausible-Stack fährt im Netz `rechnungsblatt_intern` mit. Bis zum 01.09.2026 stand dort die Adresse eines
+Containers, die der Browser nicht auflösen konnte, und die Anfrage wurde
+zusätzlich als Mixed Content blockiert — gezählt wurde nichts, aufgefallen
+ist es erst in einem PageSpeed-Bericht.
+
+Fällt Plausible aus, liefert `/statistik/zaehler.js` ein leeres Skript und
+`/statistik/ereignis` antwortet mit 202. Ein verlorener Seitenaufruf in der
+Statistik ist das kleinere Übel gegenüber einem Fehler in der Konsole des
+Kunden.
+
+Unter Fernsteuerung (`navigator.webdriver`, Headless Chrome) zählt das
+Skript nicht mit — sonst verfälschten die eigenen Messläufe die Statistik.
+
 ## MVP-Umfang
 
 Siehe `docs/uebergabe.md` §8 — Konto (steht), Stammdaten, Briefpapier-Upload,

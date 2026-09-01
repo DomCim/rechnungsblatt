@@ -81,6 +81,7 @@ from . import (
     wege_seiten,
     wege_verwaltung,
     wege_zahlung,
+    zaehler,
 )
 from .darstellung import nutzer_json, tarif_json
 from .basis import (
@@ -180,6 +181,9 @@ app.include_router(wege_einrichtung.wege)
 app.include_router(wege_beleg.wege)
 app.include_router(wege_verwaltung.wege)
 app.include_router(wege_zahlung.wege)
+# Die Besucherzählung läuft über die eigene Adresse — das interne
+# Plausible ist vom Browser aus nicht erreichbar.
+app.include_router(zaehler.wege)
 
 
 # ---------------------------------------------------------------- Seiten
