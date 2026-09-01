@@ -498,7 +498,7 @@
   // ---------- Start ----------
   async function starten() {
     var person = await RB.kopfKonto();
-    if (!person) { window.location.href = "/anmelden"; return; }
+    if (!person) { window.location.href = "/app/anmelden"; return; }
 
     var status = await RB.api("/api/status");
     if (status.ok) {

@@ -330,7 +330,7 @@
 
   async function lade() {
     var person = await RB.kopfKonto();
-    if (!person) { window.location.href = "/anmelden"; return; }
+    if (!person) { window.location.href = "/app/anmelden"; return; }
     el("adminKarte").hidden = person.rolle !== "admin";
     zeigeKonto(person);
     var verbrauch = await RB.api("/api/ich/verbrauch");

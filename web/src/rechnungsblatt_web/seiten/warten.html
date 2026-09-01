@@ -82,7 +82,7 @@
 
   async function pruefe() {
     var antwort = await RB.api("/api/ich");
-    if (!antwort.ok) { window.location.href = "/anmelden"; return; }
+    if (!antwort.ok) { window.location.href = "/app/anmelden"; return; }
     var person = antwort.daten;
     if (person.status === "frei") { window.location.href = "/app"; return; }
     var gesperrt = person.status === "gesperrt";
