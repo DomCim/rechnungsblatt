@@ -13,7 +13,7 @@
    falscher Beleg — schlimmer als gar keiner.
 */
 
-const VERSION = "rb-2026-08-25-3";   // hochziehen, wenn Hülle oder Symbole sich ändern
+const VERSION = "rb-2026-09-01-1";   // hochziehen, wenn Hülle oder Symbole sich ändern
 const HUELLE = `huelle-${VERSION}`;
 
 /* Nur die Hülle: Stilvorlage, Skript, Symbole, Offline-Hinweis. Seiten
@@ -21,6 +21,13 @@ const HUELLE = `huelle-${VERSION}`;
 const VORRAT = [
   "/seiten/basis.css",
   "/seiten/werkzeuge.js",
+  /* Die Schriften liegen seit dem 01.09.2026 hier statt bei Google. Nur
+     die lateinischen Schnitte in den Vorrat: latin-ext holt der Browser
+     über die unicode-range nach, wenn ein Name ihn braucht. */
+  "/seiten/schriften/schriften.css",
+  "/seiten/schriften/fraunces-latin.woff2",
+  "/seiten/schriften/instrument-sans-latin.woff2",
+  "/seiten/schriften/spline-sans-mono-latin.woff2",
   "/seiten/ohne-netz.html",
   "/seiten/symbole/symbol-192.png",
   "/seiten/symbole/symbol-512.png",

@@ -481,3 +481,46 @@ def test_verfahrensdokumentation_kommt_als_datei(client):
     assert "VERFAHRENSDOKUMENTATION" in text
     assert "{" not in text and "}" not in text
 
+def test_seiten_laden_nichts_von_fremden_servern():
+    """Keine Seite darf Schriften oder Skripte von außen ziehen.
+
+    Bis zum 01.09.2026 lud jede Seite von ``fonts.googleapis.com``. Das
+    kostete Zeit (zwei fremde Verbindungen vor dem ersten sichtbaren
+    Zeichen) und überträgt die IP jedes Besuchers an Google — wofür das
+    LG München I Schadensersatz zugesprochen hat (20.01.2022,
+    3 O 17493/20). Die Schriften liegen deshalb unter
+    ``/seiten/schriften/``.
+
+    Dieser Test ist die Sperre dagegen, dass jemand aus Bequemlichkeit
+    wieder ein ``<link>`` nach außen setzt: Ohne ihn fiele es erst beim
+    nächsten Datenschutz-Audit auf.
+    """
+    seiten = Path(__file__).resolve().parents[1] / "src/rechnungsblatt_web/seiten"
+    erlaubt_extern = {
+        # Plausible wird bewusst eingebunden, aber nur wenn konfiguriert;
+        # der Platzhalter steht als Kommentar in den Seiten.
+        "plausible.io",
+    }
+    verstoesse = []
+    for datei in sorted(seiten.glob("*.html")):
+        text = datei.read_text(encoding="utf-8")
+        for treffer in re.findall(r'(?:href|src)="(https?://[^"]+)"', text):
+            if not any(gut in treffer for gut in erlaubt_extern):
+                verstoesse.append(f"{datei.name}: {treffer}")
+
+    assert not verstoesse, "Fremde Ressourcen: " + ", ".join(verstoesse)
+
+
+def test_schriften_liegen_lokal_vor():
+    """Die Schriftdateien müssen im Repository liegen, nicht nur im CSS."""
+    schriften = (Path(__file__).resolve().parents[1]
+                 / "src/rechnungsblatt_web/seiten/schriften")
+    assert (schriften / "schriften.css").exists()
+    dateien = sorted(p.name for p in schriften.glob("*.woff2"))
+    assert dateien, "Keine Schriftdateien — scripts/hole_schriften.py laufen lassen"
+
+    css = (schriften / "schriften.css").read_text(encoding="utf-8")
+    for name in dateien:
+        assert name in css, f"{name} liegt da, wird aber im CSS nicht genannt"
+    for verweis in re.findall(r"url\(/seiten/schriften/([^)]+)\)", css):
+        assert (schriften / verweis).exists(), f"{verweis} fehlt auf der Platte"
