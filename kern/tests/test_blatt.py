@@ -141,3 +141,111 @@ def test_einseitig_ohne_seitenzahl(rechnung, stammdaten):
         text = _seitentext(pdf, 0)
     assert "Seite 1 von" not in text
     assert "bertrag" not in text
+
+
+def _uebertraege(text: str) -> list[Decimal]:
+    """Alle Beträge, die in einer Übertragszeile stehen.
+
+    Der Text kommt aus den Content-Streams; „Übertrag" und der Betrag
+    stehen dort als getrennte Zeichenketten nebeneinander.
+    """
+    betraege = []
+    stuecke = text.split()
+    for i, stueck in enumerate(stuecke):
+        if "bertrag" not in stueck:
+            continue
+        # Der Betrag folgt unmittelbar — als „1.234,56 €" oder Teilen davon.
+        rest = " ".join(stuecke[i + 1:i + 4])
+        treffer = re.search(r"([\d.]+,\d\d)", rest)
+        if treffer:
+            betraege.append(Decimal(treffer.group(1).replace(".", "").replace(",", ".")))
+    return betraege
+
+
+def test_uebertrag_traegt_den_richtigen_betrag(rechnung, stammdaten):
+    """Der Übertrag muss die Positionen bis zum Seitenende summieren.
+
+    Bisher prüfte nur eine Zeichenkette, dass „Übertrag" überhaupt
+    dasteht. Der **Wert** war ungeprüft — und er entsteht in `blatt.py`
+    aus einer zweiten, vom Rechenwerk unabhängigen Summierung
+    (`laufende_summe += zeilensumme(...)`). Liefe die je auseinander,
+    zeigte das Blatt einen Übertrag, der nicht zur Endsumme passt: für
+    den Kunden ein sichtbarer Rechenfehler auf seiner Rechnung.
+    """
+    viele = _viele_positionen(rechnung, 40)
+    summen = berechne_summen(viele)
+    blatt = rendere_blatt(viele, stammdaten, summen, Schreibzone())
+    with pikepdf.open(io.BytesIO(blatt)) as pdf:
+        seiten = len(pdf.pages)
+        texte = [_seitentext(pdf, i) for i in range(seiten)]
+
+    assert seiten > 1, "der Fall braucht einen Seitenumbruch"
+
+    # Jeder Übertrag steht zweimal: unten auf der Seite, die ihn
+    # abschließt, und oben auf der folgenden. Die letzte Seite mit
+    # Positionen schließt ohne — dort endet die Liste, es folgt der
+    # Summenblock. Geprüft wird die Paarung, nicht die Seitenzahl.
+    je_seite = [_uebertraege(t) for t in texte]
+    for nummer, werte in enumerate(je_seite):
+        if len(werte) == 2:
+            # Seite mit übernommenem und weitergereichtem Übertrag.
+            assert werte[0] < werte[1], (
+                f"Seite {nummer + 1}: Übertrag schrumpft von {werte[0]} "
+                f"auf {werte[1]}")
+        if werte and nummer + 1 < len(je_seite) and je_seite[nummer + 1]:
+            assert werte[-1] == je_seite[nummer + 1][0], (
+                f"Seite {nummer + 1} reicht {werte[-1]} weiter, "
+                f"Seite {nummer + 2} übernimmt {je_seite[nummer + 1][0]}")
+
+    kette = [w for werte in je_seite for w in werte]
+    assert kette, "kein einziger Übertrag gefunden"
+    assert kette == sorted(kette), f"Überträge laufen nicht aufwärts: {kette}"
+    assert kette[-1] < summen.zeilensumme, (
+        f"letzter Übertrag {kette[-1]} muss unter der Zeilensumme "
+        f"{summen.zeilensumme} liegen")
+    # Alle Positionen zu 10,00 €: jeder Übertrag ist ein glattes Vielfaches.
+    for wert in kette:
+        assert wert % Decimal("10.00") == 0, (
+            f"Übertrag {wert} passt nicht zu Positionen à 10,00 €")
+
+
+def test_uebertrag_und_endsumme_passen_zusammen(rechnung, stammdaten):
+    """Die Zeilensumme auf dem Blatt muss die des Rechenwerks sein.
+
+    Der Gegencheck zum Übertrag: Selbst wenn die Überträge untereinander
+    stimmen, könnte die Schlusssumme daneben liegen.
+    """
+    viele = _viele_positionen(rechnung, 40)
+    summen = berechne_summen(viele)
+    blatt = rendere_blatt(viele, stammdaten, summen, Schreibzone())
+    with pikepdf.open(io.BytesIO(blatt)) as pdf:
+        letzte = _seitentext(pdf, len(pdf.pages) - 1)
+
+    erwartet = f"{summen.zeilensumme:,.2f}".replace(",", "#").replace(".", ",")
+    erwartet = erwartet.replace("#", ".")
+    assert erwartet in letzte, (
+        f"Zeilensumme {erwartet} steht nicht auf der Schlussseite")
+
+
+def test_seitenzahl_stimmt_bei_verschiedenen_laengen(rechnung, stammdaten):
+    """„Seite 1 von N" muss zur tatsächlichen Seitenzahl passen.
+
+    Der Beleg entsteht in zwei Durchläufen: erst zählen, dann zeichnen.
+    Bräche der zweite Lauf anders um als der erste, stünde „Seite 3 von 2"
+    auf dem Blatt. Ein Kommentar in `blatt.py` zeigt, dass genau das schon
+    einmal auftrat und mit etwas Reserve entschärft wurde — geprüft hat es
+    bisher nichts.
+    """
+    for anzahl in (12, 25, 40, 60):
+        viele = _viele_positionen(rechnung, anzahl)
+        summen = berechne_summen(viele)
+        blatt = rendere_blatt(viele, stammdaten, summen, Schreibzone())
+        with pikepdf.open(io.BytesIO(blatt)) as pdf:
+            seiten = len(pdf.pages)
+            texte = [_seitentext(pdf, i) for i in range(seiten)]
+        if seiten == 1:
+            continue
+        for nummer, text in enumerate(texte, start=1):
+            assert f"Seite {nummer} von {seiten}" in text, (
+                f"{anzahl} Positionen ergeben {seiten} Seiten, "
+                f"Seite {nummer} behauptet etwas anderes")
