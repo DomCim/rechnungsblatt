@@ -70,15 +70,31 @@ muss sie von Hand nachstellen:
 | Sie fährt **ohne `RECHNUNGSBLATT_SCHLUESSEL`** | Ohne ihn legt die App Geheimnisse im Klartext ab. Lokal ist er im Container gesetzt, in der CI nicht — das hat schon einen roten Lauf verursacht, der lokal grün war. Also zusätzlich mit `-e RECHNUNGSBLATT_SCHLUESSEL=` testen. |
 | Sie prüft die **Referenzfälle** gegen den Mustang-Validator | Nur nötig, wenn sich am Beleg etwas geändert hat. |
 
-**Der Ablauf eines Release**
+**Claude sammelt auf `develop` und veröffentlicht nicht.**
 
-1. Release-PR `develop` → `main` stellen.
+Feature-Branch → PR nach `develop` → mergen: so weit arbeitet Claude
+selbständig. **`develop` → `main` ist Dominiks Entscheidung.** Auch dann
+nicht mergen, wenn eine frühere Nachricht in derselben Sitzung „liefer
+aus" sagte — die galt für den damaligen Stand.
+
+Der Grund ist der Weg dahinter: Der Push auf `main` baut das Image, und
+der Stack holt sich `latest` **von selbst** (GitOps-Polling, 5 Minuten).
+Zwischen Merge und Produktivstand liegt kein weiterer Handgriff, bei dem
+noch jemand hinschaut. Ein Merge nach `main` *ist* die Veröffentlichung.
+
+Lässt sich ein Bau noch abfangen: `scripts/gh-domcim.sh run cancel <id>`,
+solange er läuft. Danach hilft nur `RECHNUNGSBLATT_VERSION` im Stack auf
+einen älteren Stand.
+
+**Der Ablauf eines Release** — von Dominik ausgelöst:
+
+1. Release-PR `develop` → `main` stellen (das darf Claude vorbereiten).
 2. Falls gewünscht `ci.yml` von Hand starten — **das macht Dominik**,
    nicht Claude (siehe oben).
 3. Mergen. Der Push auf `main` löst `veroeffentlichen.yml` aus; das Image
    erscheint als `latest`, als Datum und als `sha-<commit>`.
-4. **Ausgerollt ist damit noch nichts.** In Portainer den Stack neu
-   deployen — er zieht das Image (`pull_policy: always`).
+4. Der Stack zieht es beim nächsten Polling-Durchlauf (5 Minuten) —
+   oder sofort über „Pull and redeploy" in Portainer.
 
 `RECHNUNGSBLATT_VERSION` im Stack setzen, um auf einen bestimmten Stand
 festzunageln statt `latest` zu folgen; das ist zugleich der Rückweg, wenn

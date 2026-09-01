@@ -52,7 +52,6 @@
     </div>
     <div class="zeile">
       <nav class="reiter">
-        <a href="/app/einrichtung" data-i18n="navEinrichtung">Einrichtung</a>
         <a href="/app/rechnung" data-i18n="navRechnung">Neue Rechnung</a>
         <a href="/app/stamm" data-i18n="navStamm">Stammdaten</a>
         <a href="/app/ablage" data-i18n="navAblage">Ablage</a>
@@ -156,6 +155,18 @@
   <!-- Abmelden und der Weg nach draußen. In der installierten App ist der
        Hamburger ausgeblendet — ohne diese Knöpfe wäre das Konto dort eine
        Sackgasse, aus der man nur über die Adresszeile herauskommt. -->
+  <section class="karte">
+    <h2 data-i18n="einrichtungTitel">Einrichtung</h2>
+    <p class="beschreibung" data-i18n="einrichtungText">
+      Briefpapier, Schreibzone, Ihre Angaben und das Aussehen der
+      Rechnung. Einmal eingestellt, gilt es für jeden Beleg.
+    </p>
+    <div class="zeile">
+      <a class="knopf" href="/app/einrichtung" data-i18n="einrichtungKnopf">Zur Einrichtung</a>
+      <a class="knopf leise" href="/app/willkommen" data-i18n="einrichtungFuehrung">Schritt für Schritt</a>
+    </div>
+  </section>
+
   <!-- Nur fuer Admins. Frueher stand der Adminbereich als sechster
        Reiter in der Leiste — am Handy passte das nicht nebeneinander,
        und gebraucht wird er selten. -->
@@ -217,6 +228,10 @@
       bezahlVerwalten: "Zahlungen verwalten",
       bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
       abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
+      einrichtungTitel: "Einrichtung",
+      einrichtungText: "Briefpapier, Schreibzone, Ihre Angaben und das Aussehen der Rechnung. Einmal eingestellt, gilt es für jeden Beleg.",
+      einrichtungKnopf: "Zur Einrichtung",
+      einrichtungFuehrung: "Schritt für Schritt",
       adminTitel: "Verwaltung",
       adminText: "Konten freischalten, Tarife pflegen, Postausgang und Zahlungen einrichten. Nur für Sie sichtbar.",
       adminKnopf: "Zum Adminbereich",
@@ -254,6 +269,10 @@
       bezahlVerwalten: "Manage payments",
       bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
       abgebrochen: "Cancelled. Nothing was charged.",
+      einrichtungTitel: "Setup",
+      einrichtungText: "Letterhead, writing area, your details and the look of the invoice. Set once, valid for every document.",
+      einrichtungKnopf: "Open setup",
+      einrichtungFuehrung: "Step by step",
       adminTitel: "Administration",
       adminText: "Activate accounts, maintain plans, set up outgoing mail and payments. Visible only to you.",
       adminKnopf: "Open administration",

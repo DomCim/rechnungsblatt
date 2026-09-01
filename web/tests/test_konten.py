@@ -214,12 +214,17 @@ def test_gesperrtes_konto_verliert_die_sitzung(klient, leere_konten):
 def test_landung_fuehrt_zur_einrichtung_und_danach_zum_formular(
     klient, leere_konten, tmp_path
 ):
-    """Kernfrage des Entwurfs: Formular als Startseite, sobald alles da ist."""
+    """Kernfrage des Entwurfs: Formular als Startseite, sobald alles da ist.
+
+    Wer noch nicht eingerichtet ist, landet im **Assistenten**, nicht auf
+    der Einrichtungsseite: Die zeigt alle vier Schritte nebeneinander und
+    setzt voraus, dass man weiß, womit man anfängt.
+    """
     lege_kunden_an(leere_konten, "kunde@example.de", "langgenug12")
     melde_an(klient, "kunde@example.de", "langgenug12")
 
     ohne = klient.get("/app", follow_redirects=False)
-    assert ohne.headers["location"] == "/app/einrichtung"
+    assert ohne.headers["location"] == "/app/willkommen"
 
     person, _ = leere_konten.pruefe_anmeldung("kunde@example.de", "langgenug12")
     wurzel = tmp_path / "nutzer" / str(person.id)
@@ -228,7 +233,7 @@ def test_landung_fuehrt_zur_einrichtung_und_danach_zum_formular(
         (wurzel / name).write_text("{}", encoding="utf-8")
 
     # Leere Objekte gelten nicht als eingerichtet — erst mit Inhalt.
-    assert klient.get("/app", follow_redirects=False).headers["location"] == "/app/einrichtung"
+    assert klient.get("/app", follow_redirects=False).headers["location"] == "/app/willkommen"
     for name in ("briefpapier.json", "schreibzone.json", "stammdaten.json"):
         (wurzel / name).write_text('{"gesetzt": true}', encoding="utf-8")
 
@@ -1302,3 +1307,19 @@ def test_neuer_code_verlangt_das_passwort(leere_konten):
                       json={"passwort": "geheim-genug-123"})
     assert gut.status_code == 200
     assert len(gut.json()["wiederherstellungscode"]) >= 20
+
+
+def test_assistent_ist_erreichbar_und_nennt_die_schritte(klient, leere_konten):
+    """Der Assistent liefert alle vier Schritte aus — sichtbar wird einer.
+
+    Welcher, entscheidet die Seite aus dem Stand am Server; hier zählt,
+    dass die Seite steht und die Endpunkte kennt, die sie bedient.
+    """
+    lege_kunden_an(leere_konten, "neu@example.de", "langgenug12")
+    melde_an(klient, "neu@example.de", "langgenug12")
+
+    seite = klient.get("/app/willkommen")
+    assert seite.status_code == 200
+    for teil in ("schritt1", "schritt2", "schritt3", "schritt4",
+                 "/api/briefpapier", "/api/schreibzone", "/api/stammdaten"):
+        assert teil in seite.text, teil
