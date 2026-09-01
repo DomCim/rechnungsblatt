@@ -135,8 +135,10 @@ Zwei Dinge fallen dabei nebenbei ab: Ein Skript, dessen Adresse
 eigene Adresse ist es eine Datei wie jede andere. Und die
 Sicherheitsrichtlinie braucht keine Ausnahme für einen fremden Host.
 
-**`PLAUSIBLE_URL` trägt die interne Adresse** (`http://plausible:8000`),
-nicht eine öffentliche. Bis zum 01.09.2026 stand dort die Adresse eines
+**Die Adresse ist die interne** (`http://plausible:8000`), nicht eine
+öffentliche. Sie steht im Adminbereich unter „Zählung"; `PLAUSIBLE_URL` im
+Stack ist nur der Rückfall, falls dort nichts eingetragen ist. Der
+Plausible-Stack fährt im Netz `rechnungsblatt_intern` mit. Bis zum 01.09.2026 stand dort die Adresse eines
 Containers, die der Browser nicht auflösen konnte, und die Anfrage wurde
 zusätzlich als Mixed Content blockiert — gezählt wurde nichts, aufgefallen
 ist es erst in einem PageSpeed-Bericht.
