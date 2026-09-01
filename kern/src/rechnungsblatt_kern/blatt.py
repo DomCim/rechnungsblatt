@@ -35,6 +35,10 @@ from .modell import (
 from .summen import Summen, zeilensumme
 
 _RAND_LINKS = 20 * mm
+# DIN 5008 Form B: Anschriftenfeld ab 45 mm von der Oberkante. Das ist die
+# Stelle, an der das Fenster im Umschlag sitzt — sie hängt nicht davon ab,
+# wie hoch der Briefkopf ist.
+_ANSCHRIFT_OBEN = 45 * mm
 _RAND_RECHTS = 20 * mm
 
 # Anzeige gängiger UN/ECE-Rec-20-Einheitencodes auf dem Blatt
@@ -372,16 +376,26 @@ def _rendere(
         c.line(x1, y, x2, y)
         c.setStrokeColorRGB(0, 0, 0)
 
-    y = oben - 6 * mm
+    # **Das Anschriftenfeld sitzt fest, nicht hinter dem Briefkopf.**
+    # DIN 5008 Form B setzt die Absenderzeile auf 45 mm von oben; genau
+    # dort liegt das Sichtfenster im Umschlag. Bei einem hohen Briefkopf
+    # rutschte die Adresse sonst darunter und war im Fenster nicht mehr
+    # zu sehen — bei jeder Schreibzone, nicht nur bei ungewöhnlichen.
+    y = hoehe - _ANSCHRIFT_OBEN
 
-    # Absenderzeile über dem Empfängerfeld (Fensterkuvert-Konvention)
     anschrift = stammdaten.anschrift
-    c.setFont(schriften.normal, basis - 2)
-    c.drawString(
-        _RAND_LINKS,
-        y,
-        f"{stammdaten.firmierung} · {anschrift.strasse} · {anschrift.plz} {anschrift.ort}",
-    )
+    if stammdaten.absenderzeile:
+        # Die kleine Zeile über dem Empfänger. Wer sie schon auf dem Bogen
+        # hat, schaltet sie ab — sonst steht sie doppelt.
+        c.setFont(schriften.normal, basis - 2)
+        c.drawString(
+            _RAND_LINKS,
+            y,
+            f"{stammdaten.firmierung} · {anschrift.strasse} · "
+            f"{anschrift.plz} {anschrift.ort}",
+        )
+    # Der Empfänger beginnt in beiden Fällen an derselben Stelle: Das Feld
+    # ist genormt, nicht der Inhalt darüber.
     y -= 8 * mm
 
     # Empfängerblock links
@@ -431,6 +445,11 @@ def _rendere(
         y = min(block_y, daten_y) - 10 * mm
     else:
         y = block_y - 10 * mm
+
+    # Zurück in die Schreibzone. Das Anschriftenfeld sitzt fest bei 45 mm
+    # und kann über dem Briefkopfende liegen; alles danach gehört wieder
+    # dorthin, wo der Bogen frei ist — sonst liefe der Titel in den Kopf.
+    y = min(y, oben - 6 * mm)
 
     # Titel
     _pruefe_platz(y, unten)

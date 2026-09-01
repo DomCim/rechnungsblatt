@@ -249,3 +249,69 @@ def test_seitenzahl_stimmt_bei_verschiedenen_laengen(rechnung, stammdaten):
             assert f"Seite {nummer} von {seiten}" in text, (
                 f"{anzahl} Positionen ergeben {seiten} Seiten, "
                 f"Seite {nummer} behauptet etwas anderes")
+
+
+def _position_von(pdf_bytes: bytes, suchtext: str) -> float | None:
+    """Wo steht ein Text auf Seite 1 — in mm von der Oberkante?"""
+    with pikepdf.open(io.BytesIO(pdf_bytes)) as pdf:
+        roh = pikepdf.Page(pdf.pages[0]).obj.Contents.read_bytes()
+    text = roh.decode("latin-1", "replace")
+    stelle = text.find(suchtext)
+    if stelle < 0:
+        return None
+    # Die Textmatrix vor dem Fund gibt die Position: „1 0 0 1 x y Tm".
+    letzte = None
+    for treffer in re.finditer(r"1 0 0 1 ([\d.]+) ([\d.]+) Tm", text):
+        if treffer.start() < stelle:
+            letzte = treffer
+    if letzte is None:
+        return None
+    # A4-Höhe in Punkten; PDF zählt von unten, wir wollen von oben in mm.
+    return (842 - float(letzte.group(2))) / 72 * 25.4
+
+
+def test_anschriftenfeld_sitzt_im_umschlagfenster(rechnung, stammdaten):
+    """Die Empfängeradresse steht fest bei DIN 5008, nicht hinter dem Kopf.
+
+    Vorher begann sie ``kopf_ende_mm + 14 mm`` von oben — bei einem hohen
+    Briefkopf also weit unter dem Sichtfenster (45–85 mm). Gemessen lag
+    sie zwischen 49 und 94 mm, je nach Schreibzone; im Fenster war sie in
+    **keiner** Einstellung zuverlässig.
+
+    Das Feld ist genormt, weil das Fenster im Umschlag genormt ist — es
+    darf nicht davon abhängen, wie hoch jemand seinen Briefkopf gestaltet.
+    """
+    for kopf in (30, 45, 52, 65, 80):
+        blatt = rendere_blatt(
+            rechnung, stammdaten, berechne_summen(rechnung),
+            Schreibzone(kopf_ende_mm=kopf, fuss_beginn_mm=25))
+        mm_von_oben = _position_von(blatt, "Beispielkunde")
+        assert mm_von_oben is not None, f"Empfänger nicht gefunden (kopf={kopf})"
+        assert 45 <= mm_von_oben <= 85, (
+            f"kopf_ende={kopf} mm: Empfänger bei {mm_von_oben:.1f} mm — "
+            "außerhalb des Sichtfensters (45–85 mm)")
+
+
+def test_absenderzeile_laesst_sich_abschalten(rechnung, stammdaten):
+    """Wer sie auf dem Bogen hat, will sie nicht doppelt.
+
+    Der Empfänger bleibt dabei an derselben Stelle: Das Anschriftenfeld
+    ist genormt, nicht der Inhalt darüber.
+    """
+    zone = Schreibzone(kopf_ende_mm=45, fuss_beginn_mm=25)
+    summen = berechne_summen(rechnung)
+
+    mit = rendere_blatt(rechnung, stammdaten, summen, zone)
+    ohne = rendere_blatt(
+        rechnung, dataclasses.replace(stammdaten, absenderzeile=False),
+        summen, zone)
+
+    assert stammdaten.firmierung in _seitentext_von(mit)
+    # Die Firmierung steht auch sonst auf dem Beleg (Fußzeile, Absender im
+    # Kopf) — geprüft wird die Zeile über dem Empfänger, also die Position.
+    assert _position_von(mit, "Beispielkunde") == _position_von(ohne, "Beispielkunde")
+
+
+def _seitentext_von(pdf_bytes: bytes) -> str:
+    with pikepdf.open(io.BytesIO(pdf_bytes)) as pdf:
+        return _seitentext(pdf, 0)
