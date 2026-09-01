@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnungsblatt — Erste Schritte</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..800,0..100&family=Instrument+Sans:wght@400;500;600&family=Spline+Sans+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/seiten/basis.css">
+<meta name="robots" content="noindex, nofollow">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-180.png">
+<meta name="theme-color" content="#1f1c18">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rechnungsblatt">
+<style>
+  /* Die Leiter oben. Sie zeigt, wo man steht und wie weit es noch ist —
+     das Wichtigste an einem mehrstufigen Formular: Wer nicht weiß, wie
+     viel kommt, bricht eher ab. */
+  .leiter {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 22px;
+    list-style: none;
+    padding: 0;
+  }
+  .leiter li {
+    flex: 1;
+    min-width: 0;          /* sonst sprengen lange Namen die Zeile */
+    text-align: center;
+    font-size: 12px;
+    color: var(--tinte-2);
+  }
+  .leiter li .balken {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--linie);
+    margin-bottom: 7px;
+    transition: background 200ms var(--kurve, ease);
+  }
+  .leiter li.erledigt .balken { background: var(--gut); }
+  .leiter li.hier .balken { background: var(--akzent); }
+  .leiter li.hier { color: var(--tinte); font-weight: 600; }
+  .leiter li .name {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Am Handy nur die Balken: Vier Namen nebeneinander sind bei 390px
+     unlesbar, und die Überschrift darunter sagt ohnehin, wo man ist. */
+  @media (max-width: 560px) {
+    .leiter li .name { display: none; }
+    .leiter li .balken { margin-bottom: 0; }
+  }
+
+  .editor-rahmen {
+    width: 100%;
+    border: none;
+    border-radius: var(--radius);
+    height: 880px;
+    background: transparent;
+  }
+  @media (max-width: 780px) { .editor-rahmen { height: 1180px; } }
+
+  .upload-zone {
+    display: block;
+    border: 2px dashed var(--linie);
+    border-radius: var(--radius);
+    padding: 26px 20px;
+    text-align: center;
+    color: var(--tinte-2);
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .upload-zone:hover, .upload-zone.aktiv {
+    border-color: var(--akzent);
+    background: var(--akzent-schleier);
+    color: var(--akzent-tinte);
+  }
+  .upload-zone strong { color: var(--tinte); display: block; margin-bottom: 3px; }
+
+  .schrittfuss {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid var(--linie);
+  }
+  .schrittfuss .rechts { margin-left: auto; }
+  @media (max-width: 560px) {
+    /* Am Handy untereinander: Zwei Knöpfe plus Textlink passen nicht
+       nebeneinander, ohne dass einer zu schmal zum Treffen wird.
+       `stretch` genügt — ein zusätzliches `width: 100%` rechnete den
+       Rand der Bühne mit und schob die Knöpfe über den Rand. */
+    .schrittfuss { flex-direction: column; align-items: stretch; }
+    .schrittfuss .rechts { margin-left: 0; }
+    .schrittfuss .knopf { text-align: center; }
+  }
+</style>
+<!--PLAUSIBLE-->
+</head>
+<body>
+
+<div class="buehne">
+
+  <header class="kopf">
+    <div>
+      <div class="marke" data-i18n="marke">Rechnungsblatt</div>
+      <h1 data-i18n="titel">Erste Schritte</h1>
+      <p class="untertitel" data-i18n="untertitel">
+        Drei Angaben, dann steht Ihre erste Rechnung. Sie können jederzeit
+        aufhören und später weitermachen — nichts geht verloren.
+      </p>
+    </div>
+  </header>
+
+  <ol class="leiter" id="leiter"></ol>
+
+  <div class="meldung" id="meldung" role="status" aria-live="polite"></div>
+
+  <!-- Schritt 1 -->
+  <section class="karte" id="schritt1" hidden>
+    <h2 data-i18n="s1Titel">Ihr Briefpapier</h2>
+    <p class="beschreibung" data-i18n="s1Text">
+      Laden Sie Ihren Briefbogen als PDF hoch — eine Seite. Farben und
+      Schriften werden vereinheitlicht, damit daraus eine gültige
+      E-Rechnung werden kann. Ihr Original bleibt unangetastet.
+    </p>
+    <label class="upload-zone" id="uploadZone" for="uploadEingabe">
+      <strong data-i18n="uploadTitel">PDF hier ablegen oder tippen</strong>
+      <span data-i18n="uploadHinweis">Eine Seite, bis 20 MB</span>
+      <input id="uploadEingabe" type="file" accept=".pdf,application/pdf" hidden>
+    </label>
+    <p class="beschreibung" style="margin:10px 0 0;" data-i18n="s1Word">
+      Nur als Word-Datei vorhanden? In Word „Datei → Speichern unter →
+      Dateityp: PDF“ wählen und die PDF hochladen.
+    </p>
+    <div id="s1Meldung" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- Schritt 2 -->
+  <section class="karte" id="schritt2" hidden>
+    <h2 data-i18n="s2Titel">Wo darf geschrieben werden?</h2>
+    <p class="beschreibung" data-i18n="s2Text">
+      Zwei Linien, mehr nicht: Wo endet Ihr Briefkopf, wo beginnt Ihre
+      Fußzeile? Dazwischen steht später die Rechnung.
+    </p>
+    <iframe class="editor-rahmen" id="zonenEditor" title="Schreibzonen-Editor"></iframe>
+  </section>
+
+  <!-- Schritt 3 -->
+  <section class="karte" id="schritt3" hidden>
+    <h2 data-i18n="s3Titel">Ihre Angaben</h2>
+    <p class="beschreibung" data-i18n="s3Text">
+      Das, was auf jeder Rechnung stehen muss. § 14 UStG verlangt
+      Steuernummer oder USt-IdNr. — eines von beiden genügt.
+    </p>
+    <div class="felder">
+      <div class="feld breit"><label for="firmierung" data-i18n="fFirmierung">Firmierung</label>
+        <input id="firmierung" autocomplete="organization"></div>
+      <div class="feld breit"><label for="strasse" data-i18n="fStrasse">Straße und Nummer</label>
+        <input id="strasse" autocomplete="street-address"></div>
+      <div class="feld"><label for="plz" data-i18n="fPlz">PLZ</label>
+        <input id="plz" autocomplete="postal-code"></div>
+      <div class="feld"><label for="ort" data-i18n="fOrt">Ort</label>
+        <input id="ort" autocomplete="address-level2"></div>
+      <div class="feld"><label for="steuernummer" data-i18n="fSteuernummer">Steuernummer</label>
+        <input id="steuernummer"></div>
+      <div class="feld"><label for="ustIdnr" data-i18n="fUstIdnr">USt-IdNr.</label>
+        <input id="ustIdnr"></div>
+      <div class="feld"><label for="iban" data-i18n="fIban">IBAN</label>
+        <input id="iban" autocomplete="off"></div>
+      <div class="feld"><label for="bic" data-i18n="fBic">BIC</label>
+        <input id="bic" autocomplete="off"></div>
+      <div class="feld"><label for="zahlungsziel" data-i18n="fZahlungsziel">Zahlungsziel (Tage)</label>
+        <input id="zahlungsziel" type="number" min="0" max="180" value="14"></div>
+    </div>
+    <label class="schalter" style="margin-top:12px;">
+      <input type="checkbox" id="kleinunternehmer"><span class="hebel"></span>
+      <span data-i18n="fKleinunternehmer">Kleinunternehmer nach § 19 UStG</span>
+    </label>
+    <div id="s3Meldung" style="margin-top:12px;"></div>
+  </section>
+
+  <!-- Schritt 4: geschafft -->
+  <section class="karte" id="schritt4" hidden>
+    <h2 data-i18n="s4Titel">Fertig</h2>
+    <p class="beschreibung" data-i18n="s4Text">
+      Ihre Einrichtung steht. Ab jetzt entstehen PDF und XML in einem
+      Vorgang — auf Ihrem eigenen Briefpapier.
+    </p>
+    <div class="zeile" style="margin-top:14px;">
+      <a class="knopf" href="/app/rechnung" data-i18n="s4Knopf">Erste Rechnung schreiben</a>
+      <a class="knopf leise" href="/app/einrichtung" data-i18n="s4Gestaltung">Aussehen anpassen</a>
+    </div>
+  </section>
+
+  <div class="schrittfuss" id="fuss">
+    <button type="button" class="knopf leise" id="zurueck" data-i18n="zurueck">Zurück</button>
+    <a class="knopf leise" href="/app/einrichtung" id="ueberspringen"
+       data-i18n="ueberspringen">Ohne Führung einrichten</a>
+    <button type="button" class="knopf rechts" id="weiter" data-i18n="weiter">Weiter</button>
+  </div>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var texte = {
+    de: {
+      marke: "Rechnungsblatt", titel: "Erste Schritte",
+      untertitel: "Drei Angaben, dann steht Ihre erste Rechnung. Sie können jederzeit aufhören und später weitermachen — nichts geht verloren.",
+      lBriefpapier: "Briefpapier", lZone: "Schreibzone",
+      lAngaben: "Angaben", lFertig: "Fertig",
+      s1Titel: "Ihr Briefpapier",
+      s1Text: "Laden Sie Ihren Briefbogen als PDF hoch — eine Seite. Farben und Schriften werden vereinheitlicht, damit daraus eine gültige E-Rechnung werden kann. Ihr Original bleibt unangetastet.",
+      uploadTitel: "PDF hier ablegen oder tippen", uploadHinweis: "Eine Seite, bis 20 MB",
+      s1Word: "Nur als Word-Datei vorhanden? In Word „Datei → Speichern unter → Dateityp: PDF“ wählen und die PDF hochladen.",
+      s2Titel: "Wo darf geschrieben werden?",
+      s2Text: "Zwei Linien, mehr nicht: Wo endet Ihr Briefkopf, wo beginnt Ihre Fußzeile? Dazwischen steht später die Rechnung.",
+      s3Titel: "Ihre Angaben",
+      s3Text: "Das, was auf jeder Rechnung stehen muss. § 14 UStG verlangt Steuernummer oder USt-IdNr. — eines von beiden genügt.",
+      fFirmierung: "Firmierung", fStrasse: "Straße und Nummer", fPlz: "PLZ",
+      fOrt: "Ort", fSteuernummer: "Steuernummer", fUstIdnr: "USt-IdNr.",
+      fIban: "IBAN", fBic: "BIC", fZahlungsziel: "Zahlungsziel (Tage)",
+      fKleinunternehmer: "Kleinunternehmer nach § 19 UStG",
+      s4Titel: "Fertig",
+      s4Text: "Ihre Einrichtung steht. Ab jetzt entstehen PDF und XML in einem Vorgang — auf Ihrem eigenen Briefpapier.",
+      s4Knopf: "Erste Rechnung schreiben", s4Gestaltung: "Aussehen anpassen",
+      zurueck: "Zurück", weiter: "Weiter", fertig: "Abschließen",
+      ueberspringen: "Ohne Führung einrichten",
+      laedt: "Einen Moment …",
+      s1Fehlt: "Bitte zuerst ein Briefpapier hochladen.",
+      s2Fehlt: "Bitte zuerst die beiden Linien setzen und sichern.",
+      s3Fehlt: "Firmierung, Anschrift und eine Steuernummer werden gebraucht.",
+      s3Steuer: "Steuernummer oder USt-IdNr. — eines von beiden wird gebraucht.",
+      hochgeladen: "Briefpapier übernommen.",
+      gesichert: "Gesichert.",
+      keinPdf: "Das ist keine PDF-Datei.",
+      istWord: "Das ist eine Word-Datei. Bitte in Word als PDF speichern und die PDF hochladen.",
+      zuGross: "Die Datei ist größer als 20 MB.",
+      fehlerAllgemein: "Das hat nicht geklappt."
+    },
+    en: {
+      marke: "Rechnungsblatt", titel: "Getting started",
+      untertitel: "Three details and your first invoice is ready. You can stop at any time and continue later — nothing is lost.",
+      lBriefpapier: "Letterhead", lZone: "Writing area",
+      lAngaben: "Details", lFertig: "Done",
+      s1Titel: "Your letterhead",
+      s1Text: "Upload your letterhead as a PDF — one page. Colours and fonts are normalised so a valid e-invoice can be built from it. Your original stays untouched.",
+      uploadTitel: "Drop a PDF here or tap", uploadHinweis: "One page, up to 20 MB",
+      s1Word: "Only have a Word file? In Word choose “File → Save as → File type: PDF” and upload the PDF.",
+      s2Titel: "Where may we write?",
+      s2Text: "Two lines, nothing more: where does your letterhead end, where does your footer begin? The invoice goes in between.",
+      s3Titel: "Your details",
+      s3Text: "What has to appear on every invoice. German law requires a tax number or VAT ID — either one will do.",
+      fFirmierung: "Company name", fStrasse: "Street and number", fPlz: "Postcode",
+      fOrt: "Town", fSteuernummer: "Tax number", fUstIdnr: "VAT ID",
+      fIban: "IBAN", fBic: "BIC", fZahlungsziel: "Payment term (days)",
+      fKleinunternehmer: "Small business under § 19 UStG",
+      s4Titel: "Done",
+      s4Text: "Your setup is complete. From now on PDF and XML are created in one go — on your own letterhead.",
+      s4Knopf: "Write your first invoice", s4Gestaltung: "Adjust the look",
+      zurueck: "Back", weiter: "Next", fertig: "Finish",
+      ueberspringen: "Set up without guidance",
+      laedt: "One moment …",
+      s1Fehlt: "Please upload a letterhead first.",
+      s2Fehlt: "Please set and save the two lines first.",
+      s3Fehlt: "Company name, address and a tax number are required.",
+      s3Steuer: "Tax number or VAT ID — one of them is required.",
+      hochgeladen: "Letterhead accepted.",
+      gesichert: "Saved.",
+      keinPdf: "That is not a PDF file.",
+      istWord: "That is a Word file. Please save it as PDF in Word and upload the PDF.",
+      zuGross: "The file is larger than 20 MB.",
+      fehlerAllgemein: "That did not work."
+    }
+  };
+
+  var el = RB.el;
+
+  // Der Zustand kommt vom Server, nicht aus dem Browser: Wer auf einem
+  // zweiten Gerät weitermacht, soll dort stehen, wo er aufgehört hat.
+  var stand = { briefpapier: false, zone: false, stammdaten: false };
+  var schritt = 0;               // 0..3
+  var SCHRITTE = ["lBriefpapier", "lZone", "lAngaben", "lFertig"];
+
+  function melde(ziel, text, gut) {
+    var knoten = el(ziel);
+    knoten.className = "meldung hinweis" + (gut ? " gut" : " warn");
+    knoten.textContent = text;
+  }
+
+  function zeichneLeiter() {
+    var ziel = el("leiter");
+    ziel.textContent = "";
+    SCHRITTE.forEach(function (schluessel, i) {
+      var punkt = document.createElement("li");
+      punkt.className = i < schritt ? "erledigt" : (i === schritt ? "hier" : "");
+      if (i === schritt) punkt.setAttribute("aria-current", "step");
+      var balken = document.createElement("div");
+      balken.className = "balken";
+      var name = document.createElement("span");
+      name.className = "name";
+      name.textContent = RB.t(schluessel);
+      punkt.appendChild(balken);
+      punkt.appendChild(name);
+      ziel.appendChild(punkt);
+    });
+  }
+
+  function zeige() {
+    for (var i = 1; i <= 4; i++) el("schritt" + i).hidden = (i - 1) !== schritt;
+    el("zurueck").hidden = schritt === 0;
+    // Der letzte Schritt hat eigene Knöpfe; der Fuß wäre dort doppelt.
+    el("fuss").hidden = schritt === 3;
+    el("weiter").textContent = schritt === 2 ? RB.t("fertig") : RB.t("weiter");
+    zeichneLeiter();
+    if (schritt === 1) editorLaden();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---------- Schritt 1: Briefpapier ----------
+  function istWord(datei) {
+    return /\.(docx?|odt|rtf)$/i.test(datei.name);
+  }
+
+  async function ladeHoch(datei) {
+    if (istWord(datei)) { melde("s1Meldung", RB.t("istWord"), false); return; }
+    if (!/\.pdf$/i.test(datei.name)) { melde("s1Meldung", RB.t("keinPdf"), false); return; }
+    if (datei.size > 20 * 1024 * 1024) { melde("s1Meldung", RB.t("zuGross"), false); return; }
+
+    melde("s1Meldung", RB.t("laedt"), true);
+    var formular = new FormData();
+    formular.append("datei", datei);
+    var antwort = await RB.api("/api/briefpapier", { method: "POST", body: formular });
+    if (!antwort.ok) {
+      var d = antwort.daten;
+      melde("s1Meldung", (d && d.detail && d.detail.grund) || RB.t("fehlerAllgemein"), false);
+      return;
+    }
+    stand.briefpapier = true;
+    melde("s1Meldung", RB.t("hochgeladen"), true);
+    // Nicht von selbst weiterspringen: Wer gerade etwas hochgeladen hat,
+    // will erst die Bestätigung sehen.
+  }
+
+  el("uploadEingabe").addEventListener("change", function () {
+    if (this.files && this.files[0]) ladeHoch(this.files[0]);
+  });
+  ["dragenter", "dragover"].forEach(function (art) {
+    el("uploadZone").addEventListener(art, function (e) {
+      e.preventDefault(); this.classList.add("aktiv");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (art) {
+    el("uploadZone").addEventListener(art, function (e) {
+      e.preventDefault(); this.classList.remove("aktiv");
+      if (art === "drop" && e.dataTransfer.files[0]) ladeHoch(e.dataTransfer.files[0]);
+    });
+  });
+
+  // ---------- Schritt 2: Schreibzone ----------
+  var editorGeladen = false;
+  var zoneVorher = null;
+
+  function editorLaden() {
+    if (editorGeladen) return;
+    editorGeladen = true;
+    var kopf = zoneVorher ? zoneVorher.kopf_ende_mm : 45;
+    var fuss = zoneVorher ? zoneVorher.fuss_beginn_mm : 25;
+    el("zonenEditor").src =
+      "/zonen-editor/?bild=" +
+      encodeURIComponent("/api/briefpapier/vorschau.png?" + Date.now()) +
+      "&kopf=" + kopf + "&fuss=" + fuss;
+  }
+
+  // Der Editor läuft im iframe und meldet sich über postMessage. Er
+  // sichert die Zone nicht selbst — das tut diese Seite.
+  window.addEventListener("message", async function (ereignis) {
+    var daten = ereignis.data;
+    if (!daten) return;
+    // Die Höhe meldet er, damit der Rahmen mitwächst und nicht in sich
+    // scrollt — zwei Scrollebenen sind auf dem Telefon unbrauchbar.
+    if (daten.typ === "editorHoehe" && daten.hoehe > 0) {
+      el("zonenEditor").style.height = Math.ceil(daten.hoehe) + "px";
+      return;
+    }
+    if (daten.typ !== "schreibzone") return;
+    var antwort = await RB.api("/api/schreibzone", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kopf_ende_mm: daten.kopf_ende_mm,
+        fuss_beginn_mm: daten.fuss_beginn_mm
+      })
+    });
+    if (antwort.ok) {
+      stand.zone = true;
+      melde("meldung", RB.t("gesichert"), true);
+    } else {
+      melde("meldung", RB.t("fehlerAllgemein"), false);
+    }
+  });
+
+  // ---------- Schritt 3: Stammdaten ----------
+  function stammdatenLesen() {
+    return {
+      firmierung: el("firmierung").value.trim(),
+      anschrift: {
+        strasse: el("strasse").value.trim(),
+        plz: el("plz").value.trim(),
+        ort: el("ort").value.trim()
+      },
+      steuernummer: el("steuernummer").value.trim(),
+      ust_idnr: el("ustIdnr").value.trim(),
+      iban: el("iban").value.trim(),
+      bic: el("bic").value.trim(),
+      zahlungsziel_tage: Number(el("zahlungsziel").value || 14),
+      kleinunternehmer: el("kleinunternehmer").checked
+    };
+  }
+
+  function stammdatenFuellen(daten) {
+    if (!daten) return;
+    el("firmierung").value = daten.firmierung || "";
+    var a = daten.anschrift || {};
+    el("strasse").value = a.strasse || "";
+    el("plz").value = a.plz || "";
+    el("ort").value = a.ort || "";
+    el("steuernummer").value = daten.steuernummer || "";
+    el("ustIdnr").value = daten.ust_idnr || "";
+    el("iban").value = daten.iban || "";
+    el("bic").value = daten.bic || "";
+    el("zahlungsziel").value = daten.zahlungsziel_tage != null ? daten.zahlungsziel_tage : 14;
+    el("kleinunternehmer").checked = !!daten.kleinunternehmer;
+  }
+
+  async function stammdatenSichern() {
+    var daten = stammdatenLesen();
+    if (!daten.firmierung || !daten.anschrift.strasse
+        || !daten.anschrift.plz || !daten.anschrift.ort) {
+      melde("s3Meldung", RB.t("s3Fehlt"), false);
+      return false;
+    }
+    if (!daten.steuernummer && !daten.ust_idnr) {
+      // Die §14-Prüfung verlangt eines von beiden — hier schon sagen,
+      // statt es später als Befund an der Rechnung zu zeigen.
+      melde("s3Meldung", RB.t("s3Steuer"), false);
+      return false;
+    }
+    melde("s3Meldung", RB.t("laedt"), true);
+    var antwort = await RB.api("/api/stammdaten", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(daten)
+    });
+    if (!antwort.ok) {
+      var d = antwort.daten;
+      melde("s3Meldung", (d && d.detail && d.detail.grund) || RB.t("fehlerAllgemein"), false);
+      return false;
+    }
+    stand.stammdaten = true;
+    return true;
+  }
+
+  // ---------- Bewegung ----------
+  el("zurueck").addEventListener("click", function () {
+    if (schritt > 0) { schritt--; zeige(); }
+  });
+
+  el("weiter").addEventListener("click", async function () {
+    if (schritt === 0) {
+      if (!stand.briefpapier) { melde("s1Meldung", RB.t("s1Fehlt"), false); return; }
+    } else if (schritt === 1) {
+      // Die Zone frisch vom Server holen: Der Editor sichert selbst, und
+      // eine Meldung kann verlorengegangen sein.
+      var status = await RB.api("/api/status");
+      if (!(status.ok && status.daten.schreibzone)) {
+        melde("meldung", RB.t("s2Fehlt"), false); return;
+      }
+      stand.zone = true;
+    } else if (schritt === 2) {
+      if (!(await stammdatenSichern())) return;
+    }
+    melde("meldung", "", true);
+    schritt++;
+    zeige();
+  });
+
+  // ---------- Start ----------
+  async function starten() {
+    var person = await RB.kopfKonto();
+    if (!person) { window.location.href = "/anmelden"; return; }
+
+    var status = await RB.api("/api/status");
+    if (status.ok) {
+      stand.briefpapier = !!status.daten.briefpapier;
+      stand.zone = !!status.daten.schreibzone;
+      stand.stammdaten = !!status.daten.stammdaten;
+      zoneVorher = status.daten.schreibzone;
+      stammdatenFuellen(status.daten.stammdaten);
+    }
+    // Beim ersten unerledigten Schritt einsteigen — wer schon etwas
+    // gemacht hat, fängt nicht wieder von vorn an.
+    schritt = !stand.briefpapier ? 0
+      : !stand.zone ? 1
+      : !stand.stammdaten ? 2 : 3;
+    zeige();
+  }
+
+  RB.starte(texte);
+  RB.beiSprachwechsel(function () { zeichneLeiter(); zeige(); });
+  starten();
+})();
+</script>
+</body>
+</html>
