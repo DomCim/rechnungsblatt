@@ -106,6 +106,35 @@ def _kunde(person: konten.Nutzer) -> str:
 # Die Obergrenze schützt vor dem Vertipper: Wer 50000 statt 50,00
 # eingibt, soll nicht fünfhundert Euro bezahlen. Und ein Guthaben, das
 # nie verbraucht wird, ist eine Verbindlichkeit — kein Geschäft.
+# Stripes "Managed Payments" bleibt aus — bei jeder Sitzung ausdruecklich.
+#
+# **Warum das nicht verhandelbar ist.** Bei Managed Payments wird Stripe
+# Merchant of Record: Es verkauft formal an den Kunden, berechnet
+# Umsatzsteuer, versendet eigene Rechnungen unter "Sold through Link" und
+# sperrt `invoice_creation`. Drei Dinge sprechen dagegen, jedes fuer sich
+# ausreichend:
+#
+# 1. Der Betreiber rechnet nach § 19 UStG ab und weist keine Umsatzsteuer
+#    aus. Stripe wuerde sie berechnen und abfuehren — und Rechnungen mit
+#    Steuerausweis an Kunden schicken, die es nicht geben darf.
+# 2. Es kostet 3,5 % zusaetzlich, gerechnet auf den Bruttobetrag. Bei
+#    einem 9-Euro-Abo verdoppelt das die Gebuehr nahezu.
+# 3. Rechnungsblatt verkauft Rechnungen. Dass die eigenen Belege von einer
+#    fremden US-Gesellschaft kaemen, ohne PDF/A-3B und ohne XML, waere ein
+#    Widerspruch zum Produkt.
+#
+# Stripe hat es 2026 auf manchen Konten als Vorgabe aktiviert; ohne dieses
+# Feld scheiterte die Aufladung mit "the product tax code is missing".
+# Deshalb hier ausdruecklich aus, nicht auf die Kontoeinstellung verlassen.
+MANAGED_PAYMENTS = {"enabled": False}
+
+# Der Steuercode des Produkts. Stripe verlangt ihn, sobald Managed
+# Payments im Spiel ist, und schadet auch sonst nicht:
+# txcd_10103001 = "SaaS - business use" (Software ueber das Netz, nicht
+# angepasst, kein Download). Die business/personal-Unterscheidung wirkt
+# ohnehin nur bei Umsaetzen in den USA.
+STEUERCODE = "txcd_10103001"
+
 FREI_MINDESTENS = 500
 FREI_HOECHSTENS = 20_000
 
@@ -153,10 +182,14 @@ def sitzung_guthaben(person: konten.Nutzer, betrag_cent: int, basis: str) -> str
             "price_data": {
                 "currency": "eur",
                 "unit_amount": betrag_cent,
-                "product_data": {"name": "Guthaben für Rechnungsblatt"},
+                "product_data": {
+                    "name": "Guthaben für Rechnungsblatt",
+                    "tax_code": STEUERCODE,
+                },
             },
             "quantity": 1,
         }],
+        managed_payments=MANAGED_PAYMENTS,
         success_url=f"{basis}/app/konto?bezahlt=1",
         cancel_url=f"{basis}/app/konto?abgebrochen=1",
         metadata={"nutzer_id": str(person.id), "art": "guthaben"},
@@ -198,6 +231,7 @@ def sitzung_abo(person: konten.Nutzer, schluessel: str, basis: str) -> str:
         mode="subscription",
         customer=_kunde(person),
         line_items=[{"price": preis, "quantity": 1}],
+        managed_payments=MANAGED_PAYMENTS,
         success_url=f"{basis}/app/konto?bezahlt=1",
         cancel_url=f"{basis}/app/konto?abgebrochen=1",
         # Der Tarif reist mit: Der Webhook erfährt sonst nicht, welcher
