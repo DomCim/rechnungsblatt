@@ -113,3 +113,92 @@ def test_freigabe_wird_aus_der_einstellung_gelesen(monkeypatch, wert, erwartet):
                         lambda: {"stripe_freier_betrag": wert})
 
     assert bezahlen.frei_erlaubt() is erwartet
+
+
+# ---------------------------------------------------------------------------
+# Managed Payments
+# ---------------------------------------------------------------------------
+#
+# Am 02.09.2026 scheiterte jede Aufladung im Produktivbetrieb:
+#
+#     Invalid line_items[0]: the product tax code is missing. … Product tax
+#     code is required for Managed Payments, which is enabled by default on
+#     your account.
+#
+# Stripe hatte "Managed Payments" auf dem Konto als Vorgabe aktiviert. Dabei
+# wird Stripe Merchant of Record: Es berechnet Umsatzsteuer und versendet
+# eigene Rechnungen. Für einen Kleinunternehmer nach § 19 UStG ist das
+# ausgeschlossen — er weist keine Umsatzsteuer aus.
+#
+# Diese Tests halten fest, dass beide Zahlungswege es ausdrücklich
+# abschalten. Sich auf die Kontoeinstellung zu verlassen wäre zu wenig:
+# Sie hat sich schon einmal von selbst geändert.
+
+
+class _Person:
+    id = 2
+    email = "kunde@example.de"
+    tarif = "kostenlos"
+
+
+class _Tarif:
+    schluessel = "werkstatt"
+    name = "Werkstatt"
+    sichtbar = True
+    stripe_preis = "price_test"
+
+
+@pytest.fixture
+def gesendet(monkeypatch):
+    """Fängt ab, was an Stripe gehen würde."""
+    felder: dict = {}
+
+    class Sitzung:
+        id = "cs_test"
+        url = "https://checkout.stripe.com/test"
+
+    def abfangen(**gesehen):
+        felder.clear()
+        felder.update(gesehen)
+        return Sitzung()
+
+    monkeypatch.setattr(bezahlen.stripe.checkout.Session, "create",
+                        staticmethod(abfangen))
+    monkeypatch.setattr(bezahlen, "_schluessel", lambda: "sk_test_x")
+    monkeypatch.setattr(bezahlen, "_kunde", lambda person: "cus_test")
+    monkeypatch.setattr(bezahlen, "aufladungen", lambda: [1000])
+    monkeypatch.setattr(bezahlen, "frei_erlaubt", lambda: False)
+    return felder
+
+
+def test_guthaben_schaltet_managed_payments_aus(gesendet):
+    """Sonst berechnet Stripe Umsatzsteuer, die es nicht geben darf."""
+    bezahlen.sitzung_guthaben(_Person(), 1000, "https://rechnungsblatt.de")
+
+    assert gesendet["managed_payments"] == {"enabled": False}
+
+
+def test_guthaben_traegt_einen_steuercode(gesendet):
+    """Ohne ihn wies Stripe die ganze Sitzung ab (400)."""
+    bezahlen.sitzung_guthaben(_Person(), 1000, "https://rechnungsblatt.de")
+
+    produkt = gesendet["line_items"][0]["price_data"]["product_data"]
+    assert produkt["tax_code"] == bezahlen.STEUERCODE
+    assert produkt["tax_code"].startswith("txcd_")
+
+
+def test_abo_schaltet_managed_payments_aus(gesendet, monkeypatch):
+    monkeypatch.setattr(bezahlen.konten, "tarif", lambda s: _Tarif())
+
+    bezahlen.sitzung_abo(_Person(), "werkstatt", "https://rechnungsblatt.de")
+
+    assert gesendet["managed_payments"] == {"enabled": False}
+
+
+def test_managed_payments_ist_wirklich_aus():
+    """Ein Vertipper in der Konstante fällt sonst niemandem auf.
+
+    ``{"enabled": True}`` sähe im Diff harmlos aus und hätte teure
+    Folgen — 3,5 % Aufschlag und Umsatzsteuer auf jeder Zahlung.
+    """
+    assert bezahlen.MANAGED_PAYMENTS == {"enabled": False}
