@@ -1,103 +1,12 @@
-<!doctype html>
-<html lang="de" data-theme="dark">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Datenschutz &mdash; Rechnungsblatt</title>
-<meta name="description" content="Welche Daten Rechnungsblatt verarbeitet, wozu und wie lange: Konto, verschlüsselte Belege, Zahlungen über Stripe, Zählung ohne Cookies.">
-<link rel="canonical" href="/datenschutz">
-<link rel="stylesheet" href="/seiten/schriften/schriften.css">
-<link rel="stylesheet" href="/seiten/basis.css">
-<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
-<style>
-  /* Ein Rechtstext wird gelesen, nicht durchgeblättert: schmales Maß,
-     ruhiger Zeilenabstand, keine Effekte. */
-  .rechtsseite {
-    max-width: 68ch;
-    margin: 0 auto;
-    padding: calc(28px + env(safe-area-inset-top, 0px))
-             calc(22px + env(safe-area-inset-right, 0px))
-             80px
-             calc(22px + env(safe-area-inset-left, 0px));
-  }
-  .rechtsseite .marke {
-    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
-    font-variation-settings: "opsz" 40;
-    font-size: 15px;
-    letter-spacing: 0.01em;
-  }
-  .rechtsseite h1 {
-    font-size: clamp(26px, 6vw, 38px);
-    margin: 6px 0 26px;
-  }
-  .rechtsseite h2 {
-    font-size: clamp(17px, 3.4vw, 21px);
-    margin: 34px 0 10px;
-  }
-  .rechtsseite h3 {
-    font-size: 15.5px;
-    margin: 22px 0 6px;
-    color: var(--tinte);
-  }
-  .rechtsseite p,
-  .rechtsseite li {
-    color: var(--tinte-2);
-    line-height: 1.62;
-    font-size: 14.5px;
-  }
-  .rechtsseite ul, .rechtsseite ol { padding-left: 20px; margin: 8px 0; }
-  .rechtsseite li { margin-bottom: 5px; }
-  .rechtsseite dl { margin: 8px 0; }
-  .rechtsseite dt {
-    font-weight: 600;
-    color: var(--tinte);
-    font-size: 13px;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    margin-top: 14px;
-  }
-  .rechtsseite dd {
-    margin: 2px 0 0;
-    color: var(--tinte-2);
-    line-height: 1.6;
-    font-size: 14.5px;
-  }
-  .rechtsseite a { color: var(--akzent-tinte); }
-  .rechtsseite .anschrift {
-    font-style: normal;
-    color: var(--tinte-2);
-    line-height: 1.62;
-    font-size: 14.5px;
-  }
-  .rechtsseite .stand {
-    margin-top: 46px;
-    padding-top: 16px;
-    border-top: 1px solid var(--kante);
-    font-size: 13px;
-  }
-  .rechtsseite .zurueck { margin-top: 30px; }
-  /* Tabellen in Rechtstexten: Verantwortlichkeiten, Fristen. */
-  .rechtsseite table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 12px 0;
-    font-size: 14px;
-  }
-  .rechtsseite th, .rechtsseite td {
-    text-align: left;
-    padding: 8px 10px;
-    border-bottom: 1px solid var(--kante);
-    vertical-align: top;
-    color: var(--tinte-2);
-  }
-  .rechtsseite th { color: var(--tinte); font-weight: 600; }
-</style>
-</head>
-<body>
-<main class="rechtsseite">
-  <div class="marke">Rechnungsblatt</div>
-  <h1>Datenschutz</h1>
+# -*- coding: utf-8 -*-
+"""Schreibt datenschutz.html — aus dem, was die Anwendung wirklich tut."""
+import pathlib
+import sys
 
+sys.path.insert(0, str(pathlib.Path(__file__).parent))
+from gemeinsam import BETRIEB, huelle
+
+INHALT = """
   <p>
     Diese Erkl&auml;rung beschreibt, welche Daten bei der Nutzung von
     Rechnungsblatt anfallen, wozu sie verarbeitet werden und wie lange sie
@@ -106,10 +15,10 @@
 
   <h2>1. Verantwortlicher</h2>
   <address class="anschrift">
-    <strong>DiD0m &mdash; Dominik Dill</strong><br>
-    Goldammerweg 25<br>
-    95119 Naila<br>
-    E-Mail: <a href="mailto:d.dill@rechnungsblatt.de">d.dill@rechnungsblatt.de</a>
+    <strong>{firma}</strong><br>
+    {strasse}<br>
+    {ort}<br>
+    E-Mail: <a href="mailto:{email}">{email}</a>
   </address>
   <p>
     Ein Datenschutzbeauftragter ist nicht zu benennen: Der Betrieb
@@ -148,7 +57,7 @@
   <p>
     Eine Anmeldung setzt ein technisch notwendiges Cookie
     (<span class="kennung">rb_sitzung</span>). Es enth&auml;lt nur einen
-    Zufallswert, keine Inhalte, gilt 30 Tage und wird beim Abmelden
+    Zufallswert, keine Inhalte, gilt {sitzung} Tage und wird beim Abmelden
     ung&uuml;ltig. Ohne dieses Cookie ist eine Anmeldung nicht m&ouml;glich;
     eine Einwilligung ist daf&uuml;r nicht erforderlich
     (&sect;&nbsp;25 Abs.&nbsp;2 Nr.&nbsp;2 TDDDG).
@@ -181,7 +90,7 @@
     <tr><td>Erzeugte Rechnungen</td><td>solange das Konto besteht, danach sechs Monate. <strong>Die achtj&auml;hrige Aufbewahrungspflicht (&sect;&nbsp;147 Abs.&nbsp;3 AO, &sect;&nbsp;14b Abs.&nbsp;1 UStG) trifft den Nutzer</strong> &mdash; er erf&uuml;llt sie durch den Export</td></tr>
     <tr><td>Belege &uuml;ber Zahlungen an den Anbieter</td><td>acht Jahre &mdash; hier ist der Anbieter selbst der Aussteller und aufbewahrungspflichtig</td></tr>
     <tr><td>Konto</td><td>bis zur L&ouml;schung, danach nur was aufbewahrungspflichtig ist</td></tr>
-    <tr><td>Sitzungen</td><td>30 Tage, dann automatisch entfernt</td></tr>
+    <tr><td>Sitzungen</td><td>{sitzung} Tage, dann automatisch entfernt</td></tr>
   </table>
   <p>
     <strong>Rechnungen lassen sich nicht l&ouml;schen</strong>, auch nicht auf
@@ -261,7 +170,7 @@
     <li>Widerspruch gegen Verarbeitungen auf Grundlage von lit.&nbsp;f (Art.&nbsp;21)</li>
   </ul>
   <p>
-    Eine Nachricht an <a href="mailto:d.dill@rechnungsblatt.de">d.dill@rechnungsblatt.de</a> gen&uuml;gt.
+    Eine Nachricht an <a href="mailto:{email}">{email}</a> gen&uuml;gt.
     Die Belege eines Kontos lassen sich zudem jederzeit selbst am
     St&uuml;ck herunterladen (Konto &rarr; F&uuml;r die Betriebspr&uuml;fung)
     &mdash; das erf&uuml;llt Art.&nbsp;20 ohne Umweg.
@@ -275,14 +184,17 @@
   </p>
 
   <p class="stand">
-    Stand: September 2026. Weitere Angaben:
+    Stand: {stand}. Weitere Angaben:
     <a href="/impressum">Impressum</a> &middot;
     <a href="/agb">Allgemeine Gesch&auml;ftsbedingungen</a>
   </p>
+""".format(sitzung=30, stand="September 2026", **BETRIEB)
 
-  <div class="zurueck">
-    <a class="knopf leise" href="/">Zur Startseite</a>
-  </div>
-</main>
-</body>
-</html>
+ziel = pathlib.Path("web/src/rechnungsblatt_web/seiten/datenschutz.html")
+ziel.write_text(
+    huelle("Datenschutz",
+           "datenschutz",
+           "Welche Daten Rechnungsblatt verarbeitet, wozu und wie lange: Konto, verschlüsselte Belege, Zahlungen über Stripe, Zählung ohne Cookies.",
+           INHALT),
+    encoding="utf-8")
+print("datenschutz.html:", len(ziel.read_text(encoding="utf-8").splitlines()), "Zeilen")
