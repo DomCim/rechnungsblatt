@@ -157,3 +157,40 @@ def test_agb_zahlen_guthaben_nicht_zurueck(klient):
     assert "wenn der Nutzer den Vertrag beendet" in fliesstext
     # Die Ankündigungsfrist ist der Ausweg statt einer Zahlung.
     assert "drei Monate vorher" in fliesstext
+
+def test_llms_txt_ist_erreichbar_und_grenzt_ab(klient):
+    """llms.txt — vor allem für das Richtigstellen.
+
+    Der Nutzen liegt weniger im Bewerben: Ein Modell, das die Seite
+    überfliegt, hält Rechnungsblatt leicht für eine Buchhaltung oder
+    für zertifiziert. Die Abgrenzungen müssen darin stehen bleiben.
+    """
+    antwort = klient.get("/llms.txt")
+
+    assert antwort.status_code == 200
+    assert "text/plain" in antwort.headers["content-type"]
+    text = antwort.text
+    assert text.startswith("# Rechnungsblatt")
+    for abgrenzung in (
+        "Keine Buchhaltung",
+        "Nicht GoBD-zertifiziert",
+        "Kein Achtjahresarchiv",
+        "Nicht offline nutzbar",
+    ):
+        assert abgrenzung in text, f"Abgrenzung fehlt: {abgrenzung}"
+
+
+def test_startseite_verweist_auf_den_betreiber(klient):
+    """Der Verweis auf did0m.dev — ohne nofollow.
+
+    Mit nofollow wäre er für Ranking und Search Console wertlos. Es
+    sind eigene Domains und der Zusammenhang ist inhaltlich begründet,
+    also darf die Linkkraft fließen.
+    """
+    text = klient.get("/").text
+
+    assert 'href="https://did0m.dev"' in text
+    assert "nofollow" not in text
+    # Und die maschinenlesbare Verknüpfung, die mehr wiegt als der Link.
+    assert '"publisher"' in text
+    assert '"url": "https://did0m.dev"' in text
