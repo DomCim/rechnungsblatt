@@ -115,6 +115,29 @@ def anmelden_alt() -> RedirectResponse:
     return RedirectResponse("/app/anmelden", status_code=308)
 
 
+# Der IndexNow-Schluessel. Bing, Yandex und Seznam pruefen ihn, bevor
+# sie eine gemeldete Adresse annehmen: Wer eine Seite zur Indexierung
+# anstoesst, muss beweisen, dass er sie betreibt.
+#
+# Der Dateiname IST der Schluessel und liegt in der Wurzel, nicht unter
+# /seiten/ — so verlangt es das Verfahren. Ein fest verdrahteter Weg und
+# keine Umgebungsvariable: Der Schluessel ist kein Geheimnis (er steht
+# oeffentlich im Netz) und wechselt praktisch nie.
+#
+# Bewusst keine zusaetzliche Datei unter /seiten/: Sie koennte vom Wert
+# hier abweichen, und dann liefert der Weg etwas anderes als die Datei.
+INDEXNOW_SCHLUESSEL = "f53782f38f614bde8b7de6fa3d96470d"
+
+
+@wege.get("/{}.txt".format(INDEXNOW_SCHLUESSEL))
+def indexnow_schluessel() -> Response:
+    """Der Nachweis, dass diese Seite dem Melder gehoert (IndexNow)."""
+    return Response(
+        INDEXNOW_SCHLUESSEL,
+        media_type="text/plain; charset=utf-8",
+    )
+
+
 @wege.get("/llms.txt")
 def llms() -> FileResponse:
     """Was die Anwendung tut — für Sprachmodelle zusammengefasst.

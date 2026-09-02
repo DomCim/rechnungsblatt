@@ -241,3 +241,52 @@ def test_titel_hat_brauchbare_laenge(datei):
     assert 15 <= len(titel) <= 65, (
         f"{datei}: Titel hat {len(titel)} Zeichen"
     )
+
+def test_indexnow_schluessel_ist_abrufbar(klient):
+    """Der Eigentumsnachweis für IndexNow.
+
+    Bing, Yandex und Seznam holen diese Datei, bevor sie eine gemeldete
+    Adresse annehmen. Fehlt sie oder weicht ihr Inhalt ab, werden
+    Meldungen **stillschweigend** verworfen — man erfährt es nicht,
+    sondern merkt nur, dass nichts passiert.
+
+    Der Dateiname muss der Schlüssel sein, der Inhalt genau derselbe,
+    und beides in der Wurzel — nicht unter /seiten/.
+    """
+    from rechnungsblatt_web.wege_seiten import INDEXNOW_SCHLUESSEL
+
+    antwort = klient.get(f"/{INDEXNOW_SCHLUESSEL}.txt")
+
+    assert antwort.status_code == 200
+    assert "text/plain" in antwort.headers["content-type"]
+    # Genau der Schlüssel, ohne Zeilenumbruch und ohne BOM.
+    assert antwort.text == INDEXNOW_SCHLUESSEL
+    assert len(INDEXNOW_SCHLUESSEL) == 32
+
+
+def test_robots_sperrt_den_indexnow_schluessel_nicht(klient):
+    """`Allow: /$` erlaubt nur die Wurzel exakt — sperrt aber nichts.
+
+    Die Regel sieht restriktiver aus, als sie ist. Der Test hält fest,
+    dass die öffentlichen Dateien erreichbar bleiben und der
+    Arbeitsbereich gesperrt ist.
+    """
+    import urllib.robotparser
+
+    from rechnungsblatt_web.wege_seiten import INDEXNOW_SCHLUESSEL
+
+    leser = urllib.robotparser.RobotFileParser()
+    leser.parse(klient.get("/robots.txt").text.splitlines())
+
+    for pfad in (
+        "/",
+        f"/{INDEXNOW_SCHLUESSEL}.txt",
+        "/llms.txt",
+        "/impressum",
+        "/sitemap.xml",
+    ):
+        assert leser.can_fetch("*", pfad), f"{pfad} ist gesperrt"
+
+    # Und die Gegenprobe: Der Arbeitsbereich bleibt draußen.
+    assert not leser.can_fetch("*", "/app/konto")
+    assert not leser.can_fetch("*", "/api/ich")
