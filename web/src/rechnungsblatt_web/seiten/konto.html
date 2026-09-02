@@ -105,6 +105,20 @@
     <h3 class="zwischentitel" id="guthabenTitel" data-i18n="guthabenTitel">Guthaben aufladen</h3>
     <div id="aufladungen" class="zeile"></div>
 
+    <!-- Eigener Betrag, nur wenn der Betreiber ihn zulaesst. Die Grenzen
+         stehen im Hinweis darunter und kommen vom Server — sie hier
+         doppelt zu pflegen ginge beim ersten Umstellen schief. -->
+    <div id="freierBetrag" class="zeile" hidden style="margin-top:10px; align-items:flex-end;">
+      <div class="feld" style="max-width:170px; margin:0;">
+        <label for="eigenerBetrag" data-i18n="eigenerBetrag">Eigener Betrag</label>
+        <input id="eigenerBetrag" type="number" inputmode="decimal"
+               step="1" min="5" max="200" placeholder="50">
+      </div>
+      <button type="button" class="knopf leise" id="eigenerAufladen"
+              data-i18n="aufladen">Aufladen</button>
+    </div>
+    <p class="beschreibung" id="freierHinweis" hidden style="margin-top:6px;"></p>
+
     <!-- Ein Knopf je buchbarem Abo-Tarif. Die Liste kommt aus der
          Datenbank, damit ein neuer Tarif ohne Codeänderung erscheint. -->
     <h3 class="zwischentitel" id="aboTitel" hidden data-i18n="aboTitel">Abo buchen</h3>
@@ -268,6 +282,9 @@
       bezahlTitel: "Guthaben und Abo",
       bezahlText: "Bezahlt wird über Stripe. Zahlungsdaten liegen dort, nicht hier.",
       aufladen: "Aufladen",
+      eigenerBetrag: "Eigener Betrag",
+      freiHinweis: "Zwischen {von} und {bis} € — kleinere Beträge frisst die Zahlungsgebühr auf.",
+      freiUngueltig: "Bitte einen Betrag zwischen {von} und {bis} € eingeben.",
       guthabenTitel: "Guthaben aufladen", aboTitel: "Abo buchen",
       aboLaeuft: "läuft", jeMonat: " im Monat", inklusiv: "Inklusive Rechnungen",
       bezahlVerwalten: "Zahlungen verwalten",
@@ -322,6 +339,9 @@
       bezahlTitel: "Credit and subscription",
       bezahlText: "Payment runs through Stripe. Payment details stay there, not here.",
       aufladen: "Top up",
+      eigenerBetrag: "Custom amount",
+      freiHinweis: "Between {von} and {bis} € — smaller amounts are eaten up by the payment fee.",
+      freiUngueltig: "Please enter an amount between {von} and {bis} €.",
       guthabenTitel: "Top up credit", aboTitel: "Choose a plan",
       aboLaeuft: "active", jeMonat: " per month", inklusiv: "Invoices included",
       bezahlVerwalten: "Manage payments",
@@ -470,6 +490,34 @@
       });
       ziel.appendChild(knopf);
     });
+
+    // Eigener Betrag: Der Betreiber schaltet ihn frei, die Grenzen
+    // kommen mit. Ohne Freigabe bleibt der Bereich verborgen.
+    if (a.frei) {
+      var von = a.frei_von_cent / 100, bis = a.frei_bis_cent / 100;
+      var feld = el("eigenerBetrag");
+      feld.min = von;
+      feld.max = bis;
+      el("freierBetrag").hidden = false;
+      el("freierHinweis").hidden = false;
+      el("freierHinweis").textContent =
+        RB.t("freiHinweis").replace("{von}", von).replace("{bis}", bis);
+
+      el("eigenerAufladen").addEventListener("click", function () {
+        // Komma wie Punkt annehmen: Auf einer deutschen Tastatur tippt
+        // niemand einen Punkt in einen Geldbetrag.
+        var roh = String(feld.value).trim().replace(",", ".");
+        var euro = parseFloat(roh);
+        if (!isFinite(euro) || euro < von || euro > bis) {
+          bezahlMelde(RB.t("freiUngueltig")
+            .replace("{von}", von).replace("{bis}", bis), false);
+          feld.focus();
+          return;
+        }
+        weiterZu("/api/bezahlen/guthaben",
+                 { betrag_cent: Math.round(euro * 100) });
+      });
+    }
 
     // Abo-Tarife: je einer ein Knopf. Der laufende Tarif wird gezeigt,
     // aber nicht zum Kauf angeboten -- ihn erneut zu buchen legte bei

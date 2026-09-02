@@ -879,7 +879,9 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # liegen verschluesselt (siehe _GEHEIME_FELDER).
                # Die Preis-ID eines Abos steht am Tarif, nicht hier: Es gibt
                # mehr als einen Abo-Tarif.
-               "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen")
+               "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen",
+               # Darf der Kunde den Aufladebetrag selbst eingeben?
+               "stripe_freier_betrag")
 _GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
                    "plausible_api_key", "dkim_schluessel"}
 

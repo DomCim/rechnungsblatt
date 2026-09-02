@@ -493,6 +493,15 @@ nav.reiter { display: none; }
 }
 .karte > h2 { margin-bottom: 4px; }
 .karte .beschreibung { color: var(--tinte-2); font-size: 13.5px; margin-bottom: 14px; }
+/* Erklärung direkt unter einem Eingabefeld — kleiner als die
+   Kartenbeschreibung und ohne deren Abstand nach unten, weil sie
+   innerhalb des Feldes sitzt und nicht davor. */
+.feld .feldhinweis {
+  color: var(--tinte-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  margin: 6px 0 0;
+}
 
 /* [hidden] muss gewinnen: Ein `display: grid` schlaegt das
    hidden-Attribut, sonst blieben zugeklappte Bloecke sichtbar. */
