@@ -202,3 +202,95 @@ def test_managed_payments_ist_wirklich_aus():
     Folgen — 3,5 % Aufschlag und Umsatzsteuer auf jeder Zahlung.
     """
     assert bezahlen.MANAGED_PAYMENTS == {"enabled": False}
+
+
+# ---------------------------------------------------------------------------
+# Kündigung
+# ---------------------------------------------------------------------------
+#
+# Am 02.09.2026 fiel auf: Ein in Stripe gekündigtes Abo hinterließ im
+# System keine Spur. Der Grund ist Stripes Ablauf — es beendet ein Abo
+# nicht sofort, sondern setzt `cancel_at_period_end` und lässt es bis zum
+# Periodenende laufen. `customer.subscription.deleted` kommt erst dann,
+# im Beispielfall vier Wochen später.
+#
+# Gemeldet wird die Kündigung sofort, aber als
+# `customer.subscription.updated` — und dieses Ereignis wurde nicht
+# behandelt. Im Konto stand weiter „läuft", und der Kunde musste glauben,
+# seine Kündigung sei nicht angekommen.
+
+
+def _kuendigungs_ereignis(endet_bei: int | None, kunde: str = "cus_test") -> dict:
+    """Ein `customer.subscription.updated` wie Stripe es schickt."""
+    return {
+        "type": "customer.subscription.updated",
+        "data": {"object": {
+            "id": "sub_test",
+            "customer": kunde,
+            "cancel_at": endet_bei,
+            "cancel_at_period_end": endet_bei is not None,
+            "current_period_end": endet_bei,
+        }},
+    }
+
+
+@pytest.fixture
+def gemerkt(monkeypatch):
+    """Fängt ab, was in der Datenbank landen würde."""
+    aufrufe: list = []
+    monkeypatch.setattr(bezahlen.konten, "merke_kuendigung",
+                        lambda nutzer_id, endet: aufrufe.append((nutzer_id, endet)))
+    monkeypatch.setattr(bezahlen, "_nutzer_aus_ereignis", lambda objekt: _Person())
+    return aufrufe
+
+
+def test_kuendigung_wird_vorgemerkt(gemerkt):
+    """Der Fall aus dem Betrieb: gekündigt, läuft aber noch."""
+    # 02.10.2026, 08:39 UTC — wie im Stripe-Dashboard des Falls,
+    # der das hier ausgelöst hat.
+    endet = 1790930340
+
+    bezahlen.verarbeite(_kuendigungs_ereignis(endet))
+
+    assert len(gemerkt) == 1
+    nutzer_id, zeitpunkt = gemerkt[0]
+    assert nutzer_id == 2
+    assert zeitpunkt is not None
+    # Mit Zeitzone, sonst ist der Zeitpunkt beim Anzeigen wertlos.
+    assert zeitpunkt.tzinfo is not None
+    assert zeitpunkt.year == 2026 and zeitpunkt.month == 10
+
+
+def test_zuruecknahme_loescht_den_vermerk(gemerkt):
+    """In Stripe lässt sich eine Kündigung bis zum Periodenende widerrufen.
+
+    Bliebe der Vermerk stehen, zeigte das Konto ein Abo als gekündigt,
+    das längst weiterläuft.
+    """
+    bezahlen.verarbeite(_kuendigungs_ereignis(None))
+
+    assert gemerkt == [(2, None)]
+
+
+def test_gewoehnliche_aenderung_setzt_keinen_vermerk(gemerkt):
+    """Nicht jede Änderung ist eine Kündigung."""
+    ereignis = _kuendigungs_ereignis(None)
+    ereignis["data"]["object"]["cancel_at_period_end"] = False
+    ereignis["data"]["object"]["current_period_end"] = 1790930340
+
+    bezahlen.verarbeite(ereignis)
+
+    assert gemerkt == [(2, None)]
+
+
+def test_kuendigung_ohne_zuordenbares_konto(monkeypatch):
+    """Ein Ereignis zu einem fremden Kunden darf nichts anrichten."""
+    monkeypatch.setattr(bezahlen, "_nutzer_aus_ereignis", lambda objekt: None)
+    gerufen = []
+    monkeypatch.setattr(bezahlen.konten, "merke_kuendigung",
+                        lambda *a: gerufen.append(a))
+
+    ergebnis = bezahlen.verarbeite(_kuendigungs_ereignis(1790930340))
+
+    assert gerufen == []
+    assert "kein Konto" in ergebnis

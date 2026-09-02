@@ -123,6 +123,10 @@
          Datenbank, damit ein neuer Tarif ohne Codeänderung erscheint. -->
     <h3 class="zwischentitel" id="aboTitel" hidden data-i18n="aboTitel">Abo buchen</h3>
     <div id="abos" class="zeile"></div>
+    <!-- Gekuendigt, laeuft aber noch: Stripe beendet ein Abo erst zum
+         Periodenende. Ohne diesen Hinweis sieht der Kunde nur "laeuft"
+         und glaubt, seine Kuendigung sei nicht angekommen. -->
+    <p class="hinweis" id="aboGekuendigt" hidden style="margin-top:10px;"></p>
 
     <div class="zeile" style="margin-top:12px;">
       <button type="button" class="knopf leise" id="bezahlVerwalten" hidden
@@ -287,6 +291,7 @@
       freiUngueltig: "Bitte einen Betrag zwischen {von} und {bis} € eingeben.",
       guthabenTitel: "Guthaben aufladen", aboTitel: "Abo buchen",
       aboLaeuft: "läuft", jeMonat: " im Monat", inklusiv: "Inklusive Rechnungen",
+      aboGekuendigtBis: "Gekündigt — das Abo läuft noch bis zum {datum}. Danach gilt wieder der kostenlose Tarif; Ihr Guthaben bleibt.",
       bezahlVerwalten: "Zahlungen verwalten",
       bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
       abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
@@ -344,6 +349,7 @@
       freiUngueltig: "Please enter an amount between {von} and {bis} €.",
       guthabenTitel: "Top up credit", aboTitel: "Choose a plan",
       aboLaeuft: "active", jeMonat: " per month", inklusiv: "Invoices included",
+      aboGekuendigtBis: "Cancelled — the plan runs until {datum}. After that the free plan applies again; your credit remains.",
       bezahlVerwalten: "Manage payments",
       bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
       abgebrochen: "Cancelled. Nothing was charged.",
@@ -544,6 +550,24 @@
       });
       abos.appendChild(knopf);
     });
+
+    // Das Kündigungsdatum hängt am Konto, nicht am Angebot. Es hier
+    // eigens zu holen ist eine Anfrage mehr — dafür kann diese
+    // Funktion allein aufgerufen werden, ohne auf eine Variable aus
+    // einer anderen zu bauen.
+    var meins = await RB.api("/api/ich");
+    var konto = meins.ok ? meins.daten : null;
+    var streifen = el("aboGekuendigt");
+    if (konto && konto.abo_endet) {
+      var bis = new Date(konto.abo_endet);
+      streifen.textContent = RB.t("aboGekuendigtBis").replace(
+        "{datum}", bis.toLocaleDateString(
+          RB.sprache() === "de" ? "de-DE" : "en-GB",
+          { day: "2-digit", month: "2-digit", year: "numeric" }));
+      streifen.hidden = false;
+    } else {
+      streifen.hidden = true;
+    }
 
     el("bezahlVerwalten").hidden = !a.hat_kunde;
 

@@ -385,7 +385,7 @@
     <p class="beschreibung" style="margin-top:10px;" data-i18n="stripeHinweis">
       Der Webhook zeigt auf <span class="kennung">/api/bezahlen/webhook</span>.
       Nötige Ereignisse: checkout.session.completed, invoice.paid,
-      invoice.payment_failed, customer.subscription.deleted.
+      invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted.
       Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier —
       so lassen sich mehrere Abos nebeneinander anbieten.
     </p>
@@ -541,7 +541,7 @@
       stripeHinweisZwei: "„Managed Payments“ bleibt aus. Rechnungsblatt schaltet Stripes Merchant-of-Record-Dienst bei jeder Zahlung ausdrücklich ab. Er würde Umsatzsteuer berechnen und eigene Rechnungen an Ihre Kunden schicken — bei Abrechnung nach § 19 UStG ausgeschlossen. Außerdem kostet er 3,5 % zusätzlich. Sollte Stripe ihn im Konto aktivieren, ändert das hier nichts.",
       hStripeSecret: "Nur dieser. Der „veröffentlichbare“ Schlüssel (pk_…) ist für Zahlungsformulare im Browser gedacht — Rechnungsblatt benutzt Stripe Checkout, da läuft alles auf dem Server.",
       stripeHinweisDrei: "Nur Abos brauchen eine Preis-ID. Ein wiederkehrender Betrag muss in Stripe angelegt sein, weil Stripe den Abrechnungszyklus führt und bei einer Preisänderung Bestandskunden auf ihrem alten Preis lässt. Guthabenaufladungen dagegen sind Einmalzahlungen — die entstehen zur Laufzeit aus der Betragsliste.",
-      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier — so lassen sich mehrere Abos nebeneinander anbieten.",
+      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted. Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier — so lassen sich mehrere Abos nebeneinander anbieten.",
       postTitel: "Postausgang",
       postText: "Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll. Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.",
       fHost: "Server", fPort: "Port", fBenutzer: "Benutzer", fPasswort: "Passwort",
@@ -635,7 +635,7 @@
       stripeHinweisZwei: "„Managed Payments“ stays off. Rechnungsblatt disables Stripe's merchant-of-record service on every payment. It would charge VAT and send its own invoices to your customers — ruled out under the German small-business scheme (§ 19 UStG). It also costs an extra 3.5 %. If Stripe enables it on the account, that changes nothing here.",
       hStripeSecret: "Only this one. The „publishable“ key (pk_…) is meant for payment forms in the browser — Rechnungsblatt uses Stripe Checkout, where everything runs on the server.",
       stripeHinweisDrei: "Only subscriptions need a price ID. A recurring amount must exist in Stripe, because Stripe runs the billing cycle and keeps existing customers on their old price when you change it. Credit top-ups are one-off payments — they are built at runtime from the list of amounts.",
-      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. The price ID of a plan belongs to that plan, not here — so several plans can be offered side by side.",
+      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted. The price ID of a plan belongs to that plan, not here — so several plans can be offered side by side.",
       postTitel: "Outgoing mail",
       postText: "Without these details Rechnungsblatt sends no confirmation codes and no reset links — the messages only end up in the log. The password is stored encrypted and never shown again.",
       fHost: "Server", fPort: "Port", fBenutzer: "User", fPasswort: "Password",
