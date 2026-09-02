@@ -32,6 +32,11 @@ def nutzer_json(person: Nutzer) -> dict:
         "guthaben_cent": person.guthaben_cent,
         "naechste_kostet_cent": kontingent.naechste_kostet_cent,
         "darf_erzeugen": kontingent.darf_erzeugen,
+        # Gesetzt, wenn ein Abo gekündigt ist und ausläuft. Stripe lässt
+        # es bis zum Periodenende laufen — bis dahin steht hier ein
+        # Datum, damit das Konto es zeigen kann.
+        "abo_endet": (person.abo_endet.isoformat()
+                      if person.abo_endet else None),
     }
 
 

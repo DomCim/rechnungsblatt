@@ -24,6 +24,7 @@ ergänzen den Adminbereich, sie ersetzen ihn nicht.
 
 from __future__ import annotations
 
+import datetime as dt
 import logging
 
 import stripe
@@ -355,6 +356,32 @@ def verarbeite(ereignis: dict) -> str:
             int(objekt.get("amount_paid") or 0),
         )
         return f"{art}: Abo verlängert für {person.email}"
+
+    if art == "customer.subscription.updated":
+        # **Der Fall, der lange fehlte.** Kündigt jemand, beendet Stripe
+        # das Abo nicht sofort: Es setzt `cancel_at_period_end` und lässt
+        # es bis zum Periodenende laufen — bezahlt ist bezahlt. Gemeldet
+        # wird das hier, `customer.subscription.deleted` kommt erst
+        # Wochen später. Ohne diesen Fall zeigte das Konto in der
+        # Zwischenzeit ein Abo, von dem niemand wusste, dass es endet.
+        person = _nutzer_aus_ereignis(objekt)
+        if person is None:
+            return f"{art}: kein Konto zuzuordnen"
+        endet_bei = objekt.get("cancel_at") or (
+            objekt.get("current_period_end")
+            if objekt.get("cancel_at_period_end") else None
+        )
+        if endet_bei:
+            konten.merke_kuendigung(
+                person.id,
+                dt.datetime.fromtimestamp(int(endet_bei), dt.timezone.utc),
+            )
+            return f"{art}: Kündigung zum {endet_bei} für {person.email}"
+        # Kein Kündigungsvermerk (mehr): Entweder eine gewöhnliche
+        # Änderung, oder die Kündigung wurde zurückgenommen — in Stripe
+        # geht das bis zum Periodenende.
+        konten.merke_kuendigung(person.id, None)
+        return f"{art}: keine Kündigung vermerkt für {person.email}"
 
     if art in ("customer.subscription.deleted", "invoice.payment_failed"):
         person = _nutzer_aus_ereignis(objekt)
