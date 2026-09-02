@@ -96,12 +96,55 @@ def _kunde(person: konten.Nutzer) -> str:
     return neu.id
 
 
+# Grenzen für einen frei eingegebenen Betrag.
+#
+# **Die Untergrenze ist keine Schikane.** Stripe nimmt je Zahlung eine
+# Grundgebühr von etwa 25 Cent plus Prozente; bei zwei Euro bliebe kaum
+# etwas übrig, und ein Guthaben von einem Cent wäre reiner Unfug. Fünf
+# Euro deckt die Gebühr sicher.
+#
+# Die Obergrenze schützt vor dem Vertipper: Wer 50000 statt 50,00
+# eingibt, soll nicht fünfhundert Euro bezahlen. Und ein Guthaben, das
+# nie verbraucht wird, ist eine Verbindlichkeit — kein Geschäft.
+FREI_MINDESTENS = 500
+FREI_HOECHSTENS = 20_000
+
+
+def frei_erlaubt() -> bool:
+    """Darf der Kunde den Betrag selbst eingeben?
+
+    Steht in der Verwaltung. Aus: nur die vorgegebenen Beträge — so war
+    es bis September 2026, und für den Anfang ist das übersichtlicher.
+    """
+    return _zugang().get("stripe_freier_betrag", "").strip().lower() in (
+        "1", "ja", "true", "an")
+
+
+def pruefe_betrag(betrag_cent: int) -> None:
+    """Ist dieser Betrag zulässig? Wirft sonst BezahlFehler.
+
+    **Ohne diese Prüfung wäre der Endpunkt offen.** Der Betrag kommt aus
+    dem Browser; ein gebastelter Aufruf könnte sonst ein Guthaben von
+    einem Cent kaufen oder — bei negativen Zahlen — Stripe mit Unsinn
+    füttern.
+    """
+    if betrag_cent in aufladungen():
+        return                      # ein vorgegebener Betrag, immer gut
+    if not frei_erlaubt():
+        raise BezahlFehler("Unbekannter Betrag.")
+    if betrag_cent < FREI_MINDESTENS:
+        raise BezahlFehler(
+            f"Mindestens {FREI_MINDESTENS // 100} € — darunter frisst die "
+            "Zahlungsgebühr den Betrag auf.")
+    if betrag_cent > FREI_HOECHSTENS:
+        raise BezahlFehler(
+            f"Höchstens {FREI_HOECHSTENS // 100} € auf einmal. Für mehr "
+            "bitte kurz melden.")
+
+
 def sitzung_guthaben(person: konten.Nutzer, betrag_cent: int, basis: str) -> str:
     """Checkout für eine einmalige Guthabenaufladung. Liefert die Adresse."""
-    if betrag_cent not in aufladungen():
-        # Nur vorgegebene Beträge: Sonst könnte ein manipulierter Aufruf
-        # ein Guthaben von einem Cent kaufen.
-        raise BezahlFehler("Unbekannter Betrag.")
+    pruefe_betrag(betrag_cent)
     stripe.api_key = _schluessel()
     sitzung = stripe.checkout.Session.create(
         mode="payment",
