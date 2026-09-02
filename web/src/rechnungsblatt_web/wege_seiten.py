@@ -32,6 +32,10 @@ from .darstellung import nutzer_json
 
 wege = APIRouter()
 
+# Der Zeilenumbruch als Konstante: In einem f-Ausdruck ist ein
+# Backslash-n hier schon zum echten Umbruch geworden.
+NL = chr(10)
+
 
 def seite(name: str) -> HTMLResponse:
     inhalt = (SEITEN / name).read_text(encoding="utf-8")
@@ -77,6 +81,28 @@ def anmeldeseite() -> HTMLResponse:
     bei jeder abgelaufenen Sitzung mit hinaus und käme nicht zurück.
     """
     return seite("anmelden.html")
+
+
+# --- Rechtsseiten ----------------------------------------------------
+#
+# Ohne Anmeldung, ohne Skript, ohne Uebersetzung. Ein Impressum muss
+# erreichbar sein, auch wenn sonst etwas klemmt — und § 5 DDG verlangt
+# es "leicht erkennbar, unmittelbar erreichbar und staendig verfuegbar".
+
+
+@wege.get("/impressum", response_class=HTMLResponse)
+def impressum() -> HTMLResponse:
+    return seite("impressum.html")
+
+
+@wege.get("/datenschutz", response_class=HTMLResponse)
+def datenschutz() -> HTMLResponse:
+    return seite("datenschutz.html")
+
+
+@wege.get("/agb", response_class=HTMLResponse)
+def agb() -> HTMLResponse:
+    return seite("agb.html")
 
 
 @wege.get("/anmelden")
@@ -131,7 +157,20 @@ def sitemap(anfrage: Request) -> Response:
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>1.0</priority>\n"
         "  </url>\n"
-        "</urlset>\n",
+        # Die Rechtsseiten gehören in die Sitemap: Sie sind öffentlich,
+        # ändern sich selten und werden gesucht — von Kunden und
+        # gelegentlich von Behörden.
+        + "".join(
+            "  <url>" + NL
+            + f"    <loc>{basis}/{pfad}</loc>" + NL
+            + f"    <lastmod>{heute}</lastmod>" + NL
+            + "    <changefreq>yearly</changefreq>" + NL
+            + "    <priority>0.3</priority>" + NL
+            + "  </url>" + NL
+            for pfad in ("impressum", "datenschutz", "agb")
+        )
+        + 
+"</urlset>\n",
         media_type="application/xml",
     )
 

@@ -347,6 +347,41 @@
     <div class="meldung" id="zaehlungMeldung" role="status" aria-live="polite"></div>
   </section>
 
+  <!-- Ein Wort an die eigenen Kunden. Als Einstellung und nicht im
+       Code, damit sich Text und Ziel ohne Ausrollen aendern lassen. -->
+  <section class="karte">
+    <h2 data-i18n="werbungTitel">Hinweis im Kundenbereich</h2>
+    <p class="beschreibung" data-i18n="werbungText">
+      Erscheint als Karte unten im Konto &mdash; nur f&uuml;r angemeldete
+      Kunden, und nur wenn Titel und Ziel gesetzt sind. Ohne Haken bleibt
+      sie verborgen.
+    </p>
+    <label class="schalter">
+      <input type="checkbox" id="werbungAn"><span class="hebel"></span>
+      <span data-i18n="fWerbungAn">Hinweis anzeigen</span>
+    </label>
+    <div class="felder" style="margin-top:12px;">
+      <div class="feld breit">
+        <label for="werbungTitelFeld" data-i18n="fWerbungTitel">&Uuml;berschrift</label>
+        <input id="werbungTitelFeld" placeholder="Website, Shop oder Beratung?"></div>
+      <div class="feld breit">
+        <label for="werbungTextFeld" data-i18n="fWerbungText">Text</label>
+        <input id="werbungTextFeld"
+               placeholder="Rechnungsblatt entsteht bei DiD0m. Wir bauen auch Ihre Website."></div>
+      <div class="feld">
+        <label for="werbungKnopf" data-i18n="fWerbungKnopf">Knopfbeschriftung</label>
+        <input id="werbungKnopf" placeholder="Mehr erfahren"></div>
+      <div class="feld">
+        <label for="werbungZiel" data-i18n="fWerbungZiel">Verweis</label>
+        <input id="werbungZiel" placeholder="https://did0m.dev"></div>
+    </div>
+    <div class="zeile" style="margin-top:14px;">
+      <button type="button" class="knopf" id="werbungSpeichern"
+              data-i18n="speichern">Speichern</button>
+    </div>
+    <div class="meldung" id="werbungMeldung" role="status" aria-live="polite"></div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="stripeTitel">Zahlungen</h2>
     <p class="beschreibung" data-i18n="stripeText">
@@ -385,7 +420,7 @@
     <p class="beschreibung" style="margin-top:10px;" data-i18n="stripeHinweis">
       Der Webhook zeigt auf <span class="kennung">/api/bezahlen/webhook</span>.
       Nötige Ereignisse: checkout.session.completed, invoice.paid,
-      invoice.payment_failed, customer.subscription.deleted.
+      invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted.
       Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier —
       so lassen sich mehrere Abos nebeneinander anbieten.
     </p>
@@ -531,6 +566,12 @@
       fPlausUrl: "Plausible-Adresse", fPlausDomain: "Gezählte Domain",
       fPlausKey: "API-Schlüssel zum Lesen",
       plausKeyHinweis: "Den Schlüssel legen Sie in Plausible unter Settings → API Keys an. Er wird nur zum Lesen der Zahlen gebraucht: Ohne ihn zählt die Seite weiter, die Auswertung oben bleibt aber leer.",
+      werbungTitel: "Hinweis im Kundenbereich",
+      werbungText: "Erscheint als Karte unten im Konto — nur für angemeldete Kunden, und nur wenn Titel und Ziel gesetzt sind. Ohne Haken bleibt sie verborgen.",
+      fWerbungAn: "Hinweis anzeigen", fWerbungTitel: "Überschrift",
+      fWerbungText: "Text", fWerbungKnopf: "Knopfbeschriftung",
+      fWerbungZiel: "Verweis",
+      werbungZielFehlt: "Der Verweis muss mit https:// beginnen.",
       stripeTitel: "Zahlungen",
       stripeText: "Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden verschlüsselt abgelegt und nie wieder angezeigt.",
       fStripeSecret: "Geheimer Schlüssel (sk_…)",
@@ -541,7 +582,7 @@
       stripeHinweisZwei: "„Managed Payments“ bleibt aus. Rechnungsblatt schaltet Stripes Merchant-of-Record-Dienst bei jeder Zahlung ausdrücklich ab. Er würde Umsatzsteuer berechnen und eigene Rechnungen an Ihre Kunden schicken — bei Abrechnung nach § 19 UStG ausgeschlossen. Außerdem kostet er 3,5 % zusätzlich. Sollte Stripe ihn im Konto aktivieren, ändert das hier nichts.",
       hStripeSecret: "Nur dieser. Der „veröffentlichbare“ Schlüssel (pk_…) ist für Zahlungsformulare im Browser gedacht — Rechnungsblatt benutzt Stripe Checkout, da läuft alles auf dem Server.",
       stripeHinweisDrei: "Nur Abos brauchen eine Preis-ID. Ein wiederkehrender Betrag muss in Stripe angelegt sein, weil Stripe den Abrechnungszyklus führt und bei einer Preisänderung Bestandskunden auf ihrem alten Preis lässt. Guthabenaufladungen dagegen sind Einmalzahlungen — die entstehen zur Laufzeit aus der Betragsliste.",
-      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier — so lassen sich mehrere Abos nebeneinander anbieten.",
+      stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted. Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier — so lassen sich mehrere Abos nebeneinander anbieten.",
       postTitel: "Postausgang",
       postText: "Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll. Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.",
       fHost: "Server", fPort: "Port", fBenutzer: "Benutzer", fPasswort: "Passwort",
@@ -625,6 +666,12 @@
       fPlausUrl: "Plausible address", fPlausDomain: "Counted domain",
       fPlausKey: "API key for reading",
       plausKeyHinweis: "Create the key in Plausible under Settings → API Keys. It is only needed to read the numbers: without it the site keeps counting, but the overview above stays empty.",
+      werbungTitel: "Notice in the customer area",
+      werbungText: "Shown as a card at the bottom of the account page — only to signed-in customers, and only when title and link are set. Without the switch it stays hidden.",
+      fWerbungAn: "Show notice", fWerbungTitel: "Heading",
+      fWerbungText: "Text", fWerbungKnopf: "Button label",
+      fWerbungZiel: "Link",
+      werbungZielFehlt: "The link must start with https://.",
       stripeTitel: "Payments",
       stripeText: "Without keys the app offers no payment — you then set plans and credit by hand, as before. The keys are stored encrypted and never shown again.",
       fStripeSecret: "Secret key (sk_…)",
@@ -635,7 +682,7 @@
       stripeHinweisZwei: "„Managed Payments“ stays off. Rechnungsblatt disables Stripe's merchant-of-record service on every payment. It would charge VAT and send its own invoices to your customers — ruled out under the German small-business scheme (§ 19 UStG). It also costs an extra 3.5 %. If Stripe enables it on the account, that changes nothing here.",
       hStripeSecret: "Only this one. The „publishable“ key (pk_…) is meant for payment forms in the browser — Rechnungsblatt uses Stripe Checkout, where everything runs on the server.",
       stripeHinweisDrei: "Only subscriptions need a price ID. A recurring amount must exist in Stripe, because Stripe runs the billing cycle and keeps existing customers on their old price when you change it. Credit top-ups are one-off payments — they are built at runtime from the list of amounts.",
-      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. The price ID of a plan belongs to that plan, not here — so several plans can be offered side by side.",
+      stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.updated, customer.subscription.deleted. The price ID of a plan belongs to that plan, not here — so several plans can be offered side by side.",
       postTitel: "Outgoing mail",
       postText: "Without these details Rechnungsblatt sends no confirmation codes and no reset links — the messages only end up in the log. The password is stored encrypted and never shown again.",
       fHost: "Server", fPort: "Port", fBenutzer: "User", fPasswort: "Password",
@@ -1312,6 +1359,12 @@
     el("stripeSecret").value = werte.stripe_secret || "";
     el("stripeHook").value = werte.stripe_webhook_secret || "";
     el("stripeAufladungen").value = werte.stripe_aufladungen || "";
+    el("werbungAn").checked = ["1", "ja", "true", "an"].indexOf(
+      (werte.werbung_an || "").toLowerCase()) >= 0;
+    el("werbungTitelFeld").value = werte.werbung_titel || "";
+    el("werbungTextFeld").value = werte.werbung_text || "";
+    el("werbungKnopf").value = werte.werbung_knopf || "";
+    el("werbungZiel").value = werte.werbung_ziel || "";
     el("stripeFrei").checked = ["1", "ja", "true", "an"].indexOf(
       (werte.stripe_freier_betrag || "").toLowerCase()) >= 0;
   }
@@ -1438,7 +1491,37 @@
   el("tarifAnlegen").addEventListener("click", tarifAnlegen);
   el("tarifeSpeichern").addEventListener("click", tarifeSpeichern);
 
-  RB.starte(texte);
+  // Der Hinweis im Kundenbereich. Eigener Knopf, damit ein Tippfehler
+// im Verweis nicht die Zahlungseinstellungen mitnimmt.
+el("werbungSpeichern").addEventListener("click", async function () {
+  var ziel = el("werbungZiel").value.trim();
+  var kasten = el("werbungMeldung");
+  // Ein Verweis ohne Schema wird vom Browser als relativ gelesen und
+  // landet auf der eigenen Seite — das faellt sonst niemandem auf.
+  if (ziel && !/^https?:\/\//.test(ziel)) {
+    kasten.className = "meldung hinweis";
+    kasten.textContent = RB.t("werbungZielFehlt");
+    return;
+  }
+  var antwort = await RB.api("/api/verwaltung/einstellungen", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      // "0" und nicht "": Leer heisst in der Verwaltung "entfernen".
+      werbung_an: el("werbungAn").checked ? "1" : "0",
+      werbung_titel: el("werbungTitelFeld").value.trim(),
+      werbung_text: el("werbungTextFeld").value.trim(),
+      werbung_knopf: el("werbungKnopf").value.trim(),
+      werbung_ziel: ziel
+    })
+  });
+  kasten.className = "meldung hinweis" + (antwort.ok ? " gut" : "");
+  kasten.textContent = antwort.ok
+    ? RB.t("gespeichert")
+    : RB.t("fehlerAllgemein");
+});
+
+RB.starte(texte);
   RB.beiSprachwechsel(function () {
     zeichneNutzer(); zeichneTarife(); zeichneZeitwahl(); ladeBesucher();
   });

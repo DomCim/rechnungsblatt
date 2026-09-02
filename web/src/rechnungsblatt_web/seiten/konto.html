@@ -38,6 +38,14 @@
   .karte form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; max-width: 380px; }
   .meldung { margin-top: 12px; }
   .meldung:empty { display: none; }
+  /* Die Pflichtangaben: unaufdringlich, aber auffindbar. */
+  .rechtszeile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 32px 0 8px;
+    font-size: 13px;
+  }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -123,6 +131,10 @@
          Datenbank, damit ein neuer Tarif ohne Codeänderung erscheint. -->
     <h3 class="zwischentitel" id="aboTitel" hidden data-i18n="aboTitel">Abo buchen</h3>
     <div id="abos" class="zeile"></div>
+    <!-- Gekuendigt, laeuft aber noch: Stripe beendet ein Abo erst zum
+         Periodenende. Ohne diesen Hinweis sieht der Kunde nur "laeuft"
+         und glaubt, seine Kuendigung sei nicht angekommen. -->
+    <p class="hinweis" id="aboGekuendigt" hidden style="margin-top:10px;"></p>
 
     <div class="zeile" style="margin-top:12px;">
       <button type="button" class="knopf leise" id="bezahlVerwalten" hidden
@@ -236,6 +248,18 @@
     </div>
   </section>
 
+  <!-- Ein Wort des Betreibers. Steht bewusst weit unten: Wer hier
+       ankommt, hat sein Anliegen erledigt. Ohne eingetragenen Text
+       bleibt die Karte verborgen — siehe /api/hinweis. -->
+  <section class="karte" id="hinweisKarte" hidden>
+    <h2 id="hinweisTitel"></h2>
+    <p class="beschreibung" id="hinweisText"></p>
+    <div class="zeile">
+      <a class="knopf leise" id="hinweisKnopf" href="#"
+         target="_blank" rel="noopener"></a>
+    </div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="sitzungTitel">Sitzung</h2>
     <p class="beschreibung" data-i18n="sitzungText">
@@ -254,6 +278,14 @@
     <div class="meldung" id="sitzungMeldung" role="status" aria-live="polite"></div>
   </section>
 
+
+  <!-- Die Pflichtangaben auch hier: Ein Kunde sucht die Bedingungen
+       dort, wo er sein Konto verwaltet — nicht auf der Startseite. -->
+  <p class="rechtszeile">
+    <a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a>
+    <a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a>
+    <a class="verweis" href="/agb" data-i18n="navAgb">AGB</a>
+  </p>
 </div>
 
 <script src="/seiten/werkzeuge.js"></script>
@@ -287,6 +319,7 @@
       freiUngueltig: "Bitte einen Betrag zwischen {von} und {bis} € eingeben.",
       guthabenTitel: "Guthaben aufladen", aboTitel: "Abo buchen",
       aboLaeuft: "läuft", jeMonat: " im Monat", inklusiv: "Inklusive Rechnungen",
+      aboGekuendigtBis: "Gekündigt — das Abo läuft noch bis zum {datum}. Danach gilt wieder der kostenlose Tarif; Ihr Guthaben bleibt.",
       bezahlVerwalten: "Zahlungen verwalten",
       bezahltDanke: "Danke. Die Gutschrift erscheint gleich — sie wird von Stripe gemeldet und kann einen Moment nachlaufen.",
       abgebrochen: "Abgebrochen. Es wurde nichts abgebucht.",
@@ -312,7 +345,8 @@
       adminKnopf: "Zum Adminbereich",
       sitzungTitel: "Sitzung",
       sitzungText: "Abmelden beendet die Sitzung auf diesem Gerät. Ihre Daten bleiben verschlüsselt liegen und sind nach der nächsten Anmeldung wieder da.",
-      abmeldenKnopf: "Abmelden", zurStartseite: "Öffentliche Seite",
+      abmeldenKnopf: "Abmelden",
+      navImpressum: "Impressum", navDatenschutz: "Datenschutz", navAgb: "AGB", zurStartseite: "Öffentliche Seite",
       verbrauchText: "Die letzten Buchungen dieses Kontos.",
       spNummer: "Nummer",
       spZeitpunkt: "Zeitpunkt",
@@ -344,6 +378,7 @@
       freiUngueltig: "Please enter an amount between {von} and {bis} €.",
       guthabenTitel: "Top up credit", aboTitel: "Choose a plan",
       aboLaeuft: "active", jeMonat: " per month", inklusiv: "Invoices included",
+      aboGekuendigtBis: "Cancelled — the plan runs until {datum}. After that the free plan applies again; your credit remains.",
       bezahlVerwalten: "Manage payments",
       bezahltDanke: "Thank you. The credit will appear shortly — it is reported by Stripe and may take a moment.",
       abgebrochen: "Cancelled. Nothing was charged.",
@@ -369,7 +404,8 @@
       adminKnopf: "Open administration",
       sitzungTitel: "Session",
       sitzungText: "Signing out ends the session on this device. Your data stays encrypted and is back after the next sign-in.",
-      abmeldenKnopf: "Sign out", zurStartseite: "Public page",
+      abmeldenKnopf: "Sign out",
+      navImpressum: "Legal notice", navDatenschutz: "Privacy", navAgb: "Terms", zurStartseite: "Public page",
       verbrauchText: "The most recent bookings on this account.",
       spNummer: "Number",
       spZeitpunkt: "Time",
@@ -545,6 +581,24 @@
       abos.appendChild(knopf);
     });
 
+    // Das Kündigungsdatum hängt am Konto, nicht am Angebot. Es hier
+    // eigens zu holen ist eine Anfrage mehr — dafür kann diese
+    // Funktion allein aufgerufen werden, ohne auf eine Variable aus
+    // einer anderen zu bauen.
+    var meins = await RB.api("/api/ich");
+    var konto = meins.ok ? meins.daten : null;
+    var streifen = el("aboGekuendigt");
+    if (konto && konto.abo_endet) {
+      var bis = new Date(konto.abo_endet);
+      streifen.textContent = RB.t("aboGekuendigtBis").replace(
+        "{datum}", bis.toLocaleDateString(
+          RB.sprache() === "de" ? "de-DE" : "en-GB",
+          { day: "2-digit", month: "2-digit", year: "numeric" }));
+      streifen.hidden = false;
+    } else {
+      streifen.hidden = true;
+    }
+
     el("bezahlVerwalten").hidden = !a.hat_kunde;
 
     // Rueckkehr von Stripe: Die Gutschrift kommt ueber den Webhook, nicht
@@ -632,6 +686,20 @@ el("siegelKnopf").addEventListener("click", async function () {
   pruefungMeldung(text, !bericht.heil);
 });
 
+// Der Hinweis des Betreibers. Eigene Anfrage, damit die Karte auch
+// ohne eingerichtete Zahlung erscheint — sie hat damit nichts zu tun.
+async function ladeHinweis() {
+  var antwort = await RB.api("/api/hinweis");
+  if (!antwort.ok || !antwort.daten || !antwort.daten.an) return;
+  var h = antwort.daten;
+  el("hinweisTitel").textContent = h.titel;
+  el("hinweisText").textContent = h.text || "";
+  var knopf = el("hinweisKnopf");
+  knopf.textContent = h.knopf;
+  knopf.href = h.ziel;
+  el("hinweisKarte").hidden = false;
+}
+
 el("abmelden").addEventListener("click", async function () {
     // Der Server loescht die Sitzung; danach ist der Datenschluessel
     // ebenfalls weg -- er lag nur dort, verpackt.
@@ -640,6 +708,7 @@ el("abmelden").addEventListener("click", async function () {
   });
 
   ladeBezahlen();
+  ladeHinweis();
 
   RB.starte(texte);
   RB.beiSprachwechsel(lade);

@@ -223,6 +223,39 @@ def ich(person: Nutzer = Depends(angemeldet)) -> dict:
     return nutzer_json(person)
 
 
+@wege.get("/api/hinweis")
+def hinweis(person: Nutzer = Depends(angemeldet)) -> dict:
+    """Ein Hinweis des Betreibers im Kundenbereich.
+
+    Nur für Angemeldete: Es ist ein Wort an die eigenen Kunden, nicht
+    Werbung an Vorbeigehende. Ohne eingetragenen Text bleibt die Karte
+    verborgen — dann ist hier nichts zu zeigen.
+    """
+    try:
+        werte = konten.einstellungen()
+    except Exception:          # Datenbank nicht erreichbar
+        return {"an": False}
+
+    an = (werte.get("werbung_an") or "").strip().lower() in (
+        "1", "ja", "true", "an")
+    titel = (werte.get("werbung_titel") or "").strip()
+    text = (werte.get("werbung_text") or "").strip()
+    ziel = (werte.get("werbung_ziel") or "").strip()
+
+    # Ohne Titel und Ziel gäbe es eine leere Karte mit einem Knopf ins
+    # Nichts — dann lieber gar keine.
+    if not (an and titel and ziel):
+        return {"an": False}
+
+    return {
+        "an": True,
+        "titel": titel,
+        "text": text,
+        "knopf": (werte.get("werbung_knopf") or "").strip() or "Mehr erfahren",
+        "ziel": ziel,
+    }
+
+
 @wege.post("/api/ich/passwort")
 def passwort_wechseln(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
     try:

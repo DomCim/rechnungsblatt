@@ -101,6 +101,9 @@ class Nutzer:
     zuletzt_angemeldet: dt.datetime | None
     # NULL, solange die Adresse nicht per Code bestätigt wurde.
     email_bestaetigt: dt.datetime | None = None
+    # Gesetzt, sobald ein Abo gekündigt ist — es läuft bis dahin weiter.
+    # Stripe meldet die Kündigung sofort, das Ende aber erst später.
+    abo_endet: dt.datetime | None = None
 
     @property
     def ist_admin(self) -> bool:
@@ -297,6 +300,12 @@ ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS steuer_index TEXT;
 -- wird und sein Abo auffindbar bleibt.
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS stripe_kunde TEXT;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS stripe_abo TEXT;
+-- Wann ein gekuendigtes Abo auslaeuft. Stripe setzt bei einer
+-- Kuendigung zunaechst nur `cancel_at_period_end`; das Abo bleibt
+-- bis zum Periodenende aktiv, und `customer.subscription.deleted`
+-- kommt erst dann. Ohne dieses Feld wuesste weder der Kunde noch
+-- der Betreiber vorher, dass gekuendigt ist.
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS abo_endet TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS nutzer_steuer_index ON nutzer (steuer_index)
   WHERE steuer_index IS NOT NULL;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS email_bestaetigt TIMESTAMPTZ;
@@ -544,7 +553,7 @@ def loesche_tarif(schluessel: str) -> None:
 
 _NUTZER_SPALTEN = (
     "id, email, rolle, status, tarif, guthaben_cent, passwort_wechseln, "
-    "angelegt, zuletzt_angemeldet, email_bestaetigt"
+    "angelegt, zuletzt_angemeldet, email_bestaetigt, abo_endet"
 )
 
 
@@ -560,6 +569,7 @@ def _nutzer_aus_zeile(zeile: dict) -> Nutzer:
         angelegt=zeile["angelegt"],
         zuletzt_angemeldet=zeile["zuletzt_angemeldet"],
         email_bestaetigt=zeile["email_bestaetigt"],
+        abo_endet=zeile["abo_endet"],
     )
 
 
@@ -881,7 +891,13 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # mehr als einen Abo-Tarif.
                "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen",
                # Darf der Kunde den Aufladebetrag selbst eingeben?
-               "stripe_freier_betrag")
+               "stripe_freier_betrag",
+               # Ein Hinweis auf das eigene Unternehmen im Kundenbereich.
+               # Als Einstellung und nicht im Code: Der Text soll sich
+               # ändern lassen, ohne neu auszurollen — und abschalten,
+               # wenn er nicht wirkt.
+               "werbung_an", "werbung_titel", "werbung_text",
+               "werbung_knopf", "werbung_ziel")
 _GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
                    "plausible_api_key", "dkim_schluessel"}
 
@@ -1090,17 +1106,43 @@ def setze_abo(nutzer_id: int, abo: str | None, tarif_schluessel: str | None) -> 
 
     ``abo=None`` beendet es: Der Tarif fällt auf den Standard zurück, das
     vorhandene Guthaben bleibt — es ist bezahlt.
+
+    Ein Kündigungsvermerk wird dabei immer gelöscht. Das gilt in beide
+    Richtungen: Beim Beenden ist er erledigt, und wer neu bucht, hat
+    nicht gekündigt — bliebe er stehen, zeigte das Konto ein frisches Abo
+    als gekündigt an.
     """
     with verbindung() as verb:
         if tarif_schluessel:
             verb.execute(
-                "UPDATE nutzer SET stripe_abo = %s, tarif = %s WHERE id = %s",
+                "UPDATE nutzer SET stripe_abo = %s, tarif = %s, "
+                "abo_endet = NULL WHERE id = %s",
                 (abo, tarif_schluessel, nutzer_id),
             )
         else:
             verb.execute(
-                "UPDATE nutzer SET stripe_abo = %s WHERE id = %s", (abo, nutzer_id)
+                "UPDATE nutzer SET stripe_abo = %s, abo_endet = NULL "
+                "WHERE id = %s", (abo, nutzer_id)
             )
+
+
+def merke_kuendigung(nutzer_id: int, endet: dt.datetime | None) -> None:
+    """Hält fest, wann ein gekündigtes Abo ausläuft.
+
+    **Warum das nötig ist.** Stripe beendet ein gekündigtes Abo nicht
+    sofort: Es setzt ``cancel_at_period_end`` und lässt es bis zum
+    Periodenende laufen — bezahlt ist bezahlt. Das Ereignis
+    ``customer.subscription.deleted`` kommt erst dann. Ohne diesen
+    Vermerk sähe weder der Kunde noch der Betreiber vorher, dass
+    gekündigt wurde; im Konto stand einfach weiter das laufende Abo.
+
+    ``endet=None`` nimmt die Kündigung zurück — in Stripe lässt sich das
+    bis zum Periodenende widerrufen.
+    """
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET abo_endet = %s WHERE id = %s", (endet, nutzer_id)
+        )
 
 
 def zahlungen_von(nutzer_id: int, grenze: int = 20) -> list[dict]:

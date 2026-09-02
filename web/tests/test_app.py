@@ -482,7 +482,7 @@ def test_verfahrensdokumentation_kommt_als_datei(client):
     assert "{" not in text and "}" not in text
 
 def test_seiten_laden_nichts_von_fremden_servern():
-    """Keine Seite darf Schriften oder Skripte von außen ziehen.
+    """Keine Seite darf Schriften, Skripte oder Bilder von außen ziehen.
 
     Bis zum 01.09.2026 lud jede Seite von ``fonts.googleapis.com``. Das
     kostete Zeit (zwei fremde Verbindungen vor dem ersten sichtbaren
@@ -491,8 +491,14 @@ def test_seiten_laden_nichts_von_fremden_servern():
     3 O 17493/20). Die Schriften liegen deshalb unter
     ``/seiten/schriften/``.
 
+    Geprüft wird, was der Browser **von selbst lädt**: ``<script src>``,
+    ``<link href>``, ``<img src>``, ``<iframe src>``. Ein ``<a href>``
+    ist etwas anderes — dort entsteht erst eine Verbindung, wenn jemand
+    klickt, und das ist seine Entscheidung. Die Datenschutzerklärung
+    verweist aus gutem Grund auf Stripes eigene Angaben.
+
     Dieser Test ist die Sperre dagegen, dass jemand aus Bequemlichkeit
-    wieder ein ``<link>`` nach außen setzt: Ohne ihn fiele es erst beim
+    wieder etwas nach außen einbindet: Ohne ihn fiele es erst beim
     nächsten Datenschutz-Audit auf.
     """
     seiten = Path(__file__).resolve().parents[1] / "src/rechnungsblatt_web/seiten"
@@ -501,15 +507,34 @@ def test_seiten_laden_nichts_von_fremden_servern():
         # der Platzhalter steht als Kommentar in den Seiten.
         "plausible.io",
     }
+    # Nur Elemente, die der Browser ohne Zutun abruft. `link` deckt
+    # Stylesheets, Vorverbindungen und Symbole ab.
+    ladend = re.compile(
+        r"""<(?:script|link|img|iframe|source|video|audio|embed|object)\b"""
+        r"""[^>]*?\b(?:src|href|data)=["'](https?://[^"']+)""",
+        re.I | re.S,
+    )
     verstoesse = []
     for datei in sorted(seiten.glob("*.html")):
         text = datei.read_text(encoding="utf-8")
-        for treffer in re.findall(r'(?:href|src)="(https?://[^"]+)"', text):
+        for treffer in ladend.findall(text):
             if not any(gut in treffer for gut in erlaubt_extern):
                 verstoesse.append(f"{datei.name}: {treffer}")
 
     assert not verstoesse, "Fremde Ressourcen: " + ", ".join(verstoesse)
 
+
+def test_anklickbare_verweise_nach_aussen_sind_erlaubt():
+    """Gegenprobe zum Test darüber — er darf nicht zu scharf sein.
+
+    Die Datenschutzerklärung muss auf Stripes Angaben verweisen dürfen.
+    Verbietet der Test das, entfernt der Nächste den Verweis, statt das
+    Muster zu prüfen — und die Erklärung wird schlechter.
+    """
+    seiten = Path(__file__).resolve().parents[1] / "src/rechnungsblatt_web/seiten"
+    text = (seiten / "datenschutz.html").read_text(encoding="utf-8")
+
+    assert 'href="https://stripe.com/de/privacy"' in text
 
 def test_schriften_liegen_lokal_vor():
     """Die Schriftdateien müssen im Repository liegen, nicht nur im CSS."""
