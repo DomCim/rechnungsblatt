@@ -891,7 +891,13 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # mehr als einen Abo-Tarif.
                "stripe_secret", "stripe_webhook_secret", "stripe_aufladungen",
                # Darf der Kunde den Aufladebetrag selbst eingeben?
-               "stripe_freier_betrag")
+               "stripe_freier_betrag",
+               # Ein Hinweis auf das eigene Unternehmen im Kundenbereich.
+               # Als Einstellung und nicht im Code: Der Text soll sich
+               # ändern lassen, ohne neu auszurollen — und abschalten,
+               # wenn er nicht wirkt.
+               "werbung_an", "werbung_titel", "werbung_text",
+               "werbung_knopf", "werbung_ziel")
 _GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
                    "plausible_api_key", "dkim_schluessel"}
 

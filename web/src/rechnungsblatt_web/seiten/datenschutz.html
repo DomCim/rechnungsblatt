@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Datenschutz &mdash; Rechnungsblatt</title>
+<meta name="description" content="Welche Daten Rechnungsblatt verarbeitet, wozu und wie lange.">
+<link rel="canonical" href="/datenschutz">
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<style>
+  /* Ein Rechtstext wird gelesen, nicht durchgeblättert: schmales Maß,
+     ruhiger Zeilenabstand, keine Effekte. */
+  .rechtsseite {
+    max-width: 68ch;
+    margin: 0 auto;
+    padding: calc(28px + env(safe-area-inset-top, 0px))
+             calc(22px + env(safe-area-inset-right, 0px))
+             80px
+             calc(22px + env(safe-area-inset-left, 0px));
+  }
+  .rechtsseite .marke {
+    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+    font-variation-settings: "opsz" 40;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+  }
+  .rechtsseite h1 {
+    font-size: clamp(26px, 6vw, 38px);
+    margin: 6px 0 26px;
+  }
+  .rechtsseite h2 {
+    font-size: clamp(17px, 3.4vw, 21px);
+    margin: 34px 0 10px;
+  }
+  .rechtsseite h3 {
+    font-size: 15.5px;
+    margin: 22px 0 6px;
+    color: var(--tinte);
+  }
+  .rechtsseite p,
+  .rechtsseite li {
+    color: var(--tinte-2);
+    line-height: 1.62;
+    font-size: 14.5px;
+  }
+  .rechtsseite ul, .rechtsseite ol { padding-left: 20px; margin: 8px 0; }
+  .rechtsseite li { margin-bottom: 5px; }
+  .rechtsseite dl { margin: 8px 0; }
+  .rechtsseite dt {
+    font-weight: 600;
+    color: var(--tinte);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-top: 14px;
+  }
+  .rechtsseite dd {
+    margin: 2px 0 0;
+    color: var(--tinte-2);
+    line-height: 1.6;
+    font-size: 14.5px;
+  }
+  .rechtsseite a { color: var(--akzent-tinte); }
+  .rechtsseite .anschrift {
+    font-style: normal;
+    color: var(--tinte-2);
+    line-height: 1.62;
+    font-size: 14.5px;
+  }
+  .rechtsseite .stand {
+    margin-top: 46px;
+    padding-top: 16px;
+    border-top: 1px solid var(--kante);
+    font-size: 13px;
+  }
+  .rechtsseite .zurueck { margin-top: 30px; }
+  /* Tabellen in Rechtstexten: Verantwortlichkeiten, Fristen. */
+  .rechtsseite table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  .rechtsseite th, .rechtsseite td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--kante);
+    vertical-align: top;
+    color: var(--tinte-2);
+  }
+  .rechtsseite th { color: var(--tinte); font-weight: 600; }
+</style>
+</head>
+<body>
+<main class="rechtsseite">
+  <div class="marke">Rechnungsblatt</div>
+  <h1>Datenschutz</h1>
+
+  <p>
+    Diese Erkl&auml;rung beschreibt, welche Daten bei der Nutzung von
+    Rechnungsblatt anfallen, wozu sie verarbeitet werden und wie lange sie
+    bleiben.
+  </p>
+
+  <h2>1. Verantwortlicher</h2>
+  <address class="anschrift">
+    <strong>DiD0m &mdash; Dominik Dill</strong><br>
+    Goldammerweg 25<br>
+    95119 Naila<br>
+    E-Mail: <a href="mailto:d.dill@rechnungsblatt.de">d.dill@rechnungsblatt.de</a>
+  </address>
+  <p>
+    Ein Datenschutzbeauftragter ist nicht zu benennen: Der Betrieb
+    besch&auml;ftigt nicht mehr als zwanzig Personen mit der Verarbeitung
+    (&sect;&nbsp;38 BDSG).
+  </p>
+
+  <h2>2. Was beim Aufruf der Seite anf&auml;llt</h2>
+  <p>
+    Der Server verarbeitet die Angaben, die jeder Browser beim Abruf
+    &uuml;bermittelt &mdash; darunter IP-Adresse, Zeitpunkt, aufgerufene
+    Adresse und Browserkennung. Sie sind technisch notwendig, um die Seite
+    ausliefern zu k&ouml;nnen.
+  </p>
+  <p>
+    <strong>Rechtsgrundlage:</strong> Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f
+    DSGVO &mdash; berechtigtes Interesse am Betrieb und an der Sicherheit
+    des Angebots.
+  </p>
+
+  <h2>3. Konto</h2>
+  <p>Zu einem Konto werden gespeichert:</p>
+  <table>
+    <tr><th>Angabe</th><th>Wozu</th></tr>
+    <tr><td>E-Mail-Adresse</td><td>Anmeldung, Best&auml;tigungscode, Kennwort zur&uuml;cksetzen</td></tr>
+    <tr><td>Kennwort</td><td>nur als Hashwert &mdash; im Klartext liegt es nirgends</td></tr>
+    <tr><td>Zeitpunkte</td><td>Anlegen, Freischalten, letzte Anmeldung, Best&auml;tigung</td></tr>
+    <tr><td>Tarif und Guthaben</td><td>Abrechnung der erzeugten Rechnungen</td></tr>
+  </table>
+  <p>
+    <strong>Rechtsgrundlage:</strong> Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;b
+    DSGVO &mdash; Erf&uuml;llung des Nutzungsvertrags.
+  </p>
+
+  <h3>Anmeldung</h3>
+  <p>
+    Eine Anmeldung setzt ein technisch notwendiges Cookie
+    (<span class="kennung">rb_sitzung</span>). Es enth&auml;lt nur einen
+    Zufallswert, keine Inhalte, gilt 30 Tage und wird beim Abmelden
+    ung&uuml;ltig. Ohne dieses Cookie ist eine Anmeldung nicht m&ouml;glich;
+    eine Einwilligung ist daf&uuml;r nicht erforderlich
+    (&sect;&nbsp;25 Abs.&nbsp;2 Nr.&nbsp;2 TDDDG).
+  </p>
+
+  <h2>4. Rechnungsdaten &mdash; verschl&uuml;sselt</h2>
+  <p>
+    Die eingegebenen Rechnungsdaten, das Briefpapier und die erzeugten Belege
+    liegen <strong>verschl&uuml;sselt</strong> auf dem Server. Der
+    Schl&uuml;ssel wird beim Anmelden aus dem Kennwort abgeleitet und nur
+    f&uuml;r die Dauer der Sitzung gehalten; gespeichert wird er nicht.
+  </p>
+  <p>
+    <strong>Das hat eine Folge, die ausdr&uuml;cklich genannt sei:</strong>
+    Der Anbieter kann die Rechnungen nicht einsehen &mdash; auch nicht auf
+    Bitte des Nutzers. Wer Kennwort und Wiederherstellungscode verliert,
+    verliert den Zugang zu den Daten endg&uuml;ltig. Das ist der Preis
+    daf&uuml;r, dass niemand sonst hineinsehen kann.
+  </p>
+  <p>
+    Die Empf&auml;ngerdaten in den Rechnungen verarbeitet der Nutzer als
+    Verantwortlicher; der Anbieter ist insoweit Auftragsverarbeiter
+    (Art.&nbsp;28 DSGVO). Ein Vertrag zur Auftragsverarbeitung wird auf
+    Anfrage gestellt.
+  </p>
+
+  <h2>5. Aufbewahrung</h2>
+  <table>
+    <tr><th>Daten</th><th>Dauer</th></tr>
+    <tr><td>Erzeugte Rechnungen</td><td>acht Jahre (&sect;&nbsp;147 Abs.&nbsp;3 AO, &sect;&nbsp;14b Abs.&nbsp;1 UStG)</td></tr>
+    <tr><td>Zahlungsbelege</td><td>ebenso acht Jahre</td></tr>
+    <tr><td>Konto</td><td>bis zur L&ouml;schung, danach nur was aufbewahrungspflichtig ist</td></tr>
+    <tr><td>Sitzungen</td><td>30 Tage, dann automatisch entfernt</td></tr>
+  </table>
+  <p>
+    <strong>Rechnungen lassen sich nicht l&ouml;schen</strong>, auch nicht auf
+    Wunsch: Sie unterliegen der Aufbewahrungspflicht, und eine vergebene
+    Rechnungsnummer darf nicht erneut verwendet werden. Das ist keine
+    Bequemlichkeit des Anbieters, sondern eine Anforderung des Steuerrechts.
+  </p>
+
+  <h2>6. Zahlungen &uuml;ber Stripe</h2>
+  <p>
+    F&uuml;r Zahlungen wird Stripe eingesetzt (Stripe Payments Europe, Ltd.,
+    Dublin, Irland). Beim Bezahlen werden E-Mail-Adresse, Betrag und eine
+    Kundenkennung an Stripe &uuml;bermittelt.
+  </p>
+  <p>
+    <strong>Kartendaten erreichen diesen Server nie.</strong> Sie werden
+    ausschlie&szlig;lich bei Stripe eingegeben und dort verarbeitet.
+    Gespeichert werden hier nur die Stripe-Kundennummer, die Abo-Kennung und
+    die Betr&auml;ge &mdash; keine Karten- oder Kontodaten.
+  </p>
+  <p>
+    <strong>Rechtsgrundlage:</strong> Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;b
+    DSGVO. Stripes eigene Angaben:
+    <a href="https://stripe.com/de/privacy" target="_blank" rel="noopener">stripe.com/de/privacy</a>.
+  </p>
+
+  <h2>7. Besucherz&auml;hlung</h2>
+  <p>
+    Die Seitenaufrufe werden mit Plausible gez&auml;hlt &mdash; einer
+    selbst betriebenen Software auf demselben Server.
+    <strong>Ohne Cookies und ohne Wiedererkennung.</strong> Aus IP-Adresse
+    und Browserkennung wird mit einem t&auml;glich wechselnden Zusatzwert ein
+    Kennzeichen gebildet, das nicht gespeichert wird; &uuml;ber den Tag
+    hinaus l&auml;sst sich niemand wiedererkennen.
+  </p>
+  <p>
+    Es werden keine Daten an Dritte &uuml;bertragen und keine Profile
+    gebildet. Deshalb gibt es hier keinen Einwilligungsbanner &mdash; es gibt
+    nichts einzuwilligen.
+  </p>
+  <p>
+    <strong>Rechtsgrundlage:</strong> Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f
+    DSGVO &mdash; berechtigtes Interesse an einer Reichweitenmessung ohne
+    Personenbezug.
+  </p>
+
+  <h2>8. Keine fremden Dienste in der Seite</h2>
+  <p>
+    Schriften, Stilvorlagen und Skripte werden vom eigenen Server
+    ausgeliefert. Es werden <strong>keine</strong> externen Dienste
+    eingebunden &mdash; insbesondere keine Google Fonts, keine
+    Auslieferungsnetze, keine sozialen Netzwerke, keine Werbenetzwerke. Beim
+    Aufruf der Seite entsteht damit keine Verbindung zu Dritten.
+  </p>
+
+  <h2>9. E-Mails</h2>
+  <p>
+    Best&auml;tigungscodes und Links zum Zur&uuml;cksetzen des Kennworts
+    werden &uuml;ber einen Mailanbieter versendet, der die
+    &uuml;bermittelten Adressen dabei verarbeitet. Ein Newsletter wird nicht
+    versendet.
+  </p>
+
+  <h2>10. Ihre Rechte</h2>
+  <ul>
+    <li>Auskunft &uuml;ber die gespeicherten Daten (Art.&nbsp;15 DSGVO)</li>
+    <li>Berichtigung unrichtiger Daten (Art.&nbsp;16)</li>
+    <li>L&ouml;schung, soweit keine Aufbewahrungspflicht entgegensteht (Art.&nbsp;17)</li>
+    <li>Einschr&auml;nkung der Verarbeitung (Art.&nbsp;18)</li>
+    <li>Daten&uuml;bertragbarkeit (Art.&nbsp;20)</li>
+    <li>Widerspruch gegen Verarbeitungen auf Grundlage von lit.&nbsp;f (Art.&nbsp;21)</li>
+  </ul>
+  <p>
+    Eine Nachricht an <a href="mailto:d.dill@rechnungsblatt.de">d.dill@rechnungsblatt.de</a> gen&uuml;gt.
+    Die Belege eines Kontos lassen sich zudem jederzeit selbst am
+    St&uuml;ck herunterladen (Konto &rarr; F&uuml;r die Betriebspr&uuml;fung)
+    &mdash; das erf&uuml;llt Art.&nbsp;20 ohne Umweg.
+  </p>
+
+  <h2>11. Beschwerderecht</h2>
+  <p>
+    Es besteht das Recht, sich bei einer Aufsichtsbeh&ouml;rde zu beschweren.
+    Zust&auml;ndig ist das Bayerische Landesamt f&uuml;r Datenschutzaufsicht,
+    Promenade 18, 91522 Ansbach.
+  </p>
+
+  <p class="stand">
+    Stand: September 2026. Weitere Angaben:
+    <a href="/impressum">Impressum</a> &middot;
+    <a href="/agb">Allgemeine Gesch&auml;ftsbedingungen</a>
+  </p>
+
+  <div class="zurueck">
+    <a class="knopf leise" href="/">Zur Startseite</a>
+  </div>
+</main>
+</body>
+</html>

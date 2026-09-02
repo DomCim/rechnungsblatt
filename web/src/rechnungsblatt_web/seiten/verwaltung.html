@@ -347,6 +347,41 @@
     <div class="meldung" id="zaehlungMeldung" role="status" aria-live="polite"></div>
   </section>
 
+  <!-- Ein Wort an die eigenen Kunden. Als Einstellung und nicht im
+       Code, damit sich Text und Ziel ohne Ausrollen aendern lassen. -->
+  <section class="karte">
+    <h2 data-i18n="werbungTitel">Hinweis im Kundenbereich</h2>
+    <p class="beschreibung" data-i18n="werbungText">
+      Erscheint als Karte unten im Konto &mdash; nur f&uuml;r angemeldete
+      Kunden, und nur wenn Titel und Ziel gesetzt sind. Ohne Haken bleibt
+      sie verborgen.
+    </p>
+    <label class="schalter">
+      <input type="checkbox" id="werbungAn"><span class="hebel"></span>
+      <span data-i18n="fWerbungAn">Hinweis anzeigen</span>
+    </label>
+    <div class="felder" style="margin-top:12px;">
+      <div class="feld breit">
+        <label for="werbungTitelFeld" data-i18n="fWerbungTitel">&Uuml;berschrift</label>
+        <input id="werbungTitelFeld" placeholder="Website, Shop oder Beratung?"></div>
+      <div class="feld breit">
+        <label for="werbungTextFeld" data-i18n="fWerbungText">Text</label>
+        <input id="werbungTextFeld"
+               placeholder="Rechnungsblatt entsteht bei DiD0m. Wir bauen auch Ihre Website."></div>
+      <div class="feld">
+        <label for="werbungKnopf" data-i18n="fWerbungKnopf">Knopfbeschriftung</label>
+        <input id="werbungKnopf" placeholder="Mehr erfahren"></div>
+      <div class="feld">
+        <label for="werbungZiel" data-i18n="fWerbungZiel">Verweis</label>
+        <input id="werbungZiel" placeholder="https://did0m.dev"></div>
+    </div>
+    <div class="zeile" style="margin-top:14px;">
+      <button type="button" class="knopf" id="werbungSpeichern"
+              data-i18n="speichern">Speichern</button>
+    </div>
+    <div class="meldung" id="werbungMeldung" role="status" aria-live="polite"></div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="stripeTitel">Zahlungen</h2>
     <p class="beschreibung" data-i18n="stripeText">
@@ -531,6 +566,12 @@
       fPlausUrl: "Plausible-Adresse", fPlausDomain: "Gezählte Domain",
       fPlausKey: "API-Schlüssel zum Lesen",
       plausKeyHinweis: "Den Schlüssel legen Sie in Plausible unter Settings → API Keys an. Er wird nur zum Lesen der Zahlen gebraucht: Ohne ihn zählt die Seite weiter, die Auswertung oben bleibt aber leer.",
+      werbungTitel: "Hinweis im Kundenbereich",
+      werbungText: "Erscheint als Karte unten im Konto — nur für angemeldete Kunden, und nur wenn Titel und Ziel gesetzt sind. Ohne Haken bleibt sie verborgen.",
+      fWerbungAn: "Hinweis anzeigen", fWerbungTitel: "Überschrift",
+      fWerbungText: "Text", fWerbungKnopf: "Knopfbeschriftung",
+      fWerbungZiel: "Verweis",
+      werbungZielFehlt: "Der Verweis muss mit https:// beginnen.",
       stripeTitel: "Zahlungen",
       stripeText: "Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden verschlüsselt abgelegt und nie wieder angezeigt.",
       fStripeSecret: "Geheimer Schlüssel (sk_…)",
@@ -625,6 +666,12 @@
       fPlausUrl: "Plausible address", fPlausDomain: "Counted domain",
       fPlausKey: "API key for reading",
       plausKeyHinweis: "Create the key in Plausible under Settings → API Keys. It is only needed to read the numbers: without it the site keeps counting, but the overview above stays empty.",
+      werbungTitel: "Notice in the customer area",
+      werbungText: "Shown as a card at the bottom of the account page — only to signed-in customers, and only when title and link are set. Without the switch it stays hidden.",
+      fWerbungAn: "Show notice", fWerbungTitel: "Heading",
+      fWerbungText: "Text", fWerbungKnopf: "Button label",
+      fWerbungZiel: "Link",
+      werbungZielFehlt: "The link must start with https://.",
       stripeTitel: "Payments",
       stripeText: "Without keys the app offers no payment — you then set plans and credit by hand, as before. The keys are stored encrypted and never shown again.",
       fStripeSecret: "Secret key (sk_…)",
@@ -1312,6 +1359,12 @@
     el("stripeSecret").value = werte.stripe_secret || "";
     el("stripeHook").value = werte.stripe_webhook_secret || "";
     el("stripeAufladungen").value = werte.stripe_aufladungen || "";
+    el("werbungAn").checked = ["1", "ja", "true", "an"].indexOf(
+      (werte.werbung_an || "").toLowerCase()) >= 0;
+    el("werbungTitelFeld").value = werte.werbung_titel || "";
+    el("werbungTextFeld").value = werte.werbung_text || "";
+    el("werbungKnopf").value = werte.werbung_knopf || "";
+    el("werbungZiel").value = werte.werbung_ziel || "";
     el("stripeFrei").checked = ["1", "ja", "true", "an"].indexOf(
       (werte.stripe_freier_betrag || "").toLowerCase()) >= 0;
   }
@@ -1438,7 +1491,37 @@
   el("tarifAnlegen").addEventListener("click", tarifAnlegen);
   el("tarifeSpeichern").addEventListener("click", tarifeSpeichern);
 
-  RB.starte(texte);
+  // Der Hinweis im Kundenbereich. Eigener Knopf, damit ein Tippfehler
+// im Verweis nicht die Zahlungseinstellungen mitnimmt.
+el("werbungSpeichern").addEventListener("click", async function () {
+  var ziel = el("werbungZiel").value.trim();
+  var kasten = el("werbungMeldung");
+  // Ein Verweis ohne Schema wird vom Browser als relativ gelesen und
+  // landet auf der eigenen Seite — das faellt sonst niemandem auf.
+  if (ziel && !/^https?:\/\//.test(ziel)) {
+    kasten.className = "meldung hinweis";
+    kasten.textContent = RB.t("werbungZielFehlt");
+    return;
+  }
+  var antwort = await RB.api("/api/verwaltung/einstellungen", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      // "0" und nicht "": Leer heisst in der Verwaltung "entfernen".
+      werbung_an: el("werbungAn").checked ? "1" : "0",
+      werbung_titel: el("werbungTitelFeld").value.trim(),
+      werbung_text: el("werbungTextFeld").value.trim(),
+      werbung_knopf: el("werbungKnopf").value.trim(),
+      werbung_ziel: ziel
+    })
+  });
+  kasten.className = "meldung hinweis" + (antwort.ok ? " gut" : "");
+  kasten.textContent = antwort.ok
+    ? RB.t("gespeichert")
+    : RB.t("fehlerAllgemein");
+});
+
+RB.starte(texte);
   RB.beiSprachwechsel(function () {
     zeichneNutzer(); zeichneTarife(); zeichneZeitwahl(); ladeBesucher();
   });
