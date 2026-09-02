@@ -51,6 +51,19 @@
     "Gutschrift und Stornierung mit Bezug zur Ursprungsrechnung",
     "Mehrseitige Belege mit Uebertrag"
   ],
+  "publisher": {
+    "@type": "Organization",
+    "name": "DiD0m — Dominik Dill",
+    "url": "https://did0m.dev",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Goldammerweg 25",
+      "postalCode": "95119",
+      "addressLocality": "Naila",
+      "addressCountry": "DE"
+    }
+  },
+  "author": { "@type": "Organization", "name": "DiD0m — Dominik Dill" },
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -637,6 +650,39 @@
 
   /* --- Schluss ------------------------------------------------------- */
   .schluss { text-align: center; }
+
+  /* Das Haus dahinter. Bewusst leise: eine Zeile, keine Karte, kein
+     Bild. Ein lauter Werbebanner macht die Seite unglaubwürdig, auf
+     der er steht. */
+  .haus {
+    margin: 48px auto 0;
+    padding-top: 22px;
+    border-top: 1px solid var(--kante);
+    max-width: 62ch;
+  }
+  .haus-zeile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px;
+    justify-content: center;
+    text-align: center;
+    font-size: 13.5px;
+    color: var(--tinte-2);
+    line-height: 1.55;
+    margin: 0;
+  }
+  .haus-marke {
+    font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+    font-variation-settings: "opsz" 40;
+    font-weight: 700;
+    color: var(--tinte);
+    letter-spacing: 0.01em;
+  }
+  /* Auf dem Handy untereinander — nebeneinander wird es zu eng. */
+  @media (max-width: 640px) {
+    .haus-zeile { flex-direction: column; gap: 8px; }
+  }
   .schluss h2 { font-size: clamp(26px, 4vw, 40px); }
 
   .fuss {
@@ -1014,6 +1060,20 @@
     <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
   </section>
 
+  <!-- Ein Wort zum Haus dahinter. Steht nach dem Kaufaufruf: Wer bis
+       hierher gelesen hat, ist entweder überzeugt oder braucht etwas
+       anderes — beides passt. -->
+  <aside class="haus">
+    <p class="haus-zeile">
+      <span class="haus-marke">DiD0m</span>
+      <span data-i18n="hausText">Rechnungsblatt entsteht bei DiD0m. Dort gibt
+        es auch ERP- und CRM-Lösungen für kleine Betriebe &mdash;
+        zugeschnitten statt von der Stange.</span>
+      <a class="verweis" href="https://did0m.dev" target="_blank"
+         rel="noopener" data-i18n="hausKnopf">did0m.dev &nearr;</a>
+    </p>
+  </aside>
+
   <footer class="fuss">
     <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
     <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
@@ -1123,7 +1183,9 @@
       schlussTitel: "Einmal einrichten, dann steht es",
       schlussText: "Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von Hand freigeschaltet — das dauert in der Regel nicht lange.",
       fussHinweis: "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
-      navImpressum: "Impressum", navDatenschutz: "Datenschutz", navAgb: "AGB"
+      navImpressum: "Impressum", navDatenschutz: "Datenschutz", navAgb: "AGB",
+      hausText: "Rechnungsblatt entsteht bei DiD0m. Dort gibt es auch ERP- und CRM-Lösungen für kleine Betriebe — zugeschnitten statt von der Stange.",
+      hausKnopf: "did0m.dev ↗"
     },
     en: {
       navAnmelden: "Sign in",
@@ -1215,7 +1277,9 @@
       schlussTitel: "Set it up once, then it stands",
       schlussText: "Create an account, upload your letterhead, get going. New accounts are activated by hand — usually not a long wait.",
       fussHinweis: "Rechnungsblatt — e-invoicing on your own letterhead.",
-      navImpressum: "Legal notice", navDatenschutz: "Privacy", navAgb: "Terms"
+      navImpressum: "Legal notice", navDatenschutz: "Privacy", navAgb: "Terms",
+      hausText: "Rechnungsblatt is built at DiD0m, which also makes ERP and CRM systems for small businesses — tailored rather than off the shelf.",
+      hausKnopf: "did0m.dev ↗"
     }
   };
 
