@@ -140,3 +140,20 @@ def test_rechtsseiten_haben_keine_uebersetzung_noetig():
         text = (SEITEN / name).read_text(encoding="utf-8")
         assert "data-i18n" not in text, f"{name} trägt data-i18n"
         assert 'lang="de"' in text
+
+def test_agb_zahlen_guthaben_nicht_zurueck(klient):
+    """Wer aufhört, bekommt sein Guthaben nicht zurück.
+
+    Diese Klausel wurde einmal missverstanden, weil zwei gegenläufige
+    Regeln in einem Semikolon-Satz standen. Getrennt formuliert gilt:
+    Kündigt der Nutzer, wird nichts ausgezahlt. Nur wenn der Anbieter
+    die Anwendung einstellt, gibt es — nach drei Monaten Vorlauf zum
+    Aufbrauchen — eine Erstattung.
+    """
+    fliesstext = " ".join(klient.get("/agb").text.split())
+
+    assert "Auszahlung nicht verbrauchten Guthabens erfolgt nicht" in fliesstext
+    # Und ausdrücklich für den Fall, dass der Nutzer selbst beendet.
+    assert "wenn der Nutzer den Vertrag beendet" in fliesstext
+    # Die Ankündigungsfrist ist der Ausweg statt einer Zahlung.
+    assert "drei Monate vorher" in fliesstext
