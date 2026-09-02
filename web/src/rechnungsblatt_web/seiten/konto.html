@@ -38,6 +38,14 @@
   .karte form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; max-width: 380px; }
   .meldung { margin-top: 12px; }
   .meldung:empty { display: none; }
+  /* Die Pflichtangaben: unaufdringlich, aber auffindbar. */
+  .rechtszeile {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin: 32px 0 8px;
+    font-size: 13px;
+  }
 </style>
 <!--PLAUSIBLE-->
 </head>
@@ -240,6 +248,18 @@
     </div>
   </section>
 
+  <!-- Ein Wort des Betreibers. Steht bewusst weit unten: Wer hier
+       ankommt, hat sein Anliegen erledigt. Ohne eingetragenen Text
+       bleibt die Karte verborgen — siehe /api/hinweis. -->
+  <section class="karte" id="hinweisKarte" hidden>
+    <h2 id="hinweisTitel"></h2>
+    <p class="beschreibung" id="hinweisText"></p>
+    <div class="zeile">
+      <a class="knopf leise" id="hinweisKnopf" href="#"
+         target="_blank" rel="noopener"></a>
+    </div>
+  </section>
+
   <section class="karte">
     <h2 data-i18n="sitzungTitel">Sitzung</h2>
     <p class="beschreibung" data-i18n="sitzungText">
@@ -258,6 +278,14 @@
     <div class="meldung" id="sitzungMeldung" role="status" aria-live="polite"></div>
   </section>
 
+
+  <!-- Die Pflichtangaben auch hier: Ein Kunde sucht die Bedingungen
+       dort, wo er sein Konto verwaltet — nicht auf der Startseite. -->
+  <p class="rechtszeile">
+    <a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a>
+    <a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a>
+    <a class="verweis" href="/agb" data-i18n="navAgb">AGB</a>
+  </p>
 </div>
 
 <script src="/seiten/werkzeuge.js"></script>
@@ -317,7 +345,8 @@
       adminKnopf: "Zum Adminbereich",
       sitzungTitel: "Sitzung",
       sitzungText: "Abmelden beendet die Sitzung auf diesem Gerät. Ihre Daten bleiben verschlüsselt liegen und sind nach der nächsten Anmeldung wieder da.",
-      abmeldenKnopf: "Abmelden", zurStartseite: "Öffentliche Seite",
+      abmeldenKnopf: "Abmelden",
+      navImpressum: "Impressum", navDatenschutz: "Datenschutz", navAgb: "AGB", zurStartseite: "Öffentliche Seite",
       verbrauchText: "Die letzten Buchungen dieses Kontos.",
       spNummer: "Nummer",
       spZeitpunkt: "Zeitpunkt",
@@ -375,7 +404,8 @@
       adminKnopf: "Open administration",
       sitzungTitel: "Session",
       sitzungText: "Signing out ends the session on this device. Your data stays encrypted and is back after the next sign-in.",
-      abmeldenKnopf: "Sign out", zurStartseite: "Public page",
+      abmeldenKnopf: "Sign out",
+      navImpressum: "Legal notice", navDatenschutz: "Privacy", navAgb: "Terms", zurStartseite: "Public page",
       verbrauchText: "The most recent bookings on this account.",
       spNummer: "Number",
       spZeitpunkt: "Time",
@@ -656,6 +686,20 @@ el("siegelKnopf").addEventListener("click", async function () {
   pruefungMeldung(text, !bericht.heil);
 });
 
+// Der Hinweis des Betreibers. Eigene Anfrage, damit die Karte auch
+// ohne eingerichtete Zahlung erscheint — sie hat damit nichts zu tun.
+async function ladeHinweis() {
+  var antwort = await RB.api("/api/hinweis");
+  if (!antwort.ok || !antwort.daten || !antwort.daten.an) return;
+  var h = antwort.daten;
+  el("hinweisTitel").textContent = h.titel;
+  el("hinweisText").textContent = h.text || "";
+  var knopf = el("hinweisKnopf");
+  knopf.textContent = h.knopf;
+  knopf.href = h.ziel;
+  el("hinweisKarte").hidden = false;
+}
+
 el("abmelden").addEventListener("click", async function () {
     // Der Server loescht die Sitzung; danach ist der Datenschluessel
     // ebenfalls weg -- er lag nur dort, verpackt.
@@ -664,6 +708,7 @@ el("abmelden").addEventListener("click", async function () {
   });
 
   ladeBezahlen();
+  ladeHinweis();
 
   RB.starte(texte);
   RB.beiSprachwechsel(lade);
