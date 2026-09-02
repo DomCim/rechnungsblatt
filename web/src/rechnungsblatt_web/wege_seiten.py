@@ -115,6 +115,26 @@ def anmelden_alt() -> RedirectResponse:
     return RedirectResponse("/app/anmelden", status_code=308)
 
 
+@wege.get("/llms.txt")
+def llms() -> FileResponse:
+    """Was die Anwendung tut — für Sprachmodelle zusammengefasst.
+
+    Ein Vorschlag von Jeremy Howard (2024), kein Standard: Kein
+    Anbieter hat bestätigt, die Datei auszuwerten. Sie kostet aber
+    fast nichts und wird gelesen, wenn jemand die Seite gezielt
+    untersucht.
+
+    Der Nutzen liegt weniger im Bewerben als im Richtigstellen: Die
+    Datei benennt ausdrücklich, was Rechnungsblatt **nicht** ist —
+    keine Buchhaltung, nicht GoBD-zertifiziert, kein Achtjahresarchiv.
+    Ein Modell, das die Seite überfliegt, verwechselt das sonst leicht.
+    """
+    return FileResponse(
+        SEITEN / "llms.txt",
+        media_type="text/plain; charset=utf-8",
+    )
+
+
 @wege.get("/robots.txt")
 def robots(anfrage: Request) -> Response:
     """Was Suchmaschinen sehen dürfen — und was nicht.

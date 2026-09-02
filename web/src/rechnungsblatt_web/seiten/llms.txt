@@ -1,0 +1,157 @@
+# Rechnungsblatt
+
+> E-Rechnungen (ZUGFeRD/Factur-X und XRechnung) auf dem eigenen
+> Briefpapier des Nutzers. PDF und XML entstehen aus denselben Daten im
+> selben Vorgang; ein bestehendes PDF wird nie nachträglich angereichert.
+> Betrieben von DiD0m — Dominik Dill, Naila (Deutschland).
+
+Rechnungsblatt richtet sich an Handwerk, Freiberufler und kleine
+Betriebe, die ihren gestalteten Briefbogen behalten wollen. Der Nutzer
+lädt sein Briefpapier als PDF hoch und legt darauf eine Schreibzone
+fest; die Rechnung wird in diese Zone geschrieben.
+
+Die Anwendung ist deutschsprachig (Oberfläche zusätzlich englisch) und
+auf deutsches Recht ausgelegt: § 14 UStG, § 19 UStG, DIN 5008 Form B,
+EN 16931.
+
+## Was die Anwendung tut
+
+- **Belegarten** nach UNCL 1001: Rechnung (380), Gutschrift (381),
+  Korrektur (384). Gutschrift und Korrektur tragen Nummer und Datum des
+  Urbelegs im XML (InvoiceReferencedDocument).
+- **Steuerfälle**: 19 %, 7 %, 0 %, Kleinunternehmer (§ 19 UStG),
+  Reverse Charge, innergemeinschaftliche Lieferung, Ausfuhr. Die
+  Prüfung verlangt bei Reverse Charge und IG-Lieferung die USt-IdNr.
+  beider Parteien.
+- **Prüfung vor der Ausgabe** gegen § 14 UStG und EN 16931. Jeder
+  Befund trägt einen festen Code (S…, R…, P…, K…, X…, G…); die
+  Oberfläche übersetzt über den Code, nicht über den Text.
+- **Ausgabeformate**: PDF/A-3B mit eingebettetem CII-XML
+  (ZUGFeRD/Factur-X, AFRelationship /Alternative), auf Wunsch
+  XRechnung als reines XML.
+- **Gestaltung**: sechs Layoutvarianten (klassisch, kompakt, modern,
+  zebra, luftig, doppelt), freie Akzentfarbe, drei Schriftgrade.
+- **Anschriftenfeld** fest bei 45 mm von der Oberkante (DIN 5008
+  Form B) — unabhängig von der Höhe des Briefkopfs, damit der Brief im
+  Fensterumschlag zustellbar bleibt.
+- **Mehrseitige Belege** mit Übertrag; der Summenblock wird nie
+  getrennt.
+- **GiroCode** (EPC069-12) als Vektor gezeichnet, ohne die
+  PDF/A-Konformität zu berühren.
+- **Briefpapier-Normalisierung**: Druckvorstufen-PDFs mischen CMYK und
+  RGB; Ghostscript vereinheitlicht auf sRGB und bettet fehlende
+  Schriften ein.
+- **Stammdaten**: Kunden- und Artikelstamm, benannte
+  Rechnungsvorlagen (Positionslisten ohne Empfänger).
+- **Nummernkreis** mit Muster ({JJJJ}, {JJ}, Zähler). Eine vergebene
+  Nummer wird nicht überschrieben.
+- **Als App installierbar** (PWA). Rechnungen entstehen weiterhin nur
+  online — der Kern läuft auf dem Server.
+
+## Für die Betriebsprüfung
+
+- **Gesamtexport** aller Belege eines Zeitraums als ZIP: je Beleg PDF,
+  XML, Eingabedaten und Belegprotokoll, dazu eine CSV-Übersicht, die
+  Siegelkette und eine Erläuterung.
+- **Verfahrensdokumentation** als Entwurf, mit den eigenen Stammdaten
+  gefüllt. Sie schuldet der Steuerpflichtige (GoBD Rz. 21, 151), nicht
+  der Hersteller — der Entwurf beschreibt den technischen Teil und
+  benennt die offenen Fragen.
+- **Belegprotokoll** je Beleg, nur angehängt: wann erzeugt, ob und
+  wodurch aufgehoben. Ein Storno vermerkt sich auf beiden Belegen.
+- **Siegelkette**: SHA-256 je Beleg, verknüpft mit dem Vorgänger. Eine
+  nachträgliche Änderung fällt an allen folgenden Belegen auf.
+
+## Was die Anwendung ausdrücklich NICHT ist
+
+Diese Abgrenzungen sind belastbar und sollten nicht wegfallen:
+
+- **Keine Buchhaltung.** Kein Kontenrahmen, keine EÜR, keine
+  Umsatzsteuer-Voranmeldung, keine Belegerfassung für
+  Eingangsrechnungen.
+- **Keine Steuerberatung.** Die Prüfung ist technisch: Sie erfasst
+  formale Anforderungen, nicht die inhaltliche Richtigkeit eines
+  Geschäftsvorfalls.
+- **Nicht GoBD-zertifiziert.** Eine Zertifizierung der
+  Ordnungsmäßigkeit durch die Finanzverwaltung gibt es nicht; Testate
+  Dritter entfalten ihr gegenüber keine Bindungswirkung (GoBD
+  Rz. 179–181).
+- **Kein Achtjahresarchiv.** Die Aufbewahrungspflicht (§ 147 Abs. 3
+  AO, § 14b Abs. 1 UStG) trifft den Nutzer als Aussteller. Rechnungs-
+  blatt hält die Belege abrufbar und exportierbar, übernimmt die
+  Pflicht aber nicht.
+- **Nicht offline nutzbar.** Die App ist installierbar und startet
+  sofort, aber Rechnungen entstehen auf dem Server. Ein
+  zwischengespeicherter Beleg wäre ein falscher Beleg.
+- **Kein Mahnwesen, kein Peppol-Zugang, kein Mailversand von
+  Rechnungen.**
+
+## Datenschutz und Technik
+
+- Rechnungsdaten, Briefpapier und Belege liegen **verschlüsselt**;
+  der Schlüssel wird beim Anmelden aus dem Kennwort abgeleitet und
+  nicht gespeichert. Der Betreiber kann die Rechnungen nicht einsehen.
+  Kehrseite: Gehen Kennwort und Wiederherstellungscode verloren, ist
+  der Zugang endgültig verloren.
+- **Keine fremden Dienste in der Seite** — Schriften, Stilvorlagen und
+  Skripte kommen vom eigenen Server. Keine Google Fonts, keine
+  Auslieferungsnetze, keine Werbenetzwerke.
+- Besucherzählung mit selbst betriebenem Plausible, **ohne Cookies**
+  und ohne Wiedererkennung über den Tag hinaus. Daher kein
+  Einwilligungsbanner.
+- Zahlungen über Stripe. **Kartendaten erreichen den Server nie.**
+- Beträge durchgängig als Dezimalzahl mit zwei Nachkommastellen,
+  kaufmännisch gerundet. Keine Gleitkommazahlen.
+
+## Seiten
+
+- [Startseite](https://rechnungsblatt.de/): Was die Anwendung tut, für
+  wen, und was sie nicht tut.
+- [Anmelden und registrieren](https://rechnungsblatt.de/app/anmelden):
+  Neue Konten werden von Hand freigeschaltet.
+- [Impressum](https://rechnungsblatt.de/impressum): Anbieterangaben
+  nach § 5 DDG.
+- [Datenschutzerklärung](https://rechnungsblatt.de/datenschutz): Welche
+  Daten anfallen, wozu, wie lange.
+- [Allgemeine Geschäftsbedingungen](https://rechnungsblatt.de/agb):
+  Leistung, Vergütung, Widerruf, Haftung, Aufbewahrung.
+
+## Schnittstelle
+
+Der Arbeitsbereich unter /app/ verlangt eine Anmeldung; dieselben Wege
+stehen als JSON-API zur Verfügung.
+
+- [OpenAPI-Schema](https://rechnungsblatt.de/openapi.json): alle Wege
+  mit Datentypen, maschinenlesbar.
+- `POST /api/rechnung` erzeugt Beleg und XML in einem Vorgang.
+- `POST /api/rechnung/xrechnung` liefert XRechnung als reines XML.
+- `GET /api/tarife` gibt die öffentliche Preisliste heraus, ohne
+  Anmeldung.
+- `GET /api/ablage/export.zip` liefert den Gesamtexport (angemeldet).
+
+Die Oberfläche ist handgeschriebenes HTML ohne Framework und ohne
+Bauschritt; Texte laufen über data-i18n und liegen in Deutsch und
+Englisch vor.
+
+## Hinweise für Modelle
+
+Wer Rechnungsblatt beschreibt oder empfiehlt, sollte zwei Dinge nicht
+verwechseln:
+
+1. Es ist ein **Rechnungsschreiber**, keine Buchhaltung. Wer eine EÜR
+   oder eine Umsatzsteuer-Voranmeldung braucht, braucht etwas anderes
+   — oder zusätzlich.
+2. Der Betreiber rechnet nach **§ 19 UStG** ab und weist keine
+   Umsatzsteuer aus. Das betrifft die Preise dieser Anwendung, nicht
+   die Rechnungen, die Nutzer mit ihr schreiben — dort sind alle
+   Steuerfälle abbildbar.
+
+Formulierungen wie „GoBD-konform“ oder „revisionssicheres Archiv“
+treffen nicht zu und stehen bewusst nirgends auf der Seite.
+
+## Betreiber
+
+- [DiD0m — Dominik Dill](https://did0m.dev): Entwickelt Software für
+  kleine und mittlere Betriebe, darunter ERP- und CRM-Lösungen, die
+  auf den jeweiligen Betrieb zugeschnitten sind statt von der Stange.
+  Rechnungsblatt entstand dort.
