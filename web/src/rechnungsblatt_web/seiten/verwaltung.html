@@ -357,20 +357,53 @@
     <div class="felder">
       <div class="feld breit">
         <label for="stripeSecret" data-i18n="fStripeSecret">Geheimer Schlüssel (sk_…)</label>
-        <input id="stripeSecret" type="password" autocomplete="off"></div>
+        <input id="stripeSecret" type="password" autocomplete="off">
+        <p class="feldhinweis" data-i18n="hStripeSecret">
+          Nur dieser. Der &bdquo;ver&ouml;ffentlichbare&ldquo; Schl&uuml;ssel
+          (<span class="kennung">pk_&hellip;</span>) ist f&uuml;r
+          Zahlungsformulare im Browser gedacht &mdash; Rechnungsblatt
+          benutzt Stripe Checkout, da l&auml;uft alles auf dem Server.
+        </p>
+      </div>
       <div class="feld breit">
         <label for="stripeHook" data-i18n="fStripeHook">Webhook-Geheimnis (whsec_…)</label>
         <input id="stripeHook" type="password" autocomplete="off"></div>
       <div class="feld breit">
         <label for="stripeAufladungen" data-i18n="fStripeAufladungen">Wählbare Beträge in Euro</label>
-        <input id="stripeAufladungen" placeholder="10, 25, 50"></div>
+        <input id="stripeAufladungen" placeholder="10, 25, 50">
+        <p class="feldhinweis" data-i18n="hStripeAufladungen">
+          Hierf&uuml;r braucht es <strong>kein</strong> Produkt in Stripe: Der
+          Betrag reist mit der Zahlung mit. Ein Produkt mit mehreren Preisen
+          anzulegen w&auml;re vergebene M&uuml;he.
+        </p>
+      </div>
     </div>
+    <label class="schalter" style="margin-top:10px;">
+      <input type="checkbox" id="stripeFrei"><span class="hebel"></span>
+      <span data-i18n="fStripeFrei">Eigenen Betrag zulassen (5 bis 200 &euro;)</span>
+    </label>
     <p class="beschreibung" style="margin-top:10px;" data-i18n="stripeHinweis">
       Der Webhook zeigt auf <span class="kennung">/api/bezahlen/webhook</span>.
       Nötige Ereignisse: checkout.session.completed, invoice.paid,
       invoice.payment_failed, customer.subscription.deleted.
       Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier —
       so lassen sich mehrere Abos nebeneinander anbieten.
+    </p>
+    <p class="beschreibung" style="margin-top:10px;" data-i18n="stripeHinweisZwei">
+      <strong>&bdquo;Managed Payments&ldquo; bleibt aus.</strong>
+      Rechnungsblatt schaltet Stripes Merchant-of-Record-Dienst bei jeder
+      Zahlung ausdr&uuml;cklich ab. Er w&uuml;rde Umsatzsteuer berechnen und
+      eigene Rechnungen an Ihre Kunden schicken &mdash; bei Abrechnung nach
+      &sect;&nbsp;19 UStG ausgeschlossen. Au&szlig;erdem kostet er 3,5&nbsp;%
+      zus&auml;tzlich. Sollte Stripe ihn im Konto aktivieren, &auml;ndert das
+      hier nichts.
+    </p>
+    <p class="beschreibung" style="margin-top:10px;" data-i18n="stripeHinweisDrei">
+      <strong>Nur Abos brauchen eine Preis-ID.</strong> Ein wiederkehrender
+      Betrag muss in Stripe angelegt sein, weil Stripe den Abrechnungszyklus
+      f&uuml;hrt und bei einer Preis&auml;nderung Bestandskunden auf ihrem
+      alten Preis l&auml;sst. Guthabenaufladungen dagegen sind Einmalzahlungen
+      &mdash; die entstehen zur Laufzeit aus der Betragsliste oben.
     </p>
 
     <div class="zeile" style="margin-top:12px;">
@@ -503,6 +536,11 @@
       fStripeSecret: "Geheimer Schlüssel (sk_…)",
       fStripeHook: "Webhook-Geheimnis (whsec_…)",
       fStripeAufladungen: "Wählbare Beträge in Euro",
+      fStripeFrei: "Eigenen Betrag zulassen (5 bis 200 €)",
+      hStripeAufladungen: "Hierfür braucht es kein Produkt in Stripe: Der Betrag reist mit der Zahlung mit. Ein Produkt mit mehreren Preisen anzulegen wäre vergebene Mühe.",
+      stripeHinweisZwei: "„Managed Payments“ bleibt aus. Rechnungsblatt schaltet Stripes Merchant-of-Record-Dienst bei jeder Zahlung ausdrücklich ab. Er würde Umsatzsteuer berechnen und eigene Rechnungen an Ihre Kunden schicken — bei Abrechnung nach § 19 UStG ausgeschlossen. Außerdem kostet er 3,5 % zusätzlich. Sollte Stripe ihn im Konto aktivieren, ändert das hier nichts.",
+      hStripeSecret: "Nur dieser. Der „veröffentlichbare“ Schlüssel (pk_…) ist für Zahlungsformulare im Browser gedacht — Rechnungsblatt benutzt Stripe Checkout, da läuft alles auf dem Server.",
+      stripeHinweisDrei: "Nur Abos brauchen eine Preis-ID. Ein wiederkehrender Betrag muss in Stripe angelegt sein, weil Stripe den Abrechnungszyklus führt und bei einer Preisänderung Bestandskunden auf ihrem alten Preis lässt. Guthabenaufladungen dagegen sind Einmalzahlungen — die entstehen zur Laufzeit aus der Betragsliste.",
       stripeHinweis: "Der Webhook zeigt auf /api/bezahlen/webhook. Nötige Ereignisse: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. Die Preis-ID eines Abos steht beim jeweiligen Tarif, nicht hier — so lassen sich mehrere Abos nebeneinander anbieten.",
       postTitel: "Postausgang",
       postText: "Ohne diese Angaben verschickt Rechnungsblatt keine Bestätigungscodes und keine Rücksetz-Links — die Nachrichten landen dann nur im Protokoll. Das Passwort wird verschlüsselt abgelegt und nie wieder angezeigt.",
@@ -592,6 +630,11 @@
       fStripeSecret: "Secret key (sk_…)",
       fStripeHook: "Webhook secret (whsec_…)",
       fStripeAufladungen: "Selectable amounts in euro",
+      fStripeFrei: "Allow a custom amount (5 to 200 €)",
+      hStripeAufladungen: "No Stripe product is needed for this: the amount travels with the payment. Creating a product with several prices would be wasted effort.",
+      stripeHinweisZwei: "„Managed Payments“ stays off. Rechnungsblatt disables Stripe's merchant-of-record service on every payment. It would charge VAT and send its own invoices to your customers — ruled out under the German small-business scheme (§ 19 UStG). It also costs an extra 3.5 %. If Stripe enables it on the account, that changes nothing here.",
+      hStripeSecret: "Only this one. The „publishable“ key (pk_…) is meant for payment forms in the browser — Rechnungsblatt uses Stripe Checkout, where everything runs on the server.",
+      stripeHinweisDrei: "Only subscriptions need a price ID. A recurring amount must exist in Stripe, because Stripe runs the billing cycle and keeps existing customers on their old price when you change it. Credit top-ups are one-off payments — they are built at runtime from the list of amounts.",
       stripeHinweis: "The webhook points at /api/bezahlen/webhook. Required events: checkout.session.completed, invoice.paid, invoice.payment_failed, customer.subscription.deleted. The price ID of a plan belongs to that plan, not here — so several plans can be offered side by side.",
       postTitel: "Outgoing mail",
       postText: "Without these details Rechnungsblatt sends no confirmation codes and no reset links — the messages only end up in the log. The password is stored encrypted and never shown again.",
@@ -1269,6 +1312,8 @@
     el("stripeSecret").value = werte.stripe_secret || "";
     el("stripeHook").value = werte.stripe_webhook_secret || "";
     el("stripeAufladungen").value = werte.stripe_aufladungen || "";
+    el("stripeFrei").checked = ["1", "ja", "true", "an"].indexOf(
+      (werte.stripe_freier_betrag || "").toLowerCase()) >= 0;
   }
 
   // Jeder Bereich schickt nur seine eigenen Felder. Der Endpunkt nimmt
@@ -1326,7 +1371,9 @@
       // im Klartext zurueck.
       stripe_secret: el("stripeSecret").value,
       stripe_webhook_secret: el("stripeHook").value,
-      stripe_aufladungen: el("stripeAufladungen").value.trim()
+      stripe_aufladungen: el("stripeAufladungen").value.trim(),
+      // Leerer String heisst "entfernen" — deshalb "0" und nicht "".
+      stripe_freier_betrag: el("stripeFrei").checked ? "1" : "0"
     };
   }, stripeMelde));
 

@@ -34,6 +34,15 @@ def bezahl_angebot(person: Nutzer = Depends(freigegeben)) -> dict:
 
         "aufladungen": bezahlen.aufladungen(),
 
+        # Ob ein eigener Betrag erlaubt ist, und in welchen Grenzen.
+        # Die Grenzen gehören mit: Sonst müsste die Oberfläche sie
+        # doppelt kennen und würde bei einer Änderung falsch anzeigen.
+        "frei": bezahlen.frei_erlaubt(),
+
+        "frei_von_cent": bezahlen.FREI_MINDESTENS,
+
+        "frei_bis_cent": bezahlen.FREI_HOECHSTENS,
+
         # Jeder buchbare Abo-Tarif einzeln: Es gibt mehr als einen, und
 
         # der Kunde soll sehen, was er bekommt — nicht nur „Abo".

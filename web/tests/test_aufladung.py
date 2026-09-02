@@ -1,0 +1,204 @@
+"""Der Aufladebetrag — vorgegeben oder frei, aber nie beliebig.
+
+**Warum das geprüft wird.** Der Betrag kommt aus dem Browser. Ohne
+Sperre könnte ein gebastelter Aufruf ein Guthaben von einem Cent kaufen
+— oder mit einer negativen Zahl Stripe mit Unsinn füttern.
+
+Bis September 2026 war das eine Zeile: ``betrag_cent not in
+aufladungen()``. Mit dem freien Betrag ist die Prüfung länger geworden,
+also gehört sie unter Test.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from rechnungsblatt_web import bezahlen
+
+
+@pytest.fixture
+def vorgaben(monkeypatch):
+    """Drei feste Beträge, freier Betrag aus — der Stand vor der Änderung."""
+    monkeypatch.setattr(bezahlen, "aufladungen", lambda: [1000, 2000, 3000])
+    monkeypatch.setattr(bezahlen, "frei_erlaubt", lambda: False)
+
+
+@pytest.fixture
+def mit_frei(monkeypatch):
+    monkeypatch.setattr(bezahlen, "aufladungen", lambda: [1000, 2000, 3000])
+    monkeypatch.setattr(bezahlen, "frei_erlaubt", lambda: True)
+
+
+def test_vorgegebener_betrag_geht(vorgaben):
+    for cent in (1000, 2000, 3000):
+        bezahlen.pruefe_betrag(cent)          # wirft nicht
+
+
+def test_ohne_freigabe_nur_die_vorgaben(vorgaben):
+    """Der Stand vor der Änderung darf sich nicht verschoben haben."""
+    for cent in (1, 500, 1500, 999_999):
+        with pytest.raises(bezahlen.BezahlFehler):
+            bezahlen.pruefe_betrag(cent)
+
+
+def test_ein_cent_wird_abgewiesen(mit_frei):
+    """Der eigentliche Angriff: Guthaben für einen Cent kaufen."""
+    with pytest.raises(bezahlen.BezahlFehler):
+        bezahlen.pruefe_betrag(1)
+
+
+def test_negativer_betrag_wird_abgewiesen(mit_frei):
+    """Ein negativer Betrag würde Stripe mit Unsinn füttern."""
+    with pytest.raises(bezahlen.BezahlFehler):
+        bezahlen.pruefe_betrag(-5000)
+
+
+def test_null_wird_abgewiesen(mit_frei):
+    with pytest.raises(bezahlen.BezahlFehler):
+        bezahlen.pruefe_betrag(0)
+
+
+def test_freier_betrag_in_den_grenzen(mit_frei):
+    bezahlen.pruefe_betrag(bezahlen.FREI_MINDESTENS)
+    bezahlen.pruefe_betrag(5000)
+    bezahlen.pruefe_betrag(bezahlen.FREI_HOECHSTENS)
+
+
+def test_knapp_unter_der_untergrenze(mit_frei):
+    """Die Grenze selbst gilt, ein Cent darunter nicht mehr."""
+    with pytest.raises(bezahlen.BezahlFehler) as fehler:
+        bezahlen.pruefe_betrag(bezahlen.FREI_MINDESTENS - 1)
+    # Die Meldung soll sagen, warum — nicht nur „ungültig".
+    assert "Zahlungsgebühr" in str(fehler.value)
+
+
+def test_ueber_der_obergrenze(mit_frei):
+    """Schutz vor dem Vertipper: 50000 statt 50,00."""
+    with pytest.raises(bezahlen.BezahlFehler):
+        bezahlen.pruefe_betrag(bezahlen.FREI_HOECHSTENS + 1)
+
+
+def test_vorgabe_gilt_auch_unter_der_untergrenze(monkeypatch):
+    """Ein bewusst gesetzter Kleinbetrag bleibt erlaubt.
+
+    Trägt der Betreiber 2 € in die Liste ein, ist das seine Entscheidung
+    — die Untergrenze gilt nur für das freie Feld.
+    """
+    monkeypatch.setattr(bezahlen, "aufladungen", lambda: [200])
+    monkeypatch.setattr(bezahlen, "frei_erlaubt", lambda: True)
+
+    bezahlen.pruefe_betrag(200)               # wirft nicht
+
+
+def test_grenzen_sind_plausibel():
+    """Ein Vertipper in den Konstanten fällt sonst niemandem auf."""
+    assert 0 < bezahlen.FREI_MINDESTENS < bezahlen.FREI_HOECHSTENS
+    # Unter 25 Cent Stripe-Grundgebühr wäre jede Aufladung ein Verlust.
+    assert bezahlen.FREI_MINDESTENS >= 100
+
+
+@pytest.mark.parametrize("wert,erwartet", [
+    ("1", True), ("ja", True), ("true", True), ("an", True),
+    ("JA", True), (" 1 ", True),
+    ("0", False), ("", False), ("nein", False), ("aus", False),
+])
+def test_freigabe_wird_aus_der_einstellung_gelesen(monkeypatch, wert, erwartet):
+    """Der Schalter schreibt "1" oder "0" — beides muss stimmen.
+
+    Leer heißt in der Verwaltung „entfernen"; deshalb schreibt die
+    Oberfläche "0" und nicht "". Ein leerer Wert muss trotzdem als aus
+    gelten, sonst wäre ein gelöschtes Feld plötzlich an.
+    """
+    monkeypatch.setattr(bezahlen, "_zugang",
+                        lambda: {"stripe_freier_betrag": wert})
+
+    assert bezahlen.frei_erlaubt() is erwartet
+
+
+# ---------------------------------------------------------------------------
+# Managed Payments
+# ---------------------------------------------------------------------------
+#
+# Am 02.09.2026 scheiterte jede Aufladung im Produktivbetrieb:
+#
+#     Invalid line_items[0]: the product tax code is missing. … Product tax
+#     code is required for Managed Payments, which is enabled by default on
+#     your account.
+#
+# Stripe hatte "Managed Payments" auf dem Konto als Vorgabe aktiviert. Dabei
+# wird Stripe Merchant of Record: Es berechnet Umsatzsteuer und versendet
+# eigene Rechnungen. Für einen Kleinunternehmer nach § 19 UStG ist das
+# ausgeschlossen — er weist keine Umsatzsteuer aus.
+#
+# Diese Tests halten fest, dass beide Zahlungswege es ausdrücklich
+# abschalten. Sich auf die Kontoeinstellung zu verlassen wäre zu wenig:
+# Sie hat sich schon einmal von selbst geändert.
+
+
+class _Person:
+    id = 2
+    email = "kunde@example.de"
+    tarif = "kostenlos"
+
+
+class _Tarif:
+    schluessel = "werkstatt"
+    name = "Werkstatt"
+    sichtbar = True
+    stripe_preis = "price_test"
+
+
+@pytest.fixture
+def gesendet(monkeypatch):
+    """Fängt ab, was an Stripe gehen würde."""
+    felder: dict = {}
+
+    class Sitzung:
+        id = "cs_test"
+        url = "https://checkout.stripe.com/test"
+
+    def abfangen(**gesehen):
+        felder.clear()
+        felder.update(gesehen)
+        return Sitzung()
+
+    monkeypatch.setattr(bezahlen.stripe.checkout.Session, "create",
+                        staticmethod(abfangen))
+    monkeypatch.setattr(bezahlen, "_schluessel", lambda: "sk_test_x")
+    monkeypatch.setattr(bezahlen, "_kunde", lambda person: "cus_test")
+    monkeypatch.setattr(bezahlen, "aufladungen", lambda: [1000])
+    monkeypatch.setattr(bezahlen, "frei_erlaubt", lambda: False)
+    return felder
+
+
+def test_guthaben_schaltet_managed_payments_aus(gesendet):
+    """Sonst berechnet Stripe Umsatzsteuer, die es nicht geben darf."""
+    bezahlen.sitzung_guthaben(_Person(), 1000, "https://rechnungsblatt.de")
+
+    assert gesendet["managed_payments"] == {"enabled": False}
+
+
+def test_guthaben_traegt_einen_steuercode(gesendet):
+    """Ohne ihn wies Stripe die ganze Sitzung ab (400)."""
+    bezahlen.sitzung_guthaben(_Person(), 1000, "https://rechnungsblatt.de")
+
+    produkt = gesendet["line_items"][0]["price_data"]["product_data"]
+    assert produkt["tax_code"] == bezahlen.STEUERCODE
+    assert produkt["tax_code"].startswith("txcd_")
+
+
+def test_abo_schaltet_managed_payments_aus(gesendet, monkeypatch):
+    monkeypatch.setattr(bezahlen.konten, "tarif", lambda s: _Tarif())
+
+    bezahlen.sitzung_abo(_Person(), "werkstatt", "https://rechnungsblatt.de")
+
+    assert gesendet["managed_payments"] == {"enabled": False}
+
+
+def test_managed_payments_ist_wirklich_aus():
+    """Ein Vertipper in der Konstante fällt sonst niemandem auf.
+
+    ``{"enabled": True}`` sähe im Diff harmlos aus und hätte teure
+    Folgen — 3,5 % Aufschlag und Umsatzsteuer auf jeder Zahlung.
+    """
+    assert bezahlen.MANAGED_PAYMENTS == {"enabled": False}
