@@ -194,3 +194,50 @@ def test_startseite_verweist_auf_den_betreiber(klient):
     # Und die maschinenlesbare Verknüpfung, die mehr wiegt als der Link.
     assert '"publisher"' in text
     assert '"url": "https://did0m.dev"' in text
+
+# Bing beanstandet Meta-Beschreibungen als „too long or too short". Die
+# Grenzen sind nirgends amtlich, aber gemessen: Über etwa 158 Zeichen
+# schneiden Google und Bing ab, unter etwa 70 hält Bing sie für zu kurz.
+#
+# Am 2026-09-02 gemeldet: Startseite 211 Zeichen. Die drei Rechtsseiten
+# lagen bei 39 bis 60 und wären als nächstes aufgefallen.
+BESCHREIBUNG_MIN = 70
+BESCHREIBUNG_MAX = 158
+
+
+@pytest.mark.parametrize("datei", [
+    "start.html", "impressum.html", "datenschutz.html", "agb.html",
+])
+def test_meta_beschreibung_hat_brauchbare_laenge(datei):
+    """Jede öffentliche Seite braucht eine Beschreibung passender Länge.
+
+    Ohne sie bildet die Suchmaschine einen Auszug aus dem Text — bei
+    einem Rechtstext wird das unbrauchbar.
+    """
+    text = (SEITEN / datei).read_text(encoding="utf-8")
+
+    treffer = re.search(r'<meta name="description" content="([^"]*)"', text)
+    assert treffer, f"{datei}: keine Meta-Beschreibung"
+
+    laenge = len(treffer.group(1))
+    assert BESCHREIBUNG_MIN <= laenge <= BESCHREIBUNG_MAX, (
+        f"{datei}: Beschreibung hat {laenge} Zeichen, erwartet "
+        f"{BESCHREIBUNG_MIN} bis {BESCHREIBUNG_MAX}"
+    )
+
+
+@pytest.mark.parametrize("datei", [
+    "start.html", "impressum.html", "datenschutz.html", "agb.html",
+])
+def test_titel_hat_brauchbare_laenge(datei):
+    """Titel über etwa 60 Zeichen schneidet Google in der Trefferliste ab."""
+    text = (SEITEN / datei).read_text(encoding="utf-8")
+
+    treffer = re.search(r"<title>(.*?)</title>", text, re.S)
+    assert treffer, f"{datei}: kein Titel"
+
+    # Entities zählen als ein Zeichen, nicht als sechs.
+    titel = re.sub(r"&[a-zA-Z]+;", "x", treffer.group(1)).strip()
+    assert 15 <= len(titel) <= 65, (
+        f"{datei}: Titel hat {len(titel)} Zeichen"
+    )
