@@ -11,6 +11,7 @@ Diese Tests brauchen keine Datenbank.
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -194,6 +195,38 @@ def test_startseite_verweist_auf_den_betreiber(klient):
     # Und die maschinenlesbare Verknüpfung, die mehr wiegt als der Link.
     assert '"publisher"' in text
     assert '"url": "https://did0m.dev"' in text
+
+
+def test_strukturierte_daten_sind_gueltig_und_erfinden_keine_bewertung():
+    """Das JSON-LD der Startseite — gültiges JSON, und keine erfundenen Sterne.
+
+    Google zeigt das App-Rich-Result nur mit `aggregateRating` oder
+    `review`; der Rich-Results-Test meldet das Fehlen darum als „nicht
+    kritisches Problem" (2026-09-03). Beides bleibt draußen, absichtlich:
+    Rechnungsblatt sammelt keine Bewertungen, und eine Bewertung, die auf
+    der Seite nicht sichtbar steht, verstößt gegen Googles Richtlinien —
+    das Markup gilt dann als irreführend und kann eine manuelle Maßnahme
+    auslösen. Der Hinweis bleibt stehen, bis es echte Bewertungen gibt,
+    die die Seite auch zeigt. Wer das Feld ergänzt, muss diesen Test
+    bewusst umschreiben.
+
+    Was dagegen stimmen muss: Das JSON parst, und die beiden Pflichtfelder
+    `name` und `offers.price` sind da — ohne sie wertet Google gar nichts.
+    """
+    text = (SEITEN / "start.html").read_text(encoding="utf-8")
+    treffer = re.search(
+        r'<script type="application/ld\+json">\s*(\{.*?\})\s*</script>',
+        text,
+        re.S,
+    )
+    assert treffer, "start.html: kein JSON-LD"
+    daten = json.loads(treffer.group(1))
+
+    assert daten["@type"] == "SoftwareApplication"
+    assert daten["name"] == "Rechnungsblatt"
+    assert daten["offers"]["price"] == "0"
+    assert "aggregateRating" not in daten
+    assert "review" not in daten
 
 # Bing beanstandet Meta-Beschreibungen als „too long or too short". Die
 # Grenzen sind nirgends amtlich, aber gemessen: Über etwa 158 Zeichen

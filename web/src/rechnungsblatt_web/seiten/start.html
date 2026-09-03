@@ -33,7 +33,17 @@
 <!-- Strukturierte Daten: Damit erkennt Google, dass hier Software mit
      Preisen steht, und nicht irgendeine Seite ueber Rechnungen. Bewusst
      schmal gehalten — jede Angabe muss stimmen, sonst gilt das Markup
-     als irrefuehrend und schadet mehr, als es nuetzt. -->
+     als irrefuehrend und schadet mehr, als es nuetzt.
+
+     Der Rich-Results-Test meldet „Feld aggregateRating fehlt" als nicht
+     kritisches Problem (2026-09-03). Das bleibt so, absichtlich: Google
+     zeigt das App-Rich-Result nur mit aggregateRating oder review, aber
+     eine Bewertung darf nur ins Markup, wenn sie echt ist und auf der
+     Seite sichtbar steht. Rechnungsblatt sammelt keine Bewertungen —
+     erfundene Sterne waeren genau das irrefuehrende Markup von oben und
+     koennen eine manuelle Massnahme ausloesen. Das Feld kommt erst, wenn
+     es echte Bewertungen gibt und die Seite sie zeigt
+     (web/tests/test_rechtsseiten.py haelt das fest). -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
