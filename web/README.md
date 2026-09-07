@@ -10,6 +10,10 @@ Sitzung, Tarif und Kontingent zu tun hat (PostgreSQL).
 | Pfad | Zugang | Inhalt |
 |---|---|---|
 | `/` | offen | Öffentliche Seite: erklärt das Modell, rendert die Tarife aus der Datenbank |
+| `/funktionen` | offen | Übersicht über die elf Fachseiten |
+| `/zugferd`, `/xrechnung`, … | offen | Je eine der elf Fachseiten, siehe unten |
+| `/impressum`, `/datenschutz`, `/agb` | offen | Rechtsseiten, ohne Skript und ohne Übersetzung |
+| `/robots.txt`, `/sitemap.xml`, `/llms.txt` | offen | Was Suchmaschinen und Sprachmodelle lesen |
 | `/anmelden` | offen | Anmeldung und Registrierung |
 | `/app` | Konto | Verteiler — leitet auf `/app/rechnung`, sobald die Einrichtung steht, sonst auf `/app/einrichtung` |
 | `/app/einrichtung` | Konto | Briefpapier, Schreibzone, Stammdaten, Gestaltung |
@@ -23,6 +27,64 @@ Sitzung, Tarif und Kontingent zu tun hat (PostgreSQL).
 Schreibzone und Stammdaten vorliegen — die Einrichtung ist nur der Umweg
 davor. Wer noch nicht freigeschaltet ist, sieht statt der Seite den
 Wartehinweis.
+
+## Die öffentlichen Seiten
+
+Neben Startseite und Rechtsseiten stehen elf **Fachseiten** zu je einem
+Thema, dazu die Übersicht `/funktionen`:
+
+`zugferd`, `xrechnung`, `pflichtangaben`, `kleinunternehmer`,
+`reverse-charge`, `briefpapier`, `gutschrift-und-storno`, `girocode`,
+`kunden-und-artikel`, `aufbewahrung`, `oberflaeche`
+
+Sie liegen flach unter der Wurzel; die Liste steht als `FACHSEITEN` in
+`wege_seiten.py` und ist zugleich die Liste der Wege — ein Weg je Seite,
+kein Sammelweg mit Platzhalter.
+
+**Die Startseite ist die Navigation dorthin.** Die Liste „Was noch drin
+steckt" führt mit jedem ihrer zwölf Einträge auf einen Abschnitt einer
+Fachseite (`/briefpapier#layouts` und so fort); die Normkürzel im Auftakt
+(`PDF/A-3B`, `Factur-X`, `XRechnung`, `§ 14 UStG`) führen auf die drei
+Seiten, die nicht in der Liste stehen. Zwei Tests halten das fest: dass
+**jeder** `<dt>` einen Verweis trägt, und dass es jeden angesprungenen
+Anker in der ausgelieferten Zielseite wirklich gibt. Ein Anker, den es
+nicht gibt, fällt sonst niemandem auf — die Seite öffnet sich, nur eben
+an der falschen Stelle.
+
+Verweise mit Anker gehören deshalb in **nicht übersetzte** Elemente. Der
+Sprachwechsel setzt `textContent`; Auszeichnung innerhalb eines
+`data-i18n`-Elements wäre nach dem ersten Umschalten weg. Die Kürzel im
+Auftakt dürfen Verweise sein, weil sie in beiden Sprachen gleich heißen.
+
+**Was beim Ändern zusammengehört.** Eine neue öffentliche Seite braucht
+vier Handgriffe, und drei davon fallen nicht auf, wenn man sie vergisst:
+
+1. die HTML-Datei unter `seiten/`, mit `<!--PLAUSIBLE-->` im Kopf (sonst
+   wird die Seite nie gezählt),
+2. den Eintrag in `FACHSEITEN` (sonst gibt es den Weg nicht),
+3. den Eintrag in `SITEMAP` **mit gepflegtem Datum** (sonst findet die
+   Suchmaschine sie nur über Verweise),
+4. einen Verweis von der Startseite (sonst zählt die Suchmaschine sie als
+   verwaist).
+
+`web/tests/test_fachseiten.py` prüft alle vier.
+
+**Das Datum in der Sitemap wird von Hand gepflegt.** Wer den Text einer
+Seite ändert, ändert in `SITEMAP` das Datum mit. Ausrechnen lassen darf man
+es nicht: Ein `lastmod`, das sich täglich ohne Textänderung bewegt, stuft
+Google als unzuverlässig ein und ignoriert es danach ganz.
+
+**Gestaltung.** Die Fachseiten laden `funktionen.css` **nach** `basis.css`
+und erben damit die Handschrift der Startseite (Papier-Thema), nicht die
+nüchterne Arbeitsfläche. Wer die Startseite umfärbt, muss dort mitziehen.
+Texte laufen wie überall über `data-i18n`; Deutsch steht zusätzlich im
+Markup, damit ein Crawler ohne JavaScript die Seite vollständig liest.
+
+**robots.txt.** Das rohe HTML liegt unter `/seiten/` ein zweites Mal und
+bleibt deshalb gesperrt — sonst stünde jede Seite doppelt im Index. Die
+Stilblätter, das Skript, die Schriften und die Symbole sind ausdrücklich
+freigegeben: Google rendert die Seite, bevor es sie bewertet, und hält sie
+ohne CSS für nicht mobiltauglich.
 
 ## Konten und Mandanten
 

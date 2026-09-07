@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kleinunternehmer-Rechnung nach § 19 UStG schreiben | Rechnungsblatt</title>
+<meta name="description" content="Rechnung ohne Umsatzsteuer nach § 19 UStG: Der Pflichthinweis steht auf dem Blatt und als Befreiungsgrund im XML. Ein Schalter in den Stammdaten, danach von selbst.">
+<link rel="canonical" href="/kleinunternehmer">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Kleinunternehmer-Rechnung nach § 19 UStG">
+<meta property="og:description" content="Ohne Umsatzsteuer, mit dem Pflichthinweis — auf dem Blatt und im XML, und ohne dass man ihn vergessen kann.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Kleinunternehmer",
+      "item": "https://rechnungsblatt.de/kleinunternehmer"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Kleinunternehmer</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Steuerfall · § 19 UStG</p>
+  <h1 data-i18n="t3">Kleinunternehmer: ohne Umsatzsteuer, aber nicht ohne Hinweis</h1>
+  <p class="fuehrung" data-i18n="t4">Wer die Kleinunternehmerregelung nutzt, weist keine Umsatzsteuer aus. Das ist die eine Hälfte. Die andere: Die Rechnung muss den Grund nennen, sonst fehlt eine Pflichtangabe. Rechnungsblatt kennt den Fall als eigene Steuerkategorie — nicht als „null Prozent“.</p>
+
+  <h2 id="kategorie" data-i18n="t5">Null Prozent ist nicht dasselbe wie steuerfrei</h2>
+  <p data-i18n="t6">Auf dem Blatt sieht beides gleich aus: kein Steuerbetrag. Im XML sind es verschiedene Dinge. EN 16931 kennt Kategoriecodes; die Kleinunternehmerregelung trägt „E“ für steuerbefreit, ein echter Nullsatz trägt „Z“. Wer den falschen Code sendet, sendet eine inhaltlich falsche Rechnung, auch wenn die Zahl darunter stimmt.</p>
+  <p data-i18n="t7">Zur Befreiung gehört der Grund. Rechnungsblatt setzt ihn automatisch, wortgleich auf dem Blatt und als Befreiungsgrund im XML:</p>
+  <div class="merk">
+    <p data-i18n="t8">Kein Ausweis von Umsatzsteuer, da Kleinunternehmer gemäß § 19 UStG.</p>
+  </div>
+
+  <h2 data-i18n="t9">Ein Schalter, danach von selbst</h2>
+  <p data-i18n="t10">In den Stammdaten setzen Sie einmal das Kennzeichen „Kleinunternehmer“. Danach gilt es für jede Rechnung: Der Hinweis steht dort, wo er hingehört, und die Steuerspalte bleibt leer.</p>
+  <p data-i18n="t11">Der Schalter ist zugleich eine Sperre. Wer als Kleinunternehmer eine Position mit 19 % anlegt, bekommt Befund K1 und die Rechnung entsteht nicht. Das ist Absicht: Eine einzige Position mit ausgewiesener Steuer macht die Steuer nach § 14c UStG geschuldet, obwohl sie gar nicht anfällt.</p>
+
+  <h2 data-i18n="t12">Was sonst noch dazugehört</h2>
+  <p data-i18n="t13">Alle übrigen Pflichtangaben gelten unverändert: fortlaufende Nummer, vollständige Anschriften, Leistungsdatum, Menge und Art der Leistung. Als Kleinunternehmer genügt die Steuernummer; eine USt-IdNr. brauchen Sie dafür nicht.</p>
+  <p data-i18n="t14">Auch die Kleinunternehmer-Rechnung wird als ZUGFeRD-PDF und, wenn nötig, als XRechnung ausgegeben. Die Befreiung ändert das Format nicht — nur den Inhalt der Steuerangaben.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t15">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t16">Rechnungsblatt prüft nicht, ob Sie Kleinunternehmer sein dürfen. Die Umsatzgrenzen des § 19 UStG im Blick zu behalten, bleibt Ihre Sache und die Ihres Steuerberaters.</li>
+      <li data-i18n="t17">Ein Wechsel zur Regelbesteuerung mitten im Jahr wird nicht abgebildet. Der Schalter gilt ab dem Umlegen für neue Rechnungen; bereits erzeugte Belege bleiben, wie sie sind — sie dürfen sich auch gar nicht ändern.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/pflichtangaben" data-i18n="t18">Pflichtangaben nach § 14</a></li>
+      <li><a href="/reverse-charge" data-i18n="t19">Reverse Charge und Ausland</a></li>
+      <li><a href="/zugferd" data-i18n="t20">ZUGFeRD und Factur-X</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Kleinunternehmer",
+          "t2": "Steuerfall · § 19 UStG",
+          "t3": "Kleinunternehmer: ohne Umsatzsteuer, aber nicht ohne Hinweis",
+          "t4": "Wer die Kleinunternehmerregelung nutzt, weist keine Umsatzsteuer aus. Das ist die eine Hälfte. Die andere: Die Rechnung muss den Grund nennen, sonst fehlt eine Pflichtangabe. Rechnungsblatt kennt den Fall als eigene Steuerkategorie — nicht als „null Prozent“.",
+          "t5": "Null Prozent ist nicht dasselbe wie steuerfrei",
+          "t6": "Auf dem Blatt sieht beides gleich aus: kein Steuerbetrag. Im XML sind es verschiedene Dinge. EN 16931 kennt Kategoriecodes; die Kleinunternehmerregelung trägt „E“ für steuerbefreit, ein echter Nullsatz trägt „Z“. Wer den falschen Code sendet, sendet eine inhaltlich falsche Rechnung, auch wenn die Zahl darunter stimmt.",
+          "t7": "Zur Befreiung gehört der Grund. Rechnungsblatt setzt ihn automatisch, wortgleich auf dem Blatt und als Befreiungsgrund im XML:",
+          "t8": "Kein Ausweis von Umsatzsteuer, da Kleinunternehmer gemäß § 19 UStG.",
+          "t9": "Ein Schalter, danach von selbst",
+          "t10": "In den Stammdaten setzen Sie einmal das Kennzeichen „Kleinunternehmer“. Danach gilt es für jede Rechnung: Der Hinweis steht dort, wo er hingehört, und die Steuerspalte bleibt leer.",
+          "t11": "Der Schalter ist zugleich eine Sperre. Wer als Kleinunternehmer eine Position mit 19 % anlegt, bekommt Befund K1 und die Rechnung entsteht nicht. Das ist Absicht: Eine einzige Position mit ausgewiesener Steuer macht die Steuer nach § 14c UStG geschuldet, obwohl sie gar nicht anfällt.",
+          "t12": "Was sonst noch dazugehört",
+          "t13": "Alle übrigen Pflichtangaben gelten unverändert: fortlaufende Nummer, vollständige Anschriften, Leistungsdatum, Menge und Art der Leistung. Als Kleinunternehmer genügt die Steuernummer; eine USt-IdNr. brauchen Sie dafür nicht.",
+          "t14": "Auch die Kleinunternehmer-Rechnung wird als ZUGFeRD-PDF und, wenn nötig, als XRechnung ausgegeben. Die Befreiung ändert das Format nicht — nur den Inhalt der Steuerangaben.",
+          "t15": "Was hier nicht passiert",
+          "t16": "Rechnungsblatt prüft nicht, ob Sie Kleinunternehmer sein dürfen. Die Umsatzgrenzen des § 19 UStG im Blick zu behalten, bleibt Ihre Sache und die Ihres Steuerberaters.",
+          "t17": "Ein Wechsel zur Regelbesteuerung mitten im Jahr wird nicht abgebildet. Der Schalter gilt ab dem Umlegen für neue Rechnungen; bereits erzeugte Belege bleiben, wie sie sind — sie dürfen sich auch gar nicht ändern.",
+          "t18": "Pflichtangaben nach § 14",
+          "t19": "Reverse Charge und Ausland",
+          "t20": "ZUGFeRD und Factur-X"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Small business scheme",
+          "t2": "Tax case · § 19 UStG",
+          "t3": "Small business scheme: no VAT, but not without the notice",
+          "t4": "Anyone using the German small business scheme shows no VAT. That is one half. The other: the invoice must state the reason, otherwise a mandatory detail is missing. Rechnungsblatt knows this case as its own tax category — not as “zero per cent”.",
+          "t5": "Zero per cent is not the same as exempt",
+          "t6": "On the sheet both look the same: no tax amount. In the XML they are different things. EN 16931 uses category codes; the small business scheme carries “E” for exempt, a genuine zero rate carries “Z”. Sending the wrong code means sending a substantively wrong invoice, even when the figure below is right.",
+          "t7": "An exemption requires a reason. Rechnungsblatt sets it automatically, identically on the sheet and as the exemption reason in the XML:",
+          "t8": "Kein Ausweis von Umsatzsteuer, da Kleinunternehmer gemäß § 19 UStG.",
+          "t9": "One switch, then automatic",
+          "t10": "In the master data you set the “small business” flag once. After that it applies to every invoice: the notice appears where it belongs and the tax column stays empty.",
+          "t11": "The switch is also a lock. Anyone on the small business scheme who adds a line at 19 % gets finding K1 and the invoice is not created. That is deliberate: a single line with VAT shown makes that VAT payable under § 14c UStG even though none was due.",
+          "t12": "What else belongs with it",
+          "t13": "All other mandatory details apply unchanged: sequential number, complete addresses, date of supply, quantity and nature of the service. As a small business the tax number suffices; you do not need a VAT ID for this.",
+          "t14": "The small business invoice is likewise produced as a ZUGFeRD PDF and, where needed, as an XRechnung. The exemption does not change the format — only the content of the tax details.",
+          "t15": "What does not happen here",
+          "t16": "Rechnungsblatt does not check whether you qualify as a small business. Keeping an eye on the turnover thresholds of § 19 UStG remains your responsibility and your tax adviser's.",
+          "t17": "A switch to standard taxation mid-year is not modelled. The flag applies to new invoices from the moment it is set; documents already created stay as they are — indeed they must not change.",
+          "t18": "Mandatory details under § 14",
+          "t19": "Reverse charge and cross-border",
+          "t20": "ZUGFeRD and Factur-X"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

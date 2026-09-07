@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>XRechnung erstellen — Leitweg-ID und Pflichtfelder | Rechnungsblatt</title>
+<meta name="description" content="XRechnung 3.0 für Behördenkunden: reines CII-XML mit Leitweg-ID nach BT-10. Rechnungsblatt prüft die deutschen Zusatzregeln, bevor die Datei entsteht.">
+<link rel="canonical" href="/xrechnung">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="XRechnung für Behördenkunden">
+<meta property="og:description" content="Reines XML nach XRechnung 3.0, mit geprüfter Leitweg-ID und den Kontaktangaben, die BR-DE-2 bis BR-DE-7 verlangen.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "XRechnung",
+      "item": "https://rechnungsblatt.de/xrechnung"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">XRechnung</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Format · Öffentliche Auftraggeber</p>
+  <h1 data-i18n="t3">XRechnung: was die Behörde zusätzlich verlangt</h1>
+  <p class="fuehrung" data-i18n="t4">Wer an Bund, Land oder Kommune fakturiert, kommt mit ZUGFeRD allein oft nicht durch. XRechnung ist eine Verschärfung von EN 16931 für den deutschen öffentlichen Sektor: reines XML, ohne Blatt, mit zusätzlichen Pflichtfeldern. Rechnungsblatt gibt sie als eigenen Download aus.</p>
+
+  <h2 data-i18n="t5">Der Unterschied zu ZUGFeRD</h2>
+  <p data-i18n="t6">ZUGFeRD ist ein PDF mit XML darin. XRechnung ist nur das XML — kein Bild, kein Layout, nichts zum Ansehen. Für die annehmende Stelle ist das kein Mangel: Ihre Software liest ohnehin nur die Daten. Fachlich ist XRechnung eine sogenannte CIUS, eine enger gefasste Ausprägung derselben europäischen Norm, gepflegt von der KoSIT.</p>
+  <p data-i18n="t7">Rechnungsblatt erzeugt das Profil urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0. Sie erzeugen zuerst die Rechnung wie gewohnt und laden die XRechnung anschließend als zweite Datei herunter — dieselben Daten, anderes Zielprofil.</p>
+
+  <h2 id="pflichtfelder" data-i18n="t8">Drei Felder, die sonst nirgends Pflicht sind</h2>
+  <p data-i18n="t9">Die deutschen Zusatzregeln verlangen Angaben, die eine gewöhnliche Rechnung nicht braucht. Fehlt eine davon, weist Rechnungsblatt die Ausgabe ab, statt eine Datei zu erzeugen, die die Annahmestelle später zurückweist:</p>
+  <div class="tabellenhalter">
+    <table>
+      <thead><tr>
+        <th data-i18n="t10">Befund</th>
+        <th data-i18n="t11">Was fehlt</th>
+        <th data-i18n="t12">Regel</th>
+      </tr></thead>
+      <tbody>
+      <tr>
+        <td data-i18n="t13">X1</td>
+        <td data-i18n="t14">Leitweg-ID des Empfängers — die Adresse, unter der die Behörde die Rechnung intern zustellt. Sie steht in der Bestellung oder im Auftragsschreiben.</td>
+        <td data-i18n="t15">BT-10, BR-DE-15</td>
+      </tr>
+      <tr>
+        <td data-i18n="t16">X2</td>
+        <td data-i18n="t17">Kontaktname, Telefon und E-Mail des Rechnungsstellers. Einmal in den Stammdaten hinterlegt, stehen sie auf jeder XRechnung.</td>
+        <td data-i18n="t18">BR-DE-2 bis BR-DE-7</td>
+      </tr>
+      <tr>
+        <td data-i18n="t19">X3</td>
+        <td data-i18n="t20">Elektronische Adresse des Empfängers — in der Praxis dessen E-Mail-Adresse.</td>
+        <td data-i18n="t21">BT-49</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="merk">
+    <p data-i18n="t22">Die Prüfung läuft vor dem Erzeugen und ist blockierend. Eine XRechnung ohne Leitweg-ID entsteht gar nicht erst — der Fehler fällt Ihnen auf, nicht der Annahmestelle vier Wochen später.</p>
+  </div>
+
+  <h2 data-i18n="t23">Und die Pflichtangaben nach § 14 gelten weiter</h2>
+  <p data-i18n="t24">Die drei Felder oben kommen obendrauf. Alles, was eine Rechnung ohnehin tragen muss — fortlaufende Nummer, Steuernummer oder USt-IdNr., Leistungsdatum, Steuersatz je Position —, wird für die XRechnung genauso geprüft wie für jede andere.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t25">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t26">Rechnungsblatt stellt keine Verbindung zu einer Rechnungseingangsplattform her. Es gibt keine Anbindung an PEPPOL, an die ZRE oder an eine OZG-Plattform — Sie laden das XML herunter und reichen es dort ein, wo Ihr Auftraggeber es verlangt.</li>
+      <li data-i18n="t27">Die Leitweg-ID wird auf Anwesenheit geprüft, nicht auf Gültigkeit. Ob sie zur richtigen Stelle führt, weiß nur Ihr Auftraggeber.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/zugferd" data-i18n="t28">ZUGFeRD und Factur-X</a></li>
+      <li><a href="/pflichtangaben" data-i18n="t29">Pflichtangaben nach § 14</a></li>
+      <li><a href="/reverse-charge" data-i18n="t30">Reverse Charge und Ausland</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "XRechnung",
+          "t2": "Format · Öffentliche Auftraggeber",
+          "t3": "XRechnung: was die Behörde zusätzlich verlangt",
+          "t4": "Wer an Bund, Land oder Kommune fakturiert, kommt mit ZUGFeRD allein oft nicht durch. XRechnung ist eine Verschärfung von EN 16931 für den deutschen öffentlichen Sektor: reines XML, ohne Blatt, mit zusätzlichen Pflichtfeldern. Rechnungsblatt gibt sie als eigenen Download aus.",
+          "t5": "Der Unterschied zu ZUGFeRD",
+          "t6": "ZUGFeRD ist ein PDF mit XML darin. XRechnung ist nur das XML — kein Bild, kein Layout, nichts zum Ansehen. Für die annehmende Stelle ist das kein Mangel: Ihre Software liest ohnehin nur die Daten. Fachlich ist XRechnung eine sogenannte CIUS, eine enger gefasste Ausprägung derselben europäischen Norm, gepflegt von der KoSIT.",
+          "t7": "Rechnungsblatt erzeugt das Profil urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0. Sie erzeugen zuerst die Rechnung wie gewohnt und laden die XRechnung anschließend als zweite Datei herunter — dieselben Daten, anderes Zielprofil.",
+          "t8": "Drei Felder, die sonst nirgends Pflicht sind",
+          "t9": "Die deutschen Zusatzregeln verlangen Angaben, die eine gewöhnliche Rechnung nicht braucht. Fehlt eine davon, weist Rechnungsblatt die Ausgabe ab, statt eine Datei zu erzeugen, die die Annahmestelle später zurückweist:",
+          "t10": "Befund",
+          "t11": "Was fehlt",
+          "t12": "Regel",
+          "t13": "X1",
+          "t14": "Leitweg-ID des Empfängers — die Adresse, unter der die Behörde die Rechnung intern zustellt. Sie steht in der Bestellung oder im Auftragsschreiben.",
+          "t15": "BT-10, BR-DE-15",
+          "t16": "X2",
+          "t17": "Kontaktname, Telefon und E-Mail des Rechnungsstellers. Einmal in den Stammdaten hinterlegt, stehen sie auf jeder XRechnung.",
+          "t18": "BR-DE-2 bis BR-DE-7",
+          "t19": "X3",
+          "t20": "Elektronische Adresse des Empfängers — in der Praxis dessen E-Mail-Adresse.",
+          "t21": "BT-49",
+          "t22": "Die Prüfung läuft vor dem Erzeugen und ist blockierend. Eine XRechnung ohne Leitweg-ID entsteht gar nicht erst — der Fehler fällt Ihnen auf, nicht der Annahmestelle vier Wochen später.",
+          "t23": "Und die Pflichtangaben nach § 14 gelten weiter",
+          "t24": "Die drei Felder oben kommen obendrauf. Alles, was eine Rechnung ohnehin tragen muss — fortlaufende Nummer, Steuernummer oder USt-IdNr., Leistungsdatum, Steuersatz je Position —, wird für die XRechnung genauso geprüft wie für jede andere.",
+          "t25": "Was hier nicht passiert",
+          "t26": "Rechnungsblatt stellt keine Verbindung zu einer Rechnungseingangsplattform her. Es gibt keine Anbindung an PEPPOL, an die ZRE oder an eine OZG-Plattform — Sie laden das XML herunter und reichen es dort ein, wo Ihr Auftraggeber es verlangt.",
+          "t27": "Die Leitweg-ID wird auf Anwesenheit geprüft, nicht auf Gültigkeit. Ob sie zur richtigen Stelle führt, weiß nur Ihr Auftraggeber.",
+          "t28": "ZUGFeRD und Factur-X",
+          "t29": "Pflichtangaben nach § 14",
+          "t30": "Reverse Charge und Ausland"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "XRechnung",
+          "t2": "Format · Public sector",
+          "t3": "XRechnung: what public authorities additionally require",
+          "t4": "Anyone invoicing federal, state or municipal bodies often will not get through with ZUGFeRD alone. XRechnung is a tightening of EN 16931 for the German public sector: pure XML, no sheet, with additional mandatory fields. Rechnungsblatt provides it as a separate download.",
+          "t5": "The difference from ZUGFeRD",
+          "t6": "ZUGFeRD is a PDF with XML inside. XRechnung is only the XML — no picture, no layout, nothing to look at. For the receiving body that is no shortcoming: its software reads only the data anyway. Technically XRechnung is a so-called CIUS, a narrower specification of the same European standard, maintained by KoSIT.",
+          "t7": "Rechnungsblatt produces the profile urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0. You create the invoice as usual and then download the XRechnung as a second file — same data, different target profile.",
+          "t8": "Three fields that are mandatory nowhere else",
+          "t9": "The German additional rules require details an ordinary invoice does not need. If one is missing, Rechnungsblatt refuses to produce output rather than creating a file the receiving body will later reject:",
+          "t10": "Code",
+          "t11": "What is missing",
+          "t12": "Rule",
+          "t13": "X1",
+          "t14": "The recipient's Leitweg-ID — the address under which the authority routes the invoice internally. It appears in the order or in the award letter.",
+          "t15": "BT-10, BR-DE-15",
+          "t16": "X2",
+          "t17": "Contact name, telephone and e-mail of the invoice issuer. Entered once in the master data, they appear on every XRechnung.",
+          "t18": "BR-DE-2 to BR-DE-7",
+          "t19": "X3",
+          "t20": "The recipient's electronic address — in practice their e-mail address.",
+          "t21": "BT-49",
+          "t22": "The check runs before generation and blocks. An XRechnung without a Leitweg-ID is never created — you notice the error, not the receiving body four weeks later.",
+          "t23": "And the mandatory details under § 14 still apply",
+          "t24": "The three fields above come on top. Everything an invoice must carry anyway — sequential number, tax number or VAT ID, date of supply, tax rate per line — is checked for the XRechnung just as for any other.",
+          "t25": "What does not happen here",
+          "t26": "Rechnungsblatt does not connect to any invoice receipt platform. There is no link to PEPPOL, to the ZRE or to an OZG portal — you download the XML and submit it wherever your client requires.",
+          "t27": "The Leitweg-ID is checked for presence, not for validity. Only your client knows whether it leads to the right place.",
+          "t28": "ZUGFeRD and Factur-X",
+          "t29": "Mandatory details under § 14",
+          "t30": "Reverse charge and cross-border"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

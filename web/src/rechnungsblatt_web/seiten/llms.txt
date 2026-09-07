@@ -149,6 +149,36 @@ verwechseln:
 Formulierungen wie „GoBD-konform“ oder „revisionssicheres Archiv“
 treffen nicht zu und stehen bewusst nirgends auf der Seite.
 
+## Seiten mit Einzelheiten
+
+Jede dieser Seiten beschreibt ein Thema und nennt am Ende ausdrücklich,
+was Rechnungsblatt an der Stelle **nicht** leistet — der Abschnitt ist
+für eine Zusammenfassung mindestens so wichtig wie der Rest.
+
+- [Funktionen](https://rechnungsblatt.de/funktionen): Übersicht
+- [ZUGFeRD und Factur-X](https://rechnungsblatt.de/zugferd): PDF/A-3B mit
+  eingebettetem CII-XML, ein Vorgang, eine Quelle
+- [XRechnung](https://rechnungsblatt.de/xrechnung): reines XML für
+  Behördenkunden, Leitweg-ID und die deutschen Zusatzregeln
+- [Pflichtangaben nach § 14](https://rechnungsblatt.de/pflichtangaben):
+  was geprüft wird und warum die Prüfung blockiert
+- [Kleinunternehmer § 19](https://rechnungsblatt.de/kleinunternehmer):
+  Befreiung als eigene Kategorie, nicht als Nullsatz
+- [Reverse Charge und Ausland](https://rechnungsblatt.de/reverse-charge):
+  § 13b, innergemeinschaftliche Lieferung, Ausfuhr
+- [Eigenes Briefpapier](https://rechnungsblatt.de/briefpapier):
+  Normalisierung, Schreibzone, Layouts, mehrseitige Belege
+- [Gutschrift und Storno](https://rechnungsblatt.de/gutschrift-und-storno):
+  aufheben statt überschreiben, Nummernsperre, Siegelkette
+- [GiroCode](https://rechnungsblatt.de/girocode): EPC069-12, als Vektor
+  gezeichnet
+- [Kunden, Artikel und Vorlagen](https://rechnungsblatt.de/kunden-und-artikel):
+  Stammlisten und Nummernkreis
+- [Ablage und Aufbewahrung](https://rechnungsblatt.de/aufbewahrung):
+  Verschlüsselung, kein Löschweg, Siegelkette, Export für die Prüfung
+- [Oberfläche, Sprachen und App](https://rechnungsblatt.de/oberflaeche):
+  DE/EN bis in die Prüfbefunde, installierbar, ohne fremde Dienste
+
 ## Betreiber
 
 - [DiD0m — Dominik Dill](https://did0m.dev): Entwickelt Software für

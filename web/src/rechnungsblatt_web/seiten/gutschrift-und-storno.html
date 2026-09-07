@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnung stornieren, Gutschrift und Korrektur schreiben | Rechnungsblatt</title>
+<meta name="description" content="Eine verschickte Rechnung wird nicht überschrieben, sondern durch einen eigenen Beleg aufgehoben: Gutschrift oder Korrektur mit Bezug zur Ursprungsrechnung.">
+<link rel="canonical" href="/gutschrift-und-storno">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Stornieren, ohne zu überschreiben">
+<meta property="og:description" content="Gutschrift und Korrektur als eigene Belegtypen mit Bezugsnummer — die Ursprungsrechnung bleibt unangetastet.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Gutschrift und Storno",
+      "item": "https://rechnungsblatt.de/gutschrift-und-storno"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Gutschrift und Storno</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Belegarten · UNCL 1001</p>
+  <h1 data-i18n="t3">Stornieren heißt nicht überschreiben</h1>
+  <p class="fuehrung" data-i18n="t4">Eine Rechnung, die das Haus verlassen hat, wird nicht mehr geändert. Was falsch war, wird durch einen zweiten Beleg aufgehoben — mit eigener Nummer und einem Verweis auf den ersten. Rechnungsblatt kennt dafür zwei eigene Belegtypen und lässt den Weg über das Überschreiben gar nicht zu.</p>
+
+  <h2 id="belegtypen" data-i18n="t5">Drei Belegtypen</h2>
+  <p data-i18n="t6">Jeder Typ trägt seinen eigenen Code nach UNCL 1001; die empfangende Software erkennt daran, was der Beleg tut:</p>
+  <div class="tabellenhalter">
+    <table>
+      <thead><tr>
+        <th data-i18n="t7">Beleg</th>
+        <th data-i18n="t8">Code</th>
+        <th data-i18n="t9">Wofür</th>
+      </tr></thead>
+      <tbody>
+      <tr>
+        <td data-i18n="t10">Rechnung</td>
+        <td data-i18n="t11">380</td>
+        <td data-i18n="t12">Der Normalfall.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t13">Gutschrift</td>
+        <td data-i18n="t14">381</td>
+        <td data-i18n="t15">Hebt eine Rechnung ganz oder teilweise auf — der Weg für ein Storno.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t16">Rechnungskorrektur</td>
+        <td data-i18n="t17">384</td>
+        <td data-i18n="t18">Berichtigt eine Rechnung, die im Kern richtig, in Teilen aber falsch war.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <p data-i18n="t19">Gutschrift und Korrektur brauchen beide die Nummer der Ursprungsrechnung. Fehlt sie, greift Befund G1 und der Beleg entsteht nicht — ein Storno ohne Bezug wäre für den Empfänger nicht zuzuordnen und für die Prüfung wertlos.</p>
+
+  <h2 data-i18n="t20">Der Weg in der Anwendung</h2>
+  <p data-i18n="t21">In der Ablage steht neben jeder Rechnung „Stornieren“. Der Knopf bereitet eine Gutschrift vor: Die Positionen sind übernommen, Bezugsnummer und Bezugsdatum stehen bereits, eine neue eigene Nummer ist vergeben. Sie prüfen und geben frei. Bei einer Gutschrift erscheint der Knopf nicht — man storniert keine Stornierung.</p>
+
+  <h2 data-i18n="t22">Warum das Überschreiben gesperrt ist</h2>
+  <p data-i18n="t23">Eine fortlaufende Rechnungsnummer ist nur etwas wert, wenn hinter jeder Nummer genau ein Beleg steht. Wer eine vergebene Nummer erneut benutzt, macht die Reihe wertlos — und zwar rückwirkend für alle.</p>
+  <div class="merk">
+    <p data-i18n="t24">Rechnungsblatt weist den zweiten Beleg unter derselben Nummer ab. Die Prüfung läuft vor der Verbrauchsbuchung, damit ein abgewiesener Versuch Sie nichts kostet.</p>
+  </div>
+  <p data-i18n="t25">In dieselbe Richtung wirkt das Fehlen eines Löschwegs: Über die Schnittstelle lässt sich kein erzeugter Beleg entfernen. Die Aufbewahrungsfrist beträgt acht Jahre, und eine Software, die das Löschen anbietet, lädt zum Aufräumen ein.</p>
+  <p data-i18n="t26">Zusätzlich entsteht zu jedem Beleg ein Siegel aus dem Hashwert von PDF, XML und Eingabedaten, verknüpft mit dem Siegel des vorhergehenden Belegs. Wird später an der Anwendung vorbei etwas geändert oder entfernt, passt die Kette nicht mehr — und lässt sich auch nicht stillschweigend neu rechnen.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t27">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t28">Es gibt keinen Weg, einen Beleg zu löschen oder zu ändern. Das ist der Punkt der Übung, aber es heißt auch: Ein Testbeleg mit falscher Nummer bleibt stehen.</li>
+      <li data-i18n="t29">Die Siegelkette ist kein qualifizierter Zeitstempel einer anerkannten Stelle. Sie macht Änderungen sichtbar; sie beweist nicht vor Gericht, wann ein Beleg entstand.</li>
+      <li data-i18n="t30">Ob Ihre Ablage insgesamt den GoBD genügt, bewertet Ihr steuerlicher Berater. Rechnungsblatt liefert dafür einen Entwurf der Verfahrensdokumentation, keine Zusicherung.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/pflichtangaben" data-i18n="t31">Pflichtangaben nach § 14</a></li>
+      <li><a href="/briefpapier" data-i18n="t32">Eigenes Briefpapier</a></li>
+      <li><a href="/zugferd" data-i18n="t33">ZUGFeRD und Factur-X</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Gutschrift und Storno",
+          "t2": "Belegarten · UNCL 1001",
+          "t3": "Stornieren heißt nicht überschreiben",
+          "t4": "Eine Rechnung, die das Haus verlassen hat, wird nicht mehr geändert. Was falsch war, wird durch einen zweiten Beleg aufgehoben — mit eigener Nummer und einem Verweis auf den ersten. Rechnungsblatt kennt dafür zwei eigene Belegtypen und lässt den Weg über das Überschreiben gar nicht zu.",
+          "t5": "Drei Belegtypen",
+          "t6": "Jeder Typ trägt seinen eigenen Code nach UNCL 1001; die empfangende Software erkennt daran, was der Beleg tut:",
+          "t7": "Beleg",
+          "t8": "Code",
+          "t9": "Wofür",
+          "t10": "Rechnung",
+          "t11": "380",
+          "t12": "Der Normalfall.",
+          "t13": "Gutschrift",
+          "t14": "381",
+          "t15": "Hebt eine Rechnung ganz oder teilweise auf — der Weg für ein Storno.",
+          "t16": "Rechnungskorrektur",
+          "t17": "384",
+          "t18": "Berichtigt eine Rechnung, die im Kern richtig, in Teilen aber falsch war.",
+          "t19": "Gutschrift und Korrektur brauchen beide die Nummer der Ursprungsrechnung. Fehlt sie, greift Befund G1 und der Beleg entsteht nicht — ein Storno ohne Bezug wäre für den Empfänger nicht zuzuordnen und für die Prüfung wertlos.",
+          "t20": "Der Weg in der Anwendung",
+          "t21": "In der Ablage steht neben jeder Rechnung „Stornieren“. Der Knopf bereitet eine Gutschrift vor: Die Positionen sind übernommen, Bezugsnummer und Bezugsdatum stehen bereits, eine neue eigene Nummer ist vergeben. Sie prüfen und geben frei. Bei einer Gutschrift erscheint der Knopf nicht — man storniert keine Stornierung.",
+          "t22": "Warum das Überschreiben gesperrt ist",
+          "t23": "Eine fortlaufende Rechnungsnummer ist nur etwas wert, wenn hinter jeder Nummer genau ein Beleg steht. Wer eine vergebene Nummer erneut benutzt, macht die Reihe wertlos — und zwar rückwirkend für alle.",
+          "t24": "Rechnungsblatt weist den zweiten Beleg unter derselben Nummer ab. Die Prüfung läuft vor der Verbrauchsbuchung, damit ein abgewiesener Versuch Sie nichts kostet.",
+          "t25": "In dieselbe Richtung wirkt das Fehlen eines Löschwegs: Über die Schnittstelle lässt sich kein erzeugter Beleg entfernen. Die Aufbewahrungsfrist beträgt acht Jahre, und eine Software, die das Löschen anbietet, lädt zum Aufräumen ein.",
+          "t26": "Zusätzlich entsteht zu jedem Beleg ein Siegel aus dem Hashwert von PDF, XML und Eingabedaten, verknüpft mit dem Siegel des vorhergehenden Belegs. Wird später an der Anwendung vorbei etwas geändert oder entfernt, passt die Kette nicht mehr — und lässt sich auch nicht stillschweigend neu rechnen.",
+          "t27": "Was hier nicht passiert",
+          "t28": "Es gibt keinen Weg, einen Beleg zu löschen oder zu ändern. Das ist der Punkt der Übung, aber es heißt auch: Ein Testbeleg mit falscher Nummer bleibt stehen.",
+          "t29": "Die Siegelkette ist kein qualifizierter Zeitstempel einer anerkannten Stelle. Sie macht Änderungen sichtbar; sie beweist nicht vor Gericht, wann ein Beleg entstand.",
+          "t30": "Ob Ihre Ablage insgesamt den GoBD genügt, bewertet Ihr steuerlicher Berater. Rechnungsblatt liefert dafür einen Entwurf der Verfahrensdokumentation, keine Zusicherung.",
+          "t31": "Pflichtangaben nach § 14",
+          "t32": "Eigenes Briefpapier",
+          "t33": "ZUGFeRD und Factur-X"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Credit note and reversal",
+          "t2": "Document types · UNCL 1001",
+          "t3": "Reversing is not overwriting",
+          "t4": "An invoice that has left the building is not changed again. What was wrong is cancelled by a second document — with its own number and a reference to the first. Rechnungsblatt has two dedicated document types for this and does not permit the overwrite route at all.",
+          "t5": "Three document types",
+          "t6": "Each type carries its own code under UNCL 1001; the receiving software recognises from it what the document does:",
+          "t7": "Document",
+          "t8": "Code",
+          "t9": "What for",
+          "t10": "Invoice",
+          "t11": "380",
+          "t12": "The normal case.",
+          "t13": "Credit note",
+          "t14": "381",
+          "t15": "Cancels an invoice wholly or partly — the route for a reversal.",
+          "t16": "Corrected invoice",
+          "t17": "384",
+          "t18": "Corrects an invoice that was right in substance but wrong in parts.",
+          "t19": "Credit notes and corrections both need the number of the original invoice. If it is missing, finding G1 applies and the document is not created — a reversal without a reference could not be matched by the recipient and would be worthless in an audit.",
+          "t20": "How it works in the application",
+          "t21": "In the archive each invoice has a “reverse” action. The button prepares a credit note: the line items are carried over, the reference number and date are already set, a new number of its own is assigned. You check it and confirm. The button does not appear on a credit note — you do not reverse a reversal.",
+          "t22": "Why overwriting is blocked",
+          "t23": "A sequential invoice number is only worth something if exactly one document sits behind each number. Reusing an assigned number renders the sequence worthless — retroactively, for everything in it.",
+          "t24": "Rechnungsblatt refuses a second document under the same number. The check runs before the quota is charged, so a rejected attempt costs you nothing.",
+          "t25": "The absence of a deletion path works in the same direction: no created document can be removed through the interface. The retention period is eight years, and software that offers deletion invites tidying up.",
+          "t26": "In addition, every document gets a seal built from the hash of the PDF, the XML and the input data, linked to the seal of the preceding document. If something is later changed or removed behind the application's back, the chain no longer matches — and cannot be quietly recomputed either.",
+          "t27": "What does not happen here",
+          "t28": "There is no way to delete or change a document. That is the point of the exercise, but it also means a test document with a wrong number stays put.",
+          "t29": "The seal chain is not a qualified timestamp from an accredited authority. It makes changes visible; it does not prove in court when a document came into being.",
+          "t30": "Whether your archive as a whole satisfies the German GoBD is for your tax adviser to assess. Rechnungsblatt supplies a draft process documentation for that, not an assurance.",
+          "t31": "Mandatory details under § 14",
+          "t32": "Your own letterhead",
+          "t33": "ZUGFeRD and Factur-X"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

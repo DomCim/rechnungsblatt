@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Belege verschlüsselt ablegen, aufbewahren und exportieren | Rechnungsblatt</title>
+<meta name="description" content="Mandantendaten verschlüsselt, ohne Einsicht des Betreibers. Kein Löschweg für Belege, Siegelkette gegen stille Änderungen, Gesamtexport für die Betriebsprüfung.">
+<link rel="canonical" href="/aufbewahrung">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Ablage und Aufbewahrung">
+<meta property="og:description" content="Verschlüsselt abgelegt, nicht löschbar, mit Siegelkette und einem Export, den ein Prüfer am Stück bekommt.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Ablage und Aufbewahrung",
+      "item": "https://rechnungsblatt.de/aufbewahrung"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Ablage und Aufbewahrung</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Ablage · § 147 AO · GoBD</p>
+  <h1 data-i18n="t3">Abgelegt heißt hier: liegen geblieben</h1>
+  <p class="fuehrung" data-i18n="t4">Eine Rechnung ist acht Jahre lang aufzubewahren. Das ist leicht gesagt und schwer eingehalten, wenn die Ablage ein Ordner auf einer Festplatte ist. Rechnungsblatt behandelt seine Ablage deshalb wie ein Archiv und nicht wie einen Arbeitsordner.</p>
+
+  <h2 id="verschluesselung" data-i18n="t5">Verschlüsselt, auch vor dem Betreiber</h2>
+  <p data-i18n="t6">Ihre Stammdaten, Kunden, Artikel, Vorlagen, der Briefbogen und jeder erzeugte Beleg liegen verschlüsselt. Der Aufbau ist der einer Krypto-Wallet: Ein zufälliger Datenschlüssel verschlüsselt die Dateien, und dieser Schlüssel selbst wird nie gespeichert — nur zwei Hüllen um ihn herum.</p>
+  <ul>
+    <li data-i18n="t7">Die eine Hülle öffnet Ihr Anmeldepasswort.</li>
+    <li data-i18n="t8">Die andere öffnet der Wiederherstellungscode, den Sie bei der Einrichtung ausdrucken.</li>
+  </ul>
+  <p data-i18n="t9">Daraus folgt dreierlei. Der Betreiber kommt nicht heran, denn in der Datenbank liegt vom Passwort nur ein scrypt-Hash. Ein Passwortwechsel ist verlustfrei, weil nur die eine Hülle neu verschlüsselt wird und keine einzige Datei angefasst werden muss. Und ein vergessenes Passwort ist kein Totalverlust, solange der Code existiert.</p>
+  <div class="merk">
+    <p data-i18n="t10">Verlieren Sie Passwort und Wiederherstellungscode, sind die Daten endgültig fort. Das ist keine Panne, sondern der Zweck der Übung — und der Grund, den Code nicht in derselben Schublade zu verwahren wie alles andere.</p>
+  </div>
+
+  <h2 id="loeschen" data-i18n="t11">Kein Löschweg für Belege</h2>
+  <p data-i18n="t12">Über die Schnittstelle lässt sich kein erzeugter Beleg entfernen und keine vergebene Nummer überschreiben. Eine Software, die das Löschen anbietet, lädt zum Aufräumen ein — und aufgeräumt wird erfahrungsgemäß genau das, was später jemand sehen möchte.</p>
+  <p data-i18n="t13">Was falsch war, wird durch einen zweiten Beleg aufgehoben, nicht durch einen Radiergummi. Den Weg beschreibt die Seite zu Gutschrift und Storno.</p>
+  <p data-i18n="t14">Das gilt für Belege, nicht für Konten. Wird ein Konto gelöscht, verschwindet zuerst das gesamte Mandantenverzeichnis und danach der Datenbankeintrag — ohne Papierkorb und ohne Rest. Beides zusammen, oder gar nichts: Lässt sich das Verzeichnis nicht räumen, bleibt auch das Konto stehen, statt eine verwaiste Datenhalde zu hinterlassen.</p>
+
+  <h2 id="siegel" data-i18n="t15">Die Siegelkette</h2>
+  <p data-i18n="t16">Die GoBD halten fest, dass die Ablage von Dokumenten in einem Dateisystem die Unveränderbarkeit „regelmäßig nicht“ gewährleistet, solange keine zusätzlichen Maßnahmen hinzutreten. Nummernsperre und fehlender Löschweg sind solche Maßnahmen — aber sie wirken nur innerhalb der Anwendung. Wer an den Dateien vorbei ans Laufwerk kommt, hinterlässt sonst keine Spur.</p>
+  <p data-i18n="t17">Deshalb bekommt jeder Beleg beim Erzeugen ein Siegel: den SHA-256 über PDF, XML und Eingabedaten, verknüpft mit dem Siegel des vorhergehenden Belegs. Jedes Glied hängt an allen vorherigen. Wird ein Beleg später verändert oder entfernt, passt sein Siegel nicht mehr — und weil die folgenden Glieder darauf aufbauen, lässt sich die Kette auch nicht stillschweigend neu rechnen.</p>
+  <p data-i18n="t18">Die Siegeldatei liegt bewusst unverschlüsselt. Sie enthält nur Hashwerte und Nummern, also nichts Schützenswertes — und läge sie verschlüsselt, wäre der Nachweis mit einem verlorenen Kennwort ebenfalls verloren. Genau dann braucht man ihn.</p>
+
+  <h2 id="protokoll" data-i18n="t19">Das Belegprotokoll</h2>
+  <p data-i18n="t20">Neben jedem Beleg liegt eine Protokolldatei, eine Zeile JSON je Ereignis, die nur angehängt und nie geändert wird: wann der Beleg entstand, ob und wodurch er später aufgehoben wurde. Wer storniert, erzeugt keinen Eintrag „geändert“, sondern einen zweiten Beleg — und beide Protokolle halten fest, dass sie zusammengehören.</p>
+
+  <h2 id="export" data-i18n="t21">Der Export für die Betriebsprüfung</h2>
+  <p data-i18n="t22">Alle Belege eines Zeitraums als ein ZIP-Archiv. Je Beleg ein Ordner mit dem PDF, dem XML, den Eingabedaten und dem Protokoll, dazu eine Übersicht als CSV und eine Liesmich-Datei, die erklärt, was der Prüfer vor sich hat. Ohne die stünde er vor einem Haufen Dateien.</p>
+  <div class="merk">
+    <p data-i18n="t23">Wer seine Daten nicht am Stück herausbekommt, hat sie faktisch nicht. Ein Zeitraum lässt sich eingrenzen — Betriebsprüfungen betreffen meist ein Jahr.</p>
+  </div>
+  <p data-i18n="t24">Dazu kommt ein Entwurf der Verfahrensdokumentation mit Ihren eigenen Stammdaten darin. Sie schuldet der Steuerpflichtige und nicht der Hersteller — genau das macht sie für einen Einzelunternehmer zur Hürde, denn er soll etwas beschreiben, dessen technischen Teil nur der Hersteller kennt. Rechnungsblatt schreibt diesen Teil; was das Unternehmen selbst regeln muss, steht als offene Frage darin und nicht als erfundene Behauptung.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t25">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t26">Rechnungsblatt ist **nicht GoBD-zertifiziert**, und eine solche Zertifizierung der Software gibt es der Sache nach nicht — beurteilt wird immer das Verfahren beim Steuerpflichtigen. Wer mit „GoBD-konform“ wirbt, sagt damit weniger, als es klingt.</li>
+      <li data-i18n="t27">Die Siegelkette ist kein qualifizierter Zeitstempel einer anerkannten Stelle. Sie macht Änderungen sichtbar; sie beweist nicht vor Gericht, wann ein Beleg entstand.</li>
+      <li data-i18n="t28">Die Ablage ist kein Achtjahresarchiv im Rechtssinne. Die Frist trifft Sie, nicht den Betreiber — laden Sie Ihre Belege regelmäßig herunter und legen Sie sie dorthin, wo Ihre übrigen Unterlagen liegen.</li>
+      <li data-i18n="t29">Ob Ihre Ablage insgesamt genügt, bewertet Ihr steuerlicher Berater.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/gutschrift-und-storno" data-i18n="t30">Gutschrift und Storno</a></li>
+      <li><a href="/pflichtangaben" data-i18n="t31">Pflichtangaben nach § 14</a></li>
+      <li><a href="/oberflaeche" data-i18n="t32">Oberfläche, Sprachen und App</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Ablage und Aufbewahrung",
+          "t2": "Ablage · § 147 AO · GoBD",
+          "t3": "Abgelegt heißt hier: liegen geblieben",
+          "t4": "Eine Rechnung ist acht Jahre lang aufzubewahren. Das ist leicht gesagt und schwer eingehalten, wenn die Ablage ein Ordner auf einer Festplatte ist. Rechnungsblatt behandelt seine Ablage deshalb wie ein Archiv und nicht wie einen Arbeitsordner.",
+          "t5": "Verschlüsselt, auch vor dem Betreiber",
+          "t6": "Ihre Stammdaten, Kunden, Artikel, Vorlagen, der Briefbogen und jeder erzeugte Beleg liegen verschlüsselt. Der Aufbau ist der einer Krypto-Wallet: Ein zufälliger Datenschlüssel verschlüsselt die Dateien, und dieser Schlüssel selbst wird nie gespeichert — nur zwei Hüllen um ihn herum.",
+          "t7": "Die eine Hülle öffnet Ihr Anmeldepasswort.",
+          "t8": "Die andere öffnet der Wiederherstellungscode, den Sie bei der Einrichtung ausdrucken.",
+          "t9": "Daraus folgt dreierlei. Der Betreiber kommt nicht heran, denn in der Datenbank liegt vom Passwort nur ein scrypt-Hash. Ein Passwortwechsel ist verlustfrei, weil nur die eine Hülle neu verschlüsselt wird und keine einzige Datei angefasst werden muss. Und ein vergessenes Passwort ist kein Totalverlust, solange der Code existiert.",
+          "t10": "Verlieren Sie Passwort und Wiederherstellungscode, sind die Daten endgültig fort. Das ist keine Panne, sondern der Zweck der Übung — und der Grund, den Code nicht in derselben Schublade zu verwahren wie alles andere.",
+          "t11": "Kein Löschweg für Belege",
+          "t12": "Über die Schnittstelle lässt sich kein erzeugter Beleg entfernen und keine vergebene Nummer überschreiben. Eine Software, die das Löschen anbietet, lädt zum Aufräumen ein — und aufgeräumt wird erfahrungsgemäß genau das, was später jemand sehen möchte.",
+          "t13": "Was falsch war, wird durch einen zweiten Beleg aufgehoben, nicht durch einen Radiergummi. Den Weg beschreibt die Seite zu Gutschrift und Storno.",
+          "t14": "Das gilt für Belege, nicht für Konten. Wird ein Konto gelöscht, verschwindet zuerst das gesamte Mandantenverzeichnis und danach der Datenbankeintrag — ohne Papierkorb und ohne Rest. Beides zusammen, oder gar nichts: Lässt sich das Verzeichnis nicht räumen, bleibt auch das Konto stehen, statt eine verwaiste Datenhalde zu hinterlassen.",
+          "t15": "Die Siegelkette",
+          "t16": "Die GoBD halten fest, dass die Ablage von Dokumenten in einem Dateisystem die Unveränderbarkeit „regelmäßig nicht“ gewährleistet, solange keine zusätzlichen Maßnahmen hinzutreten. Nummernsperre und fehlender Löschweg sind solche Maßnahmen — aber sie wirken nur innerhalb der Anwendung. Wer an den Dateien vorbei ans Laufwerk kommt, hinterlässt sonst keine Spur.",
+          "t17": "Deshalb bekommt jeder Beleg beim Erzeugen ein Siegel: den SHA-256 über PDF, XML und Eingabedaten, verknüpft mit dem Siegel des vorhergehenden Belegs. Jedes Glied hängt an allen vorherigen. Wird ein Beleg später verändert oder entfernt, passt sein Siegel nicht mehr — und weil die folgenden Glieder darauf aufbauen, lässt sich die Kette auch nicht stillschweigend neu rechnen.",
+          "t18": "Die Siegeldatei liegt bewusst unverschlüsselt. Sie enthält nur Hashwerte und Nummern, also nichts Schützenswertes — und läge sie verschlüsselt, wäre der Nachweis mit einem verlorenen Kennwort ebenfalls verloren. Genau dann braucht man ihn.",
+          "t19": "Das Belegprotokoll",
+          "t20": "Neben jedem Beleg liegt eine Protokolldatei, eine Zeile JSON je Ereignis, die nur angehängt und nie geändert wird: wann der Beleg entstand, ob und wodurch er später aufgehoben wurde. Wer storniert, erzeugt keinen Eintrag „geändert“, sondern einen zweiten Beleg — und beide Protokolle halten fest, dass sie zusammengehören.",
+          "t21": "Der Export für die Betriebsprüfung",
+          "t22": "Alle Belege eines Zeitraums als ein ZIP-Archiv. Je Beleg ein Ordner mit dem PDF, dem XML, den Eingabedaten und dem Protokoll, dazu eine Übersicht als CSV und eine Liesmich-Datei, die erklärt, was der Prüfer vor sich hat. Ohne die stünde er vor einem Haufen Dateien.",
+          "t23": "Wer seine Daten nicht am Stück herausbekommt, hat sie faktisch nicht. Ein Zeitraum lässt sich eingrenzen — Betriebsprüfungen betreffen meist ein Jahr.",
+          "t24": "Dazu kommt ein Entwurf der Verfahrensdokumentation mit Ihren eigenen Stammdaten darin. Sie schuldet der Steuerpflichtige und nicht der Hersteller — genau das macht sie für einen Einzelunternehmer zur Hürde, denn er soll etwas beschreiben, dessen technischen Teil nur der Hersteller kennt. Rechnungsblatt schreibt diesen Teil; was das Unternehmen selbst regeln muss, steht als offene Frage darin und nicht als erfundene Behauptung.",
+          "t25": "Was hier nicht passiert",
+          "t26": "Rechnungsblatt ist **nicht GoBD-zertifiziert**, und eine solche Zertifizierung der Software gibt es der Sache nach nicht — beurteilt wird immer das Verfahren beim Steuerpflichtigen. Wer mit „GoBD-konform“ wirbt, sagt damit weniger, als es klingt.",
+          "t27": "Die Siegelkette ist kein qualifizierter Zeitstempel einer anerkannten Stelle. Sie macht Änderungen sichtbar; sie beweist nicht vor Gericht, wann ein Beleg entstand.",
+          "t28": "Die Ablage ist kein Achtjahresarchiv im Rechtssinne. Die Frist trifft Sie, nicht den Betreiber — laden Sie Ihre Belege regelmäßig herunter und legen Sie sie dorthin, wo Ihre übrigen Unterlagen liegen.",
+          "t29": "Ob Ihre Ablage insgesamt genügt, bewertet Ihr steuerlicher Berater.",
+          "t30": "Gutschrift und Storno",
+          "t31": "Pflichtangaben nach § 14",
+          "t32": "Oberfläche, Sprachen und App"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Archive and retention",
+          "t2": "Archive · § 147 AO · GoBD",
+          "t3": "Filed here means: it stays put",
+          "t4": "An invoice must be kept for eight years. That is easy to say and hard to honour when the archive is a folder on a hard disk. Rechnungsblatt therefore treats its archive as an archive and not as a working folder.",
+          "t5": "Encrypted, including against the operator",
+          "t6": "Your master data, customers, items, templates, letterhead and every document created are stored encrypted. The construction is that of a crypto wallet: a random data key encrypts the files, and that key itself is never stored — only two envelopes around it.",
+          "t7": "One envelope is opened by your login password.",
+          "t8": "The other is opened by the recovery code you print out during setup.",
+          "t9": "Three things follow. The operator cannot get in, because the database holds only an scrypt hash of the password. A password change loses nothing, because only that one envelope is re-encrypted and not a single file is touched. And a forgotten password is not a total loss as long as the code exists.",
+          "t10": "If you lose both the password and the recovery code, the data is gone for good. That is not a malfunction but the point of the exercise — and the reason not to keep the code in the same drawer as everything else.",
+          "t11": "No deletion path for documents",
+          "t12": "No created document can be removed through the interface and no assigned number can be overwritten. Software that offers deletion invites tidying up — and what gets tidied away is, in experience, exactly what someone later wants to see.",
+          "t13": "What was wrong is cancelled by a second document, not by an eraser. The credit note and reversal page describes how.",
+          "t14": "That applies to documents, not to accounts. When an account is deleted, the entire tenant directory goes first and the database record after it — no recycle bin, no remainder. Both together or neither: if the directory cannot be cleared, the account stays too, rather than leaving an orphaned pile of data.",
+          "t15": "The seal chain",
+          "t16": "The German GoBD state that filing documents in a file system “regularly” does not guarantee immutability unless additional measures are taken. The number lock and the missing deletion path are such measures — but they only work inside the application. Anyone reaching the storage behind the application's back would otherwise leave no trace.",
+          "t17": "So every document receives a seal when created: the SHA-256 over the PDF, the XML and the input data, linked to the seal of the preceding document. Every link hangs on all the previous ones. If a document is later altered or removed, its seal no longer matches — and because the following links build on it, the chain cannot be quietly recomputed either.",
+          "t18": "The seal file is deliberately unencrypted. It contains only hashes and numbers, nothing worth protecting — and were it encrypted, the evidence would be lost along with a forgotten password. Which is precisely when it is needed.",
+          "t19": "The document log",
+          "t20": "Beside every document sits a log file, one line of JSON per event, only ever appended and never changed: when the document came into being, whether and by what it was later cancelled. Reversing produces no “modified” entry but a second document — and both logs record that they belong together.",
+          "t21": "The export for a tax audit",
+          "t22": "All documents of a period as a single ZIP archive. Per document a folder with the PDF, the XML, the input data and the log, plus an overview as CSV and a read-me explaining what the auditor is looking at. Without it they would face a heap of files.",
+          "t23": "Data you cannot get out in one piece is data you effectively do not have. A period can be narrowed down — tax audits usually concern a single year.",
+          "t24": "There is also a draft process documentation with your own master data in it. The taxpayer owes it, not the manufacturer — which is exactly what makes it a hurdle for a sole trader, who is expected to describe something whose technical part only the manufacturer knows. Rechnungsblatt writes that part; what the business must settle itself appears as an open question rather than an invented claim.",
+          "t25": "What does not happen here",
+          "t26": "Rechnungsblatt is not GoBD-certified, and in the nature of things no such certification of software exists — what is assessed is always the procedure at the taxpayer. Anyone advertising “GoBD-compliant” is saying less than it sounds.",
+          "t27": "The seal chain is not a qualified timestamp from an accredited authority. It makes changes visible; it does not prove in court when a document came into being.",
+          "t28": "The archive is not an eight-year archive in the legal sense. The obligation falls on you, not the operator — download your documents regularly and keep them where your other records are.",
+          "t29": "Whether your record-keeping suffices as a whole is for your tax adviser to assess.",
+          "t30": "Credit note and reversal",
+          "t31": "Mandatory details under § 14",
+          "t32": "Interface, languages and app"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

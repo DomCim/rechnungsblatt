@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZUGFeRD-Rechnung erstellen — PDF mit eingebettetem XML | Rechnungsblatt</title>
+<meta name="description" content="ZUGFeRD und Factur-X aus einem Vorgang: PDF/A-3B mit eingebettetem CII-XML, aus denselben Daten wie das sichtbare Blatt. Kein nachträglich angereichertes PDF.">
+<link rel="canonical" href="/zugferd">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="ZUGFeRD-Rechnung erstellen">
+<meta property="og:description" content="PDF/A-3B mit eingebettetem factur-x.xml — Blatt und Daten entstehen im selben Vorgang aus derselben Quelle.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "ZUGFeRD",
+      "item": "https://rechnungsblatt.de/zugferd"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">ZUGFeRD</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Format · EN 16931</p>
+  <h1 data-i18n="t3">ZUGFeRD: ein PDF, das die Maschine mitliest</h1>
+  <p class="fuehrung" data-i18n="t4">ZUGFeRD ist kein neues Dateiformat, sondern eine Abmachung: ein ganz normales PDF, in dem die Rechnungsdaten zusätzlich als XML stecken. Der Mensch sieht das Blatt, die Buchhaltungssoftware des Kunden liest die Daten. Factur-X ist derselbe Standard unter französischem Namen.</p>
+
+  <h2 data-i18n="t5">Warum ein schönes PDF nicht mehr genügt</h2>
+  <p data-i18n="t6">Seit dem 1. Januar 2025 muss jedes Unternehmen in Deutschland E-Rechnungen im B2B-Geschäft empfangen können. Eine E-Rechnung im Sinne des Gesetzes ist ein strukturierter Datensatz nach EN 16931 — ein PDF allein ist keine, egal wie ordentlich es aussieht. Ein eingescanntes oder gedrucktes Blatt erst recht nicht.</p>
+  <p data-i18n="t7">ZUGFeRD löst das, ohne den Beleg unlesbar zu machen: Das Dokument bleibt ein PDF, das jeder öffnen und abheften kann, und trägt die Daten als Anhang mit sich. Wer sie braucht, liest sie aus; wer nicht, sieht davon nichts.</p>
+
+  <h2 data-i18n="t8">Was Rechnungsblatt erzeugt</h2>
+  <p data-i18n="t9">Aus einem Vorgang entsteht eine Datei, die vier Dinge gleichzeitig erfüllt:</p>
+  <ul>
+    <li data-i18n="t10">PDF/A-3B — die Archivfassung des PDF-Formats, die als einzige eingebettete Dateien erlaubt. Genau ein OutputIntent, sRGB, ICC-Profil eingebettet.</li>
+    <li data-i18n="t11">factur-x.xml als eingebetteter Anhang, mit der Beziehung /Alternative — die Angabe sagt der lesenden Software, dass der Anhang dasselbe aussagt wie das Blatt und nicht etwa eine Beilage ist.</li>
+    <li data-i18n="t12">XMP-Metadaten mit dem Factur-X-Erweiterungsschema. Ohne dessen vier Eigenschaften ist die Datei technisch ein PDF mit Anhang, aber kein gültiges ZUGFeRD.</li>
+    <li data-i18n="t13">CII-XML nach EN 16931, Profil urn:cen.eu:en16931:2017 — die Elementreihenfolge folgt dem CII-D16B-Schema und ist nicht beliebig.</li>
+  </ul>
+
+  <h2 data-i18n="t14">Eine Quelle, zwei Darstellungen</h2>
+  <p data-i18n="t15">Der Markt ist voll von Werkzeugen, die ein fertiges PDF entgegennehmen und die Daten daraus auslesen — per Texterkennung oder per Sprachmodell. Das ist bequem und genau deshalb schwach: Was ausgelesen wird, kann von dem abweichen, was auf dem Blatt steht, und niemand merkt es. Beanstandet wird es Jahre später beim Kunden.</p>
+  <div class="merk">
+    <p data-i18n="t16">In Rechnungsblatt entstehen Blatt und XML im selben Vorgang aus denselben Daten. Ein bestehendes PDF wird nie nachträglich angereichert. Damit kann die Abweichung gar nicht erst entstehen.</p>
+  </div>
+  <p data-i18n="t17">Dieselbe Regel gilt für die Beträge: Gerechnet wird einmal, in Decimal mit kaufmännischer Rundung auf zwei Stellen. Das Blatt und das XML bekommen dasselbe Ergebnis gereicht, keines rechnet für sich.</p>
+
+  <h2 data-i18n="t18">Ihr Briefbogen bleibt</h2>
+  <p data-i18n="t19">Das eingebettete XML ist der eine Teil, das sichtbare Blatt der andere. Rechnungsblatt setzt es in die freie Fläche Ihres eigenen Briefpapiers, statt Ihnen ein fremdes Layout zu geben. Wie das funktioniert, steht auf der Seite zum Briefpapier.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t20">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t21">Rechnungsblatt reichert keine vorhandenen PDFs an. Wer eine bereits verschickte Rechnung nachträglich zur E-Rechnung machen will, ist hier falsch — das ist keine Lücke, sondern die Grundentscheidung.</li>
+      <li data-i18n="t22">Es gibt keinen Versandweg. Die fertige Datei laden Sie herunter und verschicken sie so, wie Sie es bisher tun.</li>
+      <li data-i18n="t23">Rechnungsblatt ist keine Buchhaltung und ersetzt keine steuerliche Beratung.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/xrechnung" data-i18n="t24">XRechnung</a></li>
+      <li><a href="/pflichtangaben" data-i18n="t25">Pflichtangaben nach § 14</a></li>
+      <li><a href="/briefpapier" data-i18n="t26">Eigenes Briefpapier</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "ZUGFeRD",
+          "t2": "Format · EN 16931",
+          "t3": "ZUGFeRD: ein PDF, das die Maschine mitliest",
+          "t4": "ZUGFeRD ist kein neues Dateiformat, sondern eine Abmachung: ein ganz normales PDF, in dem die Rechnungsdaten zusätzlich als XML stecken. Der Mensch sieht das Blatt, die Buchhaltungssoftware des Kunden liest die Daten. Factur-X ist derselbe Standard unter französischem Namen.",
+          "t5": "Warum ein schönes PDF nicht mehr genügt",
+          "t6": "Seit dem 1. Januar 2025 muss jedes Unternehmen in Deutschland E-Rechnungen im B2B-Geschäft empfangen können. Eine E-Rechnung im Sinne des Gesetzes ist ein strukturierter Datensatz nach EN 16931 — ein PDF allein ist keine, egal wie ordentlich es aussieht. Ein eingescanntes oder gedrucktes Blatt erst recht nicht.",
+          "t7": "ZUGFeRD löst das, ohne den Beleg unlesbar zu machen: Das Dokument bleibt ein PDF, das jeder öffnen und abheften kann, und trägt die Daten als Anhang mit sich. Wer sie braucht, liest sie aus; wer nicht, sieht davon nichts.",
+          "t8": "Was Rechnungsblatt erzeugt",
+          "t9": "Aus einem Vorgang entsteht eine Datei, die vier Dinge gleichzeitig erfüllt:",
+          "t10": "PDF/A-3B — die Archivfassung des PDF-Formats, die als einzige eingebettete Dateien erlaubt. Genau ein OutputIntent, sRGB, ICC-Profil eingebettet.",
+          "t11": "factur-x.xml als eingebetteter Anhang, mit der Beziehung /Alternative — die Angabe sagt der lesenden Software, dass der Anhang dasselbe aussagt wie das Blatt und nicht etwa eine Beilage ist.",
+          "t12": "XMP-Metadaten mit dem Factur-X-Erweiterungsschema. Ohne dessen vier Eigenschaften ist die Datei technisch ein PDF mit Anhang, aber kein gültiges ZUGFeRD.",
+          "t13": "CII-XML nach EN 16931, Profil urn:cen.eu:en16931:2017 — die Elementreihenfolge folgt dem CII-D16B-Schema und ist nicht beliebig.",
+          "t14": "Eine Quelle, zwei Darstellungen",
+          "t15": "Der Markt ist voll von Werkzeugen, die ein fertiges PDF entgegennehmen und die Daten daraus auslesen — per Texterkennung oder per Sprachmodell. Das ist bequem und genau deshalb schwach: Was ausgelesen wird, kann von dem abweichen, was auf dem Blatt steht, und niemand merkt es. Beanstandet wird es Jahre später beim Kunden.",
+          "t16": "In Rechnungsblatt entstehen Blatt und XML im selben Vorgang aus denselben Daten. Ein bestehendes PDF wird nie nachträglich angereichert. Damit kann die Abweichung gar nicht erst entstehen.",
+          "t17": "Dieselbe Regel gilt für die Beträge: Gerechnet wird einmal, in Decimal mit kaufmännischer Rundung auf zwei Stellen. Das Blatt und das XML bekommen dasselbe Ergebnis gereicht, keines rechnet für sich.",
+          "t18": "Ihr Briefbogen bleibt",
+          "t19": "Das eingebettete XML ist der eine Teil, das sichtbare Blatt der andere. Rechnungsblatt setzt es in die freie Fläche Ihres eigenen Briefpapiers, statt Ihnen ein fremdes Layout zu geben. Wie das funktioniert, steht auf der Seite zum Briefpapier.",
+          "t20": "Was hier nicht passiert",
+          "t21": "Rechnungsblatt reichert keine vorhandenen PDFs an. Wer eine bereits verschickte Rechnung nachträglich zur E-Rechnung machen will, ist hier falsch — das ist keine Lücke, sondern die Grundentscheidung.",
+          "t22": "Es gibt keinen Versandweg. Die fertige Datei laden Sie herunter und verschicken sie so, wie Sie es bisher tun.",
+          "t23": "Rechnungsblatt ist keine Buchhaltung und ersetzt keine steuerliche Beratung.",
+          "t24": "XRechnung",
+          "t25": "Pflichtangaben nach § 14",
+          "t26": "Eigenes Briefpapier"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "ZUGFeRD",
+          "t2": "Format · EN 16931",
+          "t3": "ZUGFeRD: a PDF the machine can read too",
+          "t4": "ZUGFeRD is not a new file format but an agreement: an ordinary PDF that also carries the invoice data as XML inside it. People see the sheet, the customer's accounting software reads the data. Factur-X is the same standard under its French name.",
+          "t5": "Why a good-looking PDF is no longer enough",
+          "t6": "Since 1 January 2025 every company in Germany must be able to receive electronic invoices in B2B trade. In the sense of the law an electronic invoice is a structured data set according to EN 16931 — a PDF on its own is not one, however tidy it looks. A scanned or printed sheet certainly is not.",
+          "t7": "ZUGFeRD solves this without making the document unreadable: it stays a PDF that anyone can open and file, and carries the data along as an attachment. Whoever needs the data reads it out; whoever does not never sees it.",
+          "t8": "What Rechnungsblatt produces",
+          "t9": "A single operation produces one file that satisfies four things at once:",
+          "t10": "PDF/A-3B — the archival flavour of PDF, the only one that permits embedded files. Exactly one output intent, sRGB, ICC profile embedded.",
+          "t11": "factur-x.xml as an embedded attachment with the relationship /Alternative — that tells the reading software the attachment states the same thing as the sheet rather than being a separate enclosure.",
+          "t12": "XMP metadata with the Factur-X extension schema. Without its four properties the file is technically a PDF with an attachment, but not valid ZUGFeRD.",
+          "t13": "CII XML to EN 16931, profile urn:cen.eu:en16931:2017 — the element order follows the CII D16B schema and is not arbitrary.",
+          "t14": "One source, two representations",
+          "t15": "The market is full of tools that take a finished PDF and read the data back out of it — by text recognition or by language model. That is convenient and precisely for that reason weak: what is read out can differ from what the sheet says, and nobody notices. It gets challenged years later, at the customer's.",
+          "t16": "In Rechnungsblatt the sheet and the XML arise in the same operation from the same data. An existing PDF is never enriched after the fact. That way the discrepancy cannot arise in the first place.",
+          "t17": "The same rule holds for the amounts: they are calculated once, in decimal with commercial rounding to two places. The sheet and the XML are handed the same result; neither computes on its own.",
+          "t18": "Your letterhead stays",
+          "t19": "The embedded XML is one half, the visible sheet the other. Rechnungsblatt sets it into the free area of your own letterhead instead of handing you someone else's layout. How that works is described on the letterhead page.",
+          "t20": "What does not happen here",
+          "t21": "Rechnungsblatt does not enrich existing PDFs. Anyone wanting to turn an already sent invoice into an electronic one afterwards is in the wrong place — that is not a gap but the founding decision.",
+          "t22": "There is no sending channel. You download the finished file and send it the way you already do.",
+          "t23": "Rechnungsblatt is not an accounting system and does not replace tax advice.",
+          "t24": "XRechnung",
+          "t25": "Mandatory details under § 14",
+          "t26": "Your own letterhead"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

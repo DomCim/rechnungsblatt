@@ -72,10 +72,15 @@
   .rechtsseite .stand {
     margin-top: 46px;
     padding-top: 16px;
-    border-top: 1px solid var(--kante);
+    border-top: 1px solid var(--linie);
     font-size: 13px;
   }
-  .rechtsseite .zurueck { margin-top: 30px; }
+  .rechtsseite .zurueck {
+    margin-top: 30px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
   /* Tabellen in Rechtstexten: Verantwortlichkeiten, Fristen. */
   .rechtsseite table {
     width: 100%;
@@ -86,7 +91,7 @@
   .rechtsseite th, .rechtsseite td {
     text-align: left;
     padding: 8px 10px;
-    border-bottom: 1px solid var(--kante);
+    border-bottom: 1px solid var(--linie);
     vertical-align: top;
     color: var(--tinte-2);
   }
@@ -154,6 +159,7 @@
 
   <div class="zurueck">
     <a class="knopf leise" href="/">Zur Startseite</a>
+    <a class="knopf leise" href="/funktionen">Funktionen</a>
   </div>
 </main>
 </body>
