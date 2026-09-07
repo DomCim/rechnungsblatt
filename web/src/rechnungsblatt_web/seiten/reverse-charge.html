@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reverse Charge, EU-Lieferung und Ausfuhr auf der Rechnung | Rechnungsblatt</title>
+<meta name="description" content="Steuerschuldnerschaft des Leistungsempfängers, innergemeinschaftliche Lieferung, Ausfuhr: eigene Kategorien mit dem richtigen Code und dem Pflichthinweis im XML.">
+<link rel="canonical" href="/reverse-charge">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Reverse Charge und Auslandsfälle">
+<meta property="og:description" content="Vier Befreiungstatbestände als eigene Kategorien — mit korrektem EN-16931-Code und Pflichthinweis, auf dem Blatt wie im XML.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Reverse Charge",
+      "item": "https://rechnungsblatt.de/reverse-charge"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Reverse Charge</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Steuerfall · Ausland und § 13b</p>
+  <h1 data-i18n="t3">Wenn nicht Sie die Steuer schulden</h1>
+  <p class="fuehrung" data-i18n="t4">Reverse Charge, innergemeinschaftliche Lieferung, Ausfuhr: drei Fälle, in denen keine deutsche Umsatzsteuer auf der Rechnung steht — aus drei verschiedenen Gründen. Auf dem Blatt sieht das ähnlich aus, im XML sind es unterschiedliche Codes mit unterschiedlichen Pflichthinweisen.</p>
+
+  <h2 id="kategorien" data-i18n="t5">Die Kategorien, die Rechnungsblatt kennt</h2>
+  <p data-i18n="t6">Die Steuerkategorie wird je Position gewählt, nicht für die ganze Rechnung. Jede trägt ihren EN-16931-Kategoriecode und, wo die Norm es verlangt, den Befreiungshinweis — der erscheint sowohl auf dem Blatt als auch als Befreiungsgrund im XML.</p>
+  <div class="tabellenhalter">
+    <table>
+      <thead><tr>
+        <th data-i18n="t7">Fall</th>
+        <th data-i18n="t8">Code</th>
+        <th data-i18n="t9">Satz</th>
+        <th data-i18n="t10">Hinweis auf der Rechnung</th>
+      </tr></thead>
+      <tbody>
+      <tr>
+        <td data-i18n="t11">Regelsatz</td>
+        <td data-i18n="t12">S</td>
+        <td data-i18n="t13">19 %</td>
+        <td data-i18n="t14">—</td>
+      </tr>
+      <tr>
+        <td data-i18n="t15">Ermäßigt</td>
+        <td data-i18n="t16">S</td>
+        <td data-i18n="t17">7 %</td>
+        <td data-i18n="t18">—</td>
+      </tr>
+      <tr>
+        <td data-i18n="t19">Nullsatz</td>
+        <td data-i18n="t20">Z</td>
+        <td data-i18n="t21">0 %</td>
+        <td data-i18n="t22">—</td>
+      </tr>
+      <tr>
+        <td data-i18n="t23">Kleinunternehmer</td>
+        <td data-i18n="t24">E</td>
+        <td data-i18n="t25">0 %</td>
+        <td data-i18n="t26">Kein Ausweis von Umsatzsteuer, da Kleinunternehmer gemäß § 19 UStG.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t27">Reverse Charge</td>
+        <td data-i18n="t28">AE</td>
+        <td data-i18n="t29">0 %</td>
+        <td data-i18n="t30">Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).</td>
+      </tr>
+      <tr>
+        <td data-i18n="t31">Innergemeinschaftliche Lieferung</td>
+        <td data-i18n="t32">K</td>
+        <td data-i18n="t33">0 %</td>
+        <td data-i18n="t34">Steuerfreie innergemeinschaftliche Lieferung.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t35">Ausfuhr</td>
+        <td data-i18n="t36">G</td>
+        <td data-i18n="t37">0 %</td>
+        <td data-i18n="t38">Steuerfreie Ausfuhrlieferung.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 data-i18n="t39">Warum der Hinweis nicht optional ist</h2>
+  <p data-i18n="t40">Bei Reverse Charge geht die Steuerschuld auf Ihren Kunden über. Damit er das weiß und in seiner Voranmeldung richtig behandelt, muss die Rechnung es sagen — und zwar mit einer Formulierung, die den Sachverhalt benennt. Rechnungsblatt setzt den Text automatisch, sobald die Kategorie gewählt ist. Man kann ihn nicht vergessen, weil er nicht getippt wird.</p>
+  <div class="merk">
+    <p data-i18n="t41">Derselbe Satz steht auf dem Blatt und im XML. Bei einer von Hand gebauten Rechnung sind das zwei Stellen, die auseinanderlaufen können — hier ist es eine Quelle.</p>
+  </div>
+
+  <h2 data-i18n="t42">Die USt-IdNr. beider Seiten</h2>
+  <p data-i18n="t43">Für die innergemeinschaftliche Lieferung braucht es beide Umsatzsteuer-Identifikationsnummern: Ihre und die Ihres Kunden. Rechnungsblatt nimmt die eigene aus den Stammdaten und prüft ihr Format; die des Empfängers erfassen Sie beim Kunden, und sie wird im XML an der dafür vorgesehenen Stelle ausgewiesen.</p>
+  <p data-i18n="t44">Erfasste Kunden bleiben im Kundenstamm stehen. Beim nächsten Beleg wählen Sie den Kunden aus, und Anschrift, USt-IdNr. und, falls hinterlegt, die Leitweg-ID kommen mit.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t45">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t46">Rechnungsblatt entscheidet nicht, welcher Fall vorliegt. Ob eine Leistung unter § 13b fällt, ob die Voraussetzungen der Steuerbefreiung erfüllt sind, ob ein Ausfuhrnachweis vorliegt — das ist eine steuerliche Frage und keine der Software.</li>
+      <li data-i18n="t47">Die USt-IdNr. wird auf ihr Format geprüft, nicht gegen das Bestätigungsverfahren des Bundeszentralamts für Steuern. Die qualifizierte Bestätigungsabfrage müssen Sie selbst durchführen und dokumentieren.</li>
+      <li data-i18n="t48">Zusammenfassende Meldungen erstellt Rechnungsblatt nicht.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/pflichtangaben" data-i18n="t49">Pflichtangaben nach § 14</a></li>
+      <li><a href="/kleinunternehmer" data-i18n="t50">Kleinunternehmer § 19</a></li>
+      <li><a href="/xrechnung" data-i18n="t51">XRechnung</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Reverse Charge",
+          "t2": "Steuerfall · Ausland und § 13b",
+          "t3": "Wenn nicht Sie die Steuer schulden",
+          "t4": "Reverse Charge, innergemeinschaftliche Lieferung, Ausfuhr: drei Fälle, in denen keine deutsche Umsatzsteuer auf der Rechnung steht — aus drei verschiedenen Gründen. Auf dem Blatt sieht das ähnlich aus, im XML sind es unterschiedliche Codes mit unterschiedlichen Pflichthinweisen.",
+          "t5": "Die Kategorien, die Rechnungsblatt kennt",
+          "t6": "Die Steuerkategorie wird je Position gewählt, nicht für die ganze Rechnung. Jede trägt ihren EN-16931-Kategoriecode und, wo die Norm es verlangt, den Befreiungshinweis — der erscheint sowohl auf dem Blatt als auch als Befreiungsgrund im XML.",
+          "t7": "Fall",
+          "t8": "Code",
+          "t9": "Satz",
+          "t10": "Hinweis auf der Rechnung",
+          "t11": "Regelsatz",
+          "t12": "S",
+          "t13": "19 %",
+          "t14": "—",
+          "t15": "Ermäßigt",
+          "t16": "S",
+          "t17": "7 %",
+          "t18": "—",
+          "t19": "Nullsatz",
+          "t20": "Z",
+          "t21": "0 %",
+          "t22": "—",
+          "t23": "Kleinunternehmer",
+          "t24": "E",
+          "t25": "0 %",
+          "t26": "Kein Ausweis von Umsatzsteuer, da Kleinunternehmer gemäß § 19 UStG.",
+          "t27": "Reverse Charge",
+          "t28": "AE",
+          "t29": "0 %",
+          "t30": "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).",
+          "t31": "Innergemeinschaftliche Lieferung",
+          "t32": "K",
+          "t33": "0 %",
+          "t34": "Steuerfreie innergemeinschaftliche Lieferung.",
+          "t35": "Ausfuhr",
+          "t36": "G",
+          "t37": "0 %",
+          "t38": "Steuerfreie Ausfuhrlieferung.",
+          "t39": "Warum der Hinweis nicht optional ist",
+          "t40": "Bei Reverse Charge geht die Steuerschuld auf Ihren Kunden über. Damit er das weiß und in seiner Voranmeldung richtig behandelt, muss die Rechnung es sagen — und zwar mit einer Formulierung, die den Sachverhalt benennt. Rechnungsblatt setzt den Text automatisch, sobald die Kategorie gewählt ist. Man kann ihn nicht vergessen, weil er nicht getippt wird.",
+          "t41": "Derselbe Satz steht auf dem Blatt und im XML. Bei einer von Hand gebauten Rechnung sind das zwei Stellen, die auseinanderlaufen können — hier ist es eine Quelle.",
+          "t42": "Die USt-IdNr. beider Seiten",
+          "t43": "Für die innergemeinschaftliche Lieferung braucht es beide Umsatzsteuer-Identifikationsnummern: Ihre und die Ihres Kunden. Rechnungsblatt nimmt die eigene aus den Stammdaten und prüft ihr Format; die des Empfängers erfassen Sie beim Kunden, und sie wird im XML an der dafür vorgesehenen Stelle ausgewiesen.",
+          "t44": "Erfasste Kunden bleiben im Kundenstamm stehen. Beim nächsten Beleg wählen Sie den Kunden aus, und Anschrift, USt-IdNr. und, falls hinterlegt, die Leitweg-ID kommen mit.",
+          "t45": "Was hier nicht passiert",
+          "t46": "Rechnungsblatt entscheidet nicht, welcher Fall vorliegt. Ob eine Leistung unter § 13b fällt, ob die Voraussetzungen der Steuerbefreiung erfüllt sind, ob ein Ausfuhrnachweis vorliegt — das ist eine steuerliche Frage und keine der Software.",
+          "t47": "Die USt-IdNr. wird auf ihr Format geprüft, nicht gegen das Bestätigungsverfahren des Bundeszentralamts für Steuern. Die qualifizierte Bestätigungsabfrage müssen Sie selbst durchführen und dokumentieren.",
+          "t48": "Zusammenfassende Meldungen erstellt Rechnungsblatt nicht.",
+          "t49": "Pflichtangaben nach § 14",
+          "t50": "Kleinunternehmer § 19",
+          "t51": "XRechnung"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Reverse charge",
+          "t2": "Tax case · Cross-border and § 13b",
+          "t3": "When the tax is not yours to owe",
+          "t4": "Reverse charge, intra-Community supply, export: three cases in which no German VAT appears on the invoice — for three different reasons. On the sheet they look similar; in the XML they are different codes with different mandatory notices.",
+          "t5": "The categories Rechnungsblatt knows",
+          "t6": "The tax category is chosen per line, not for the whole invoice. Each carries its EN 16931 category code and, where the standard requires it, the exemption notice — which appears both on the sheet and as the exemption reason in the XML.",
+          "t7": "Case",
+          "t8": "Code",
+          "t9": "Rate",
+          "t10": "Notice on the invoice",
+          "t11": "Standard rate",
+          "t12": "S",
+          "t13": "19 %",
+          "t14": "—",
+          "t15": "Reduced rate",
+          "t16": "S",
+          "t17": "7 %",
+          "t18": "—",
+          "t19": "Zero rate",
+          "t20": "Z",
+          "t21": "0 %",
+          "t22": "—",
+          "t23": "Small business",
+          "t24": "E",
+          "t25": "0 %",
+          "t26": "Kein Ausweis von Umsatzsteuer, da Kleinunternehmer gemäß § 19 UStG.",
+          "t27": "Reverse charge",
+          "t28": "AE",
+          "t29": "0 %",
+          "t30": "Steuerschuldnerschaft des Leistungsempfängers (Reverse Charge).",
+          "t31": "Intra-Community supply",
+          "t32": "K",
+          "t33": "0 %",
+          "t34": "Steuerfreie innergemeinschaftliche Lieferung.",
+          "t35": "Export",
+          "t36": "G",
+          "t37": "0 %",
+          "t38": "Steuerfreie Ausfuhrlieferung.",
+          "t39": "Why the notice is not optional",
+          "t40": "Under reverse charge the tax liability passes to your customer. So that they know this and treat it correctly in their return, the invoice must say so — in wording that names the circumstance. Rechnungsblatt inserts the text automatically as soon as the category is chosen. It cannot be forgotten because it is not typed.",
+          "t41": "The same sentence appears on the sheet and in the XML. In a hand-built invoice those are two places that can drift apart — here it is one source.",
+          "t42": "The VAT IDs of both parties",
+          "t43": "An intra-Community supply requires both VAT identification numbers: yours and your customer's. Rechnungsblatt takes yours from the master data and checks its format; the recipient's is entered with the customer and is stated in the XML at the place provided for it.",
+          "t44": "Customers you enter stay in the customer list. On the next document you pick the customer, and address, VAT ID and, if stored, the Leitweg-ID come along.",
+          "t45": "What does not happen here",
+          "t46": "Rechnungsblatt does not decide which case applies. Whether a service falls under § 13b, whether the conditions for exemption are met, whether proof of export exists — that is a tax question, not a software one.",
+          "t47": "The VAT ID is checked for format, not against the German federal confirmation procedure. You must carry out and document the qualified confirmation enquiry yourself.",
+          "t48": "Rechnungsblatt does not produce EC sales lists.",
+          "t49": "Mandatory details under § 14",
+          "t50": "Small business scheme § 19",
+          "t51": "XRechnung"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

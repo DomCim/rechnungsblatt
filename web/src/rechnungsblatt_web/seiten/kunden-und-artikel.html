@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kundenstamm, Artikelstamm und Rechnungsvorlagen | Rechnungsblatt</title>
+<meta name="description" content="Adressbuch, wiederkehrende Leistungen und benannte Positionslisten. Dazu ein Nummernkreis mit Muster, dessen vergebene Nummern gesperrt bleiben.">
+<link rel="canonical" href="/kunden-und-artikel">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Kunden, Artikel und Vorlagen">
+<meta property="og:description" content="Einmal erfasst, immer wieder verwendet — Adressbuch, Artikelstamm, Positionsvorlagen und ein Nummernkreis mit Muster.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Kunden und Artikel",
+      "item": "https://rechnungsblatt.de/kunden-und-artikel"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Kunden und Artikel</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Stammlisten · Wiederverwendung</p>
+  <h1 data-i18n="t3">Was Sie einmal eintippen, tippen Sie nicht wieder</h1>
+  <p class="fuehrung" data-i18n="t4">Drei Listen und ein Nummernkreis. Jede für sich unspektakulär — zusammen der Unterschied zwischen „eine Rechnung schreiben“ und „eine Rechnung zusammensuchen“. Alle drei liegen als Datei in Ihrem eigenen Mandantenverzeichnis, verschlüsselt wie alles andere.</p>
+
+  <h2 id="kunden" data-i18n="t5">Der Kundenstamm</h2>
+  <p data-i18n="t6">Ein Adressbuch, das genau die Felder kennt, die eine Rechnung braucht. Beim nächsten Beleg wählen Sie den Kunden aus, und alles kommt mit:</p>
+  <ul>
+    <li data-i18n="t7">Name und vollständige Anschrift samt Länderkennzeichen — die Anschrift ist Pflichtangabe nach § 14, und eine unvollständige hält die Prüfung auf.</li>
+    <li data-i18n="t8">Die USt-IdNr. des Kunden, nötig bei innergemeinschaftlicher Lieferung.</li>
+    <li data-i18n="t9">Die E-Mail-Adresse — bei einer XRechnung ist sie die elektronische Adresse des Empfängers und damit Pflicht.</li>
+    <li data-i18n="t10">Die Leitweg-ID, wenn es ein Behördenkunde ist. Sie ändert sich praktisch nie und ist genau deshalb das Feld, das man beim Abtippen verdreht.</li>
+  </ul>
+
+  <h2 id="artikel" data-i18n="t11">Der Artikelstamm</h2>
+  <p data-i18n="t12">Wiederkehrende Leistungen und Waren mit Bezeichnung, optionaler Beschreibung, Artikelnummer, Einheit, Einzelpreis und Steuerkategorie. Die Artikelnummer landet im XML an der dafür vorgesehenen Stelle, wenn Sie eine vergeben.</p>
+  <div class="merk">
+    <p data-i18n="t13">Preise werden als Text gespeichert, nicht als Zahl. Aus „19,90“ soll kein Fließkommawert werden — gerechnet wird erst im Kern, dort durchgängig mit Decimal und kaufmännischer Rundung.</p>
+  </div>
+  <p data-i18n="t14">Die Einheit ist ein Code nach UN/ECE-Empfehlung 20 — C62 für Stück, HUR für Stunde. Das sieht sperrig aus, ist aber der Grund, warum die Buchhaltung Ihres Kunden die Position maschinell verarbeiten kann.</p>
+
+  <h2 id="vorlagen" data-i18n="t15">Rechnungsvorlagen</h2>
+  <p data-i18n="t16">Eine benannte Positionsliste, die Sie im Formular laden. Der Unterschied zum Duplizieren eines alten Belegs ist der wichtigste Teil:</p>
+  <div class="merk">
+    <p data-i18n="t17">Eine Vorlage trägt bewusst keinen Empfänger. Dieselbe Leistung geht an wechselnde Kunden — ein kopierter Beleg schleppt dagegen den alten Kunden mit, und den übersieht man.</p>
+  </div>
+  <p data-i18n="t18">Vorlagen legen Sie aus dem Formular heraus an und löschen sie über dieselbe Auswahl wieder. Wer einen alten Beleg als Ausgangspunkt braucht, nimmt weiterhin den Weg über die Ablage.</p>
+
+  <h2 id="nummern" data-i18n="t19">Der Nummernkreis</h2>
+  <p data-i18n="t20">Die Rechnungsnummer folgt einem Muster, das Sie selbst festlegen. Voreingestellt ist RE-{JJJJ}-{NNNN} — also RE-2026-0001. {JJJJ} steht für die vierstellige Jahreszahl, {JJ} für die zweistellige, {NNNN} für den laufenden Zähler, dessen Stellenzahl Sie über die Anzahl der N bestimmen.</p>
+  <p data-i18n="t21">Enthält das Muster eine Jahreszahl, beginnt der Zähler mit dem Jahreswechsel von vorn; ohne Jahreszahl läuft er durch. Vorgeschlagen wird immer die nächste freie Nummer, ändern dürfen Sie sie.</p>
+  <p data-i18n="t22">Was Sie nicht dürfen: eine bereits vergebene Nummer erneut benutzen. Der Versuch wird abgewiesen, und zwar bevor Ihr Kontingent belastet wird. Warum das keine Schikane ist, steht auf der Seite zu Gutschrift und Storno.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t23">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t24">Der Kundenstamm ist kein CRM. Keine Notizen, keine Historie, keine Wiedervorlage — nur die Felder, die auf eine Rechnung gehören.</li>
+      <li data-i18n="t25">Der Artikelstamm führt keinen Lagerbestand und kennt keine Staffelpreise.</li>
+      <li data-i18n="t26">Es gibt keinen Import aus einer anderen Software. Die Listen entstehen beim Arbeiten — wer den ersten Beleg an einen Kunden schreibt, hat ihn danach im Stamm.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/pflichtangaben" data-i18n="t27">Pflichtangaben nach § 14</a></li>
+      <li><a href="/gutschrift-und-storno" data-i18n="t28">Gutschrift und Storno</a></li>
+      <li><a href="/aufbewahrung" data-i18n="t29">Ablage und Aufbewahrung</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Kunden und Artikel",
+          "t2": "Stammlisten · Wiederverwendung",
+          "t3": "Was Sie einmal eintippen, tippen Sie nicht wieder",
+          "t4": "Drei Listen und ein Nummernkreis. Jede für sich unspektakulär — zusammen der Unterschied zwischen „eine Rechnung schreiben“ und „eine Rechnung zusammensuchen“. Alle drei liegen als Datei in Ihrem eigenen Mandantenverzeichnis, verschlüsselt wie alles andere.",
+          "t5": "Der Kundenstamm",
+          "t6": "Ein Adressbuch, das genau die Felder kennt, die eine Rechnung braucht. Beim nächsten Beleg wählen Sie den Kunden aus, und alles kommt mit:",
+          "t7": "Name und vollständige Anschrift samt Länderkennzeichen — die Anschrift ist Pflichtangabe nach § 14, und eine unvollständige hält die Prüfung auf.",
+          "t8": "Die USt-IdNr. des Kunden, nötig bei innergemeinschaftlicher Lieferung.",
+          "t9": "Die E-Mail-Adresse — bei einer XRechnung ist sie die elektronische Adresse des Empfängers und damit Pflicht.",
+          "t10": "Die Leitweg-ID, wenn es ein Behördenkunde ist. Sie ändert sich praktisch nie und ist genau deshalb das Feld, das man beim Abtippen verdreht.",
+          "t11": "Der Artikelstamm",
+          "t12": "Wiederkehrende Leistungen und Waren mit Bezeichnung, optionaler Beschreibung, Artikelnummer, Einheit, Einzelpreis und Steuerkategorie. Die Artikelnummer landet im XML an der dafür vorgesehenen Stelle, wenn Sie eine vergeben.",
+          "t13": "Preise werden als Text gespeichert, nicht als Zahl. Aus „19,90“ soll kein Fließkommawert werden — gerechnet wird erst im Kern, dort durchgängig mit Decimal und kaufmännischer Rundung.",
+          "t14": "Die Einheit ist ein Code nach UN/ECE-Empfehlung 20 — C62 für Stück, HUR für Stunde. Das sieht sperrig aus, ist aber der Grund, warum die Buchhaltung Ihres Kunden die Position maschinell verarbeiten kann.",
+          "t15": "Rechnungsvorlagen",
+          "t16": "Eine benannte Positionsliste, die Sie im Formular laden. Der Unterschied zum Duplizieren eines alten Belegs ist der wichtigste Teil:",
+          "t17": "Eine Vorlage trägt bewusst keinen Empfänger. Dieselbe Leistung geht an wechselnde Kunden — ein kopierter Beleg schleppt dagegen den alten Kunden mit, und den übersieht man.",
+          "t18": "Vorlagen legen Sie aus dem Formular heraus an und löschen sie über dieselbe Auswahl wieder. Wer einen alten Beleg als Ausgangspunkt braucht, nimmt weiterhin den Weg über die Ablage.",
+          "t19": "Der Nummernkreis",
+          "t20": "Die Rechnungsnummer folgt einem Muster, das Sie selbst festlegen. Voreingestellt ist RE-{JJJJ}-{NNNN} — also RE-2026-0001. {JJJJ} steht für die vierstellige Jahreszahl, {JJ} für die zweistellige, {NNNN} für den laufenden Zähler, dessen Stellenzahl Sie über die Anzahl der N bestimmen.",
+          "t21": "Enthält das Muster eine Jahreszahl, beginnt der Zähler mit dem Jahreswechsel von vorn; ohne Jahreszahl läuft er durch. Vorgeschlagen wird immer die nächste freie Nummer, ändern dürfen Sie sie.",
+          "t22": "Was Sie nicht dürfen: eine bereits vergebene Nummer erneut benutzen. Der Versuch wird abgewiesen, und zwar bevor Ihr Kontingent belastet wird. Warum das keine Schikane ist, steht auf der Seite zu Gutschrift und Storno.",
+          "t23": "Was hier nicht passiert",
+          "t24": "Der Kundenstamm ist kein CRM. Keine Notizen, keine Historie, keine Wiedervorlage — nur die Felder, die auf eine Rechnung gehören.",
+          "t25": "Der Artikelstamm führt keinen Lagerbestand und kennt keine Staffelpreise.",
+          "t26": "Es gibt keinen Import aus einer anderen Software. Die Listen entstehen beim Arbeiten — wer den ersten Beleg an einen Kunden schreibt, hat ihn danach im Stamm.",
+          "t27": "Pflichtangaben nach § 14",
+          "t28": "Gutschrift und Storno",
+          "t29": "Ablage und Aufbewahrung"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Customers and items",
+          "t2": "Master lists · Reuse",
+          "t3": "What you type once, you do not type again",
+          "t4": "Three lists and a number range. Each unremarkable on its own — together the difference between writing an invoice and assembling one. All three live as files in your own tenant directory, encrypted like everything else.",
+          "t5": "The customer list",
+          "t6": "An address book that knows exactly the fields an invoice needs. On the next document you select the customer and everything comes along:",
+          "t7": "Name and complete address including country code — the address is a mandatory detail under § 14, and an incomplete one stops the check.",
+          "t8": "The customer's VAT ID, needed for intra-Community supply.",
+          "t9": "The e-mail address — in an XRechnung it is the recipient's electronic address and therefore mandatory.",
+          "t10": "The Leitweg-ID if this is a public sector customer. It practically never changes, and that is exactly why it is the field one mistypes.",
+          "t11": "The item list",
+          "t12": "Recurring services and goods with a description, an optional long text, an item number, a unit, a unit price and a tax category. The item number goes into the XML at the place provided for it if you assign one.",
+          "t13": "Prices are stored as text, not as numbers. “19.90” must not become a floating point value — calculation happens in the core, throughout with decimals and commercial rounding.",
+          "t14": "The unit is a code from UN/ECE Recommendation 20 — C62 for piece, HUR for hour. It looks clumsy, but it is the reason your customer's accounting system can process the line automatically.",
+          "t15": "Invoice templates",
+          "t16": "A named list of line items that you load in the form. The difference from duplicating an old document is the important part:",
+          "t17": "A template deliberately carries no recipient. The same service goes to different customers — a copied document drags the old customer along, and that is what gets overlooked.",
+          "t18": "You create templates from within the form and delete them through the same selector. If you do need an old document as a starting point, the route through the archive is still there.",
+          "t19": "The number range",
+          "t20": "The invoice number follows a pattern you define yourself. The default is RE-{JJJJ}-{NNNN} — that is, RE-2026-0001. {JJJJ} is the four-digit year, {JJ} the two-digit one, {NNNN} the running counter, whose width you set through the number of Ns.",
+          "t21": "If the pattern contains a year, the counter restarts at the turn of the year; without one it runs continuously. The next free number is always proposed, and you may change it.",
+          "t22": "What you may not do: reuse a number already assigned. The attempt is refused, and before your quota is charged at that. Why this is not pedantry is explained on the credit note and reversal page.",
+          "t23": "What does not happen here",
+          "t24": "The customer list is not a CRM. No notes, no history, no follow-ups — only the fields that belong on an invoice.",
+          "t25": "The item list keeps no stock levels and knows no tiered pricing.",
+          "t26": "There is no import from other software. The lists build up as you work — write the first invoice to a customer and they are in the list afterwards.",
+          "t27": "Mandatory details under § 14",
+          "t28": "Credit note and reversal",
+          "t29": "Archive and retention"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

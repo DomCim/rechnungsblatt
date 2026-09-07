@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Oberfläche: Deutsch und Englisch, aufs Handy installierbar | Rechnungsblatt</title>
+<meta name="description" content="Die ganze Oberfläche in Deutsch und Englisch bis in die Prüfbefunde, installierbar als App, ohne fremde Dienste und ohne Cookie-Banner.">
+<link rel="canonical" href="/oberflaeche">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Oberfläche, Sprachen und App">
+<meta property="og:description" content="Zweisprachig bis in die Prüfbefunde, aufs Handy installierbar, ohne fremde Dienste in der Seite.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Oberfläche und App",
+      "item": "https://rechnungsblatt.de/oberflaeche"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Oberfläche und App</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Oberfläche · DE/EN · PWA</p>
+  <h1 data-i18n="t3">Eine Oberfläche, die nichts nach draußen erzählt</h1>
+  <p class="fuehrung" data-i18n="t4">Kein Framework, kein Bauschritt, keine fremden Server. Die Seiten sind handgeschriebenes HTML mit einem Stilblatt und einer Skriptdatei. Das klingt altmodisch und ist der Grund, warum die Anwendung schnell lädt, ohne Cookie-Banner auskommt und sich aufs Handy legen lässt.</p>
+
+  <h2 id="sprachen" data-i18n="t5">Deutsch und Englisch, bis in die Befunde</h2>
+  <p data-i18n="t6">Umgeschaltet wird oben rechts, und zwar ohne Neuladen: Die Seite tauscht ihre Texte aus, die Wahl merkt sich der Browser. Zwei eigene Adressen je Sprache gibt es bewusst nicht — es sind dieselben Seiten.</p>
+  <div class="merk">
+    <p data-i18n="t7">Übersetzt ist auch das, was sonst gern deutsch bleibt: die Befunde der § 14-Prüfung. Wer auf Englisch arbeitet, liest „Company name is missing“ und nicht „Firmierung fehlt“.</p>
+  </div>
+  <p data-i18n="t8">Die Befunde tragen dafür stabile Codes. Die Oberfläche übersetzt über den Code, nicht über den Text — so lässt sich eine Formulierung im Kern ändern, ohne dass eine Übersetzung stillschweigend zurückfällt.</p>
+
+  <h2 id="app" data-i18n="t9">Aufs Handy legen</h2>
+  <p data-i18n="t10">Rechnungsblatt lässt sich als App installieren: im Browser „Zum Startbildschirm hinzufügen“, danach startet es mit eigenem Symbol und ohne Adressleiste. Es landet direkt im Rechnungsformular, und ein zweiter Einstieg führt in die Ablage.</p>
+  <p data-i18n="t11">Innerhalb der App bleibt der Arbeitsbereich; die öffentlichen Seiten öffnen daneben im Browser. Das ist Absicht — sonst verließe die App bei jeder abgelaufenen Sitzung ihren eigenen Rahmen und fände nicht zurück.</p>
+  <p data-i18n="t12">Ohne Netz zeigt sie einen klaren Hinweis statt einer Fehlerseite. Geschrieben wird weiterhin online: Ein Beleg entsteht auf dem Server, weil dort die Prüfung, die Schriften und die Nummernsperre liegen.</p>
+
+  <h2 id="datenschutz" data-i18n="t13">Keine fremden Dienste in der Seite</h2>
+  <p data-i18n="t14">Schriften, Stilvorlagen und Skripte kommen von derselben Adresse wie die Seite selbst. Kein Google Fonts, kein CDN, kein Zählpixel eines Dritten. Wer die Seite aufruft, spricht mit genau einem Server.</p>
+  <p data-i18n="t15">Besucher werden mit einem selbst betriebenen Plausible gezählt, ohne Cookies und ohne personenbezogene Daten. Deshalb gibt es kein Einwilligungsfenster: Es wird nichts eingewilligt, weil nichts gesetzt wird.</p>
+
+  <h2 id="formular" data-i18n="t16">Wie sich das Formular verhält</h2>
+  <p data-i18n="t17">Das Rechnungsformular lässt sich nicht absenden, solange eine Pflichtangabe fehlt, und benennt das Feld statt einer allgemeinen Fehlermeldung. Nach dem Anmelden landen Sie direkt darin — die Einrichtung ist der Umweg davor und danach nie wieder nötig.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t18">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t19">Die Anwendung ist nicht offline nutzbar. Installiert startet sie sofort, aber eine Rechnung entsteht nur mit Verbindung.</li>
+      <li data-i18n="t20">Übersetzt sind Oberfläche und Prüfbefunde, nicht Ihre Belege. Was auf der Rechnung steht, schreiben Sie — die Pflichthinweise zu den Steuerfällen sind deutsche Rechtsformulierungen und bleiben deutsch.</li>
+      <li data-i18n="t21">Es gibt keine App im Apple App Store oder bei Google Play. Was Sie installieren, ist die Seite selbst.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/pflichtangaben" data-i18n="t22">Pflichtangaben nach § 14</a></li>
+      <li><a href="/aufbewahrung" data-i18n="t23">Ablage und Aufbewahrung</a></li>
+      <li><a href="/briefpapier" data-i18n="t24">Eigenes Briefpapier</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Oberfläche und App",
+          "t2": "Oberfläche · DE/EN · PWA",
+          "t3": "Eine Oberfläche, die nichts nach draußen erzählt",
+          "t4": "Kein Framework, kein Bauschritt, keine fremden Server. Die Seiten sind handgeschriebenes HTML mit einem Stilblatt und einer Skriptdatei. Das klingt altmodisch und ist der Grund, warum die Anwendung schnell lädt, ohne Cookie-Banner auskommt und sich aufs Handy legen lässt.",
+          "t5": "Deutsch und Englisch, bis in die Befunde",
+          "t6": "Umgeschaltet wird oben rechts, und zwar ohne Neuladen: Die Seite tauscht ihre Texte aus, die Wahl merkt sich der Browser. Zwei eigene Adressen je Sprache gibt es bewusst nicht — es sind dieselben Seiten.",
+          "t7": "Übersetzt ist auch das, was sonst gern deutsch bleibt: die Befunde der § 14-Prüfung. Wer auf Englisch arbeitet, liest „Company name is missing“ und nicht „Firmierung fehlt“.",
+          "t8": "Die Befunde tragen dafür stabile Codes. Die Oberfläche übersetzt über den Code, nicht über den Text — so lässt sich eine Formulierung im Kern ändern, ohne dass eine Übersetzung stillschweigend zurückfällt.",
+          "t9": "Aufs Handy legen",
+          "t10": "Rechnungsblatt lässt sich als App installieren: im Browser „Zum Startbildschirm hinzufügen“, danach startet es mit eigenem Symbol und ohne Adressleiste. Es landet direkt im Rechnungsformular, und ein zweiter Einstieg führt in die Ablage.",
+          "t11": "Innerhalb der App bleibt der Arbeitsbereich; die öffentlichen Seiten öffnen daneben im Browser. Das ist Absicht — sonst verließe die App bei jeder abgelaufenen Sitzung ihren eigenen Rahmen und fände nicht zurück.",
+          "t12": "Ohne Netz zeigt sie einen klaren Hinweis statt einer Fehlerseite. Geschrieben wird weiterhin online: Ein Beleg entsteht auf dem Server, weil dort die Prüfung, die Schriften und die Nummernsperre liegen.",
+          "t13": "Keine fremden Dienste in der Seite",
+          "t14": "Schriften, Stilvorlagen und Skripte kommen von derselben Adresse wie die Seite selbst. Kein Google Fonts, kein CDN, kein Zählpixel eines Dritten. Wer die Seite aufruft, spricht mit genau einem Server.",
+          "t15": "Besucher werden mit einem selbst betriebenen Plausible gezählt, ohne Cookies und ohne personenbezogene Daten. Deshalb gibt es kein Einwilligungsfenster: Es wird nichts eingewilligt, weil nichts gesetzt wird.",
+          "t16": "Wie sich das Formular verhält",
+          "t17": "Das Rechnungsformular lässt sich nicht absenden, solange eine Pflichtangabe fehlt, und benennt das Feld statt einer allgemeinen Fehlermeldung. Nach dem Anmelden landen Sie direkt darin — die Einrichtung ist der Umweg davor und danach nie wieder nötig.",
+          "t18": "Was hier nicht passiert",
+          "t19": "Die Anwendung ist nicht offline nutzbar. Installiert startet sie sofort, aber eine Rechnung entsteht nur mit Verbindung.",
+          "t20": "Übersetzt sind Oberfläche und Prüfbefunde, nicht Ihre Belege. Was auf der Rechnung steht, schreiben Sie — die Pflichthinweise zu den Steuerfällen sind deutsche Rechtsformulierungen und bleiben deutsch.",
+          "t21": "Es gibt keine App im Apple App Store oder bei Google Play. Was Sie installieren, ist die Seite selbst.",
+          "t22": "Pflichtangaben nach § 14",
+          "t23": "Ablage und Aufbewahrung",
+          "t24": "Eigenes Briefpapier"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Interface and app",
+          "t2": "Interface · DE/EN · PWA",
+          "t3": "An interface that tells nothing to the outside",
+          "t4": "No framework, no build step, no third-party servers. The pages are hand-written HTML with one stylesheet and one script file. That sounds old-fashioned and is the reason the application loads quickly, needs no cookie banner and can be installed on a phone.",
+          "t5": "German and English, down to the findings",
+          "t6": "You switch at the top right, without a reload: the page swaps its texts and the browser remembers the choice. There are deliberately no separate addresses per language — they are the same pages.",
+          "t7": "What usually stays German is translated too: the findings of the § 14 check. Anyone working in English reads “Company name is missing” and not “Firmierung fehlt”.",
+          "t8": "The findings carry stable codes for this. The interface translates by code, not by text — so a wording can change in the core without a translation silently falling back.",
+          "t9": "Put it on your phone",
+          "t10": "Rechnungsblatt can be installed as an app: “Add to home screen” in the browser, after which it starts with its own icon and without an address bar. It opens straight in the invoice form, and a second entry point leads to the archive.",
+          "t11": "Inside the app you stay in the working area; the public pages open alongside in the browser. That is deliberate — otherwise the app would leave its own frame on every expired session and not find its way back.",
+          "t12": "Without a connection it shows a clear notice instead of an error page. Writing still happens online: a document is produced on the server, because that is where the validation, the fonts and the number lock live.",
+          "t13": "No third-party services in the page",
+          "t14": "Fonts, stylesheets and scripts come from the same address as the page itself. No Google Fonts, no CDN, no third-party tracking pixel. Anyone opening the page talks to exactly one server.",
+          "t15": "Visitors are counted with a self-hosted Plausible, without cookies and without personal data. That is why there is no consent dialogue: there is nothing to consent to, because nothing is set.",
+          "t16": "How the form behaves",
+          "t17": "The invoice form cannot be submitted while a mandatory detail is missing, and it names the field instead of showing a general error. After signing in you land in it directly — setup is the detour beforehand and never needed again.",
+          "t18": "What does not happen here",
+          "t19": "The application does not work offline. Installed it starts immediately, but an invoice is only produced with a connection.",
+          "t20": "What is translated is the interface and the findings, not your documents. What appears on the invoice is written by you — the mandatory notices for the tax cases are German legal wording and stay German.",
+          "t21": "There is no app in the Apple App Store or on Google Play. What you install is the page itself.",
+          "t22": "Mandatory details under § 14",
+          "t23": "Archive and retention",
+          "t24": "Your own letterhead"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

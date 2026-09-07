@@ -15,9 +15,10 @@ Konverter-Markt (siehe `docs/uebergabe.md`, §9).
 ```
 kern/       rechnungsblatt-kern (Python): Datenmodell, §14-Prüfung, CII-XML,
             Normalisierung, Blatt-Rendering, PDF/A-3B-Zusammenbau
-web/        rechnungsblatt-web (FastAPI): öffentliche Seite, Konten und
-            Adminbereich (PostgreSQL), je Mandant Einrichtung,
-            Schreibzonen-Editor, Rechnungsformular, Ablage — DE/EN
+web/        rechnungsblatt-web (FastAPI): öffentliche Seiten (Startseite,
+            elf Fachseiten, Rechtsseiten), Konten und Adminbereich
+            (PostgreSQL), je Mandant Einrichtung, Schreibzonen-Editor,
+            Rechnungsformular, Ablage — DE/EN
 deploy/     Dockerfile + Portainer-Stack (Traefik im Netz "edge",
             PostgreSQL, Plausible)
 scripts/    Referenzfälle erzeugen und gegen den Validator prüfen

@@ -8,7 +8,6 @@ Kontokennung mitgegeben, damit die Oberfläche nicht erst nachfragen muss.
 from __future__ import annotations
 
 import json
-import datetime as dt
 
 from fastapi import APIRouter, Request
 from fastapi.responses import (
@@ -105,6 +104,50 @@ def agb() -> HTMLResponse:
     return seite("agb.html")
 
 
+# --- Fachseiten ------------------------------------------------------
+#
+# Acht Seiten zu je einem Thema, dazu die Uebersicht. Sie liegen flach
+# unter der Wurzel und nicht unter /funktionen/<name>: Die Adresse ist
+# kuerzer, laesst sich am Telefon diktieren, und bei neun oeffentlichen
+# Seiten braucht niemand eine Verzeichnisebene.
+#
+# Ein Weg je Seite statt eines Sammelweges mit Platzhalter: So kann kein
+# beliebiger Name aus der Adresszeile eine Datei aus dem Verzeichnis
+# ziehen, und die Liste hier ist zugleich die Liste dessen, was es gibt.
+FACHSEITEN: tuple[str, ...] = (
+    "zugferd",
+    "xrechnung",
+    "pflichtangaben",
+    "kleinunternehmer",
+    "reverse-charge",
+    "briefpapier",
+    "gutschrift-und-storno",
+    "girocode",
+    "kunden-und-artikel",
+    "aufbewahrung",
+    "oberflaeche",
+)
+
+
+@wege.get("/funktionen", response_class=HTMLResponse)
+def funktionen() -> HTMLResponse:
+    """Die Uebersicht ueber die Fachseiten."""
+    return seite("funktionen.html")
+
+
+def _fachseite(name: str):
+    def anzeigen() -> HTMLResponse:
+        return seite(f"{name}.html")
+
+    anzeigen.__name__ = f"fachseite_{name.replace('-', '_')}"
+    anzeigen.__doc__ = f"Fachseite {name}."
+    return anzeigen
+
+
+for _name in FACHSEITEN:
+    wege.get(f"/{_name}", response_class=HTMLResponse)(_fachseite(_name))
+
+
 @wege.get("/anmelden")
 def anmelden_alt() -> RedirectResponse:
     """Alte Adresse — die Anmeldung liegt jetzt unter ``/app/anmelden``.
@@ -171,10 +214,23 @@ def robots(anfrage: Request) -> Response:
     return Response(
         "User-agent: *\n"
         "Allow: /$\n"
+        # Stilblaetter, Skript, Schriften und Symbole muessen lesbar
+        # bleiben. Google rendert die Seite, bevor es sie bewertet; ist
+        # das CSS gesperrt, sieht der Renderer unformatierten Text und
+        # haelt die Seite fuer nicht mobiltauglich. Die Regeln stehen
+        # **vor** dem Disallow: Google nimmt die laengste passende Regel,
+        # einfachere Leser die erste — so stimmt es fuer beide.
+        "Allow: /seiten/*.css\n"
+        "Allow: /seiten/*.js\n"
+        "Allow: /seiten/schriften/\n"
+        "Allow: /seiten/symbole/\n"
         "Disallow: /app/\n"
         "Disallow: /api/\n"
         "Disallow: /anmelden\n"
         "Disallow: /passwort-neu\n"
+        # Das rohe HTML liegt unter /seiten/ ein zweites Mal. Waere es
+        # frei, stuende jede Seite doppelt im Index — einmal unter ihrer
+        # Adresse, einmal als /seiten/zugferd.html.
         "Disallow: /seiten/\n"
         "\n"
         f"Sitemap: {basis}/sitemap.xml\n",
@@ -182,38 +238,63 @@ def robots(anfrage: Request) -> Response:
     )
 
 
+# Was in der Sitemap steht: Pfad, Stand, Aenderungshaeufigkeit, Gewicht.
+#
+# Der Stand wird **von Hand** gepflegt, je Seite. Vorher stand hier
+# ``dt.date.today()`` — damit behauptete die Sitemap jeden Tag aufs Neue,
+# Impressum und AGB seien gerade ueberarbeitet worden. Google erkennt ein
+# ``lastmod``, das sich taeglich ohne Textaenderung bewegt, stuft es als
+# unzuverlaessig ein und ignoriert die Angabe danach ganz — das Signal ist
+# dann fuer die Seiten verloren, bei denen es zaehlt.
+#
+# Auch die Datei-Aenderungszeit taugt nicht: ``git checkout`` im Bau setzt
+# sie auf den Zeitpunkt des Baus, also fuer alle Seiten gleich und bei
+# jedem Image neu.
+#
+# **Regel: Wer den Text einer Seite aendert, aendert hier das Datum mit.**
+SITEMAP: tuple[tuple[str, str, str, str], ...] = (
+    ("", "2026-09-07", "monthly", "1.0"),
+    ("impressum", "2026-09-02", "yearly", "0.3"),
+    ("datenschutz", "2026-09-02", "yearly", "0.3"),
+    ("agb", "2026-09-02", "yearly", "0.3"),
+    # Die Fachseiten. Gewicht 0.8: wichtiger als die Rechtsseiten, die
+    # niemand sucht, und weniger wichtig als die Startseite.
+    ("funktionen", "2026-09-07", "monthly", "0.8"),
+    ("zugferd", "2026-09-07", "monthly", "0.8"),
+    ("xrechnung", "2026-09-07", "monthly", "0.8"),
+    ("pflichtangaben", "2026-09-07", "monthly", "0.8"),
+    ("kleinunternehmer", "2026-09-07", "monthly", "0.8"),
+    ("reverse-charge", "2026-09-07", "monthly", "0.8"),
+    ("briefpapier", "2026-09-07", "monthly", "0.8"),
+    ("gutschrift-und-storno", "2026-09-07", "monthly", "0.8"),
+    ("girocode", "2026-09-07", "monthly", "0.8"),
+    ("kunden-und-artikel", "2026-09-07", "monthly", "0.8"),
+    ("aufbewahrung", "2026-09-07", "monthly", "0.8"),
+    ("oberflaeche", "2026-09-07", "monthly", "0.8"),
+)
+
+
 @wege.get("/sitemap.xml")
 def sitemap(anfrage: Request) -> Response:
-    """Eine einzige Seite — mehr ist öffentlich nicht zu holen.
+    """Die oeffentlichen Adressen — mehr ist ohne Anmeldung nicht zu holen.
 
     Die Sprachfassungen sind keine eigenen Adressen (der Umschalter
     tauscht nur Text im Browser), deshalb kein hreflang je URL.
     """
     basis = oeffentliche_adresse(anfrage)
-    heute = dt.date.today().isoformat()
     return Response(
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        "  <url>\n"
-        f"    <loc>{basis}/</loc>\n"
-        f"    <lastmod>{heute}</lastmod>\n"
-        "    <changefreq>monthly</changefreq>\n"
-        "    <priority>1.0</priority>\n"
-        "  </url>\n"
-        # Die Rechtsseiten gehören in die Sitemap: Sie sind öffentlich,
-        # ändern sich selten und werden gesucht — von Kunden und
-        # gelegentlich von Behörden.
+        '<?xml version="1.0" encoding="UTF-8"?>' + NL
+        + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' + NL
         + "".join(
             "  <url>" + NL
             + f"    <loc>{basis}/{pfad}</loc>" + NL
-            + f"    <lastmod>{heute}</lastmod>" + NL
-            + "    <changefreq>yearly</changefreq>" + NL
-            + "    <priority>0.3</priority>" + NL
+            + f"    <lastmod>{stand}</lastmod>" + NL
+            + f"    <changefreq>{haeufigkeit}</changefreq>" + NL
+            + f"    <priority>{gewicht}</priority>" + NL
             + "  </url>" + NL
-            for pfad in ("impressum", "datenschutz", "agb")
+            for pfad, stand, haeufigkeit, gewicht in SITEMAP
         )
-        + 
-"</urlset>\n",
+        + "</urlset>" + NL,
         media_type="application/xml",
     )
 

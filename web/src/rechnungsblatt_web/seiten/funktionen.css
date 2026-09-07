@@ -1,0 +1,315 @@
+/* ====================================================================
+   Fachseiten — die oeffentlichen Seiten neben Start und Recht.
+
+   Sie erben die Handschrift der Startseite (Papier-Thema: Kopfband,
+   Fussband, dazwischen die Schreibzone) und nicht die nuechterne
+   Arbeitsflaeche. Wer hier liest, ist noch nicht angemeldet.
+
+   **Diese Datei wird NACH basis.css geladen** und gewinnt deshalb bei
+   Konflikten — dieselbe Bauweise wie der Stilblock in start.html. Der
+   Unterschied: dort steht er inline, weil nur eine Seite ihn braucht;
+   hier liegt er in einer Datei, weil neun Seiten ihn teilen. Wer die
+   Startseite umfaerbt, muss hier mitziehen.
+   ==================================================================== */
+
+:root {
+  --papier: #fbf9f4;      /* gebrochenes Weiss — der Bogen selbst */
+  --schwarz: #1f1c18;     /* Tiefdruckgrau: warm, nicht Vollschwarz */
+  --schwarz-2: #2b2721;
+  --tinte-hell: #e8e2d6;
+  --tinte-matt: #a49c8d;
+  --stempel: #c8452d;     /* Pruefstempel-Rot, sparsam */
+  --kante: rgba(232, 226, 214, 0.16);
+
+  --takt-1: 8px;                        /* innerhalb einer Kachel */
+  --takt-2: 14px;                       /* Text zu Text */
+  --takt-3: clamp(20px, 2.4vw, 30px);   /* Kachel zu Kachel */
+  --takt-4: clamp(28px, 3.4vw, 44px);   /* Abschnittskopf zu Inhalt */
+
+  --fuge-start: 5px;
+  --schale-start: rgba(0, 0, 0, 0.22);
+}
+
+body {
+  background: var(--schwarz);
+  color: var(--tinte-hell);
+}
+
+.buehne { max-width: 1080px; }
+
+/* --- Kopfzeile ------------------------------------------------------ */
+header.kopf { border-bottom: 1px solid var(--kante); }
+.marke {
+  text-transform: none;
+  font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+  font-variation-settings: "opsz" 40;
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+  color: var(--papier);
+}
+/* Auf der Startseite ist die Marke ein Schriftzug, hier ein Weg zurueck.
+   Die Unterstreichung wuerde sie zum Verweis degradieren — sie ist der
+   Absender der Seite. */
+.marke a { color: inherit; text-decoration: none; }
+.marke a:hover { color: var(--papier); }
+
+nav.reiter a { color: var(--tinte-matt); }
+nav.reiter a:hover { color: var(--papier); }
+nav.reiter a[aria-current="page"] { color: var(--papier); }
+.sprachen { background: transparent; border-color: var(--kante); }
+.sprachen button { color: var(--tinte-matt); }
+.sprachen button[aria-pressed="true"] {
+  background: var(--papier); color: var(--schwarz);
+}
+
+/* --- Typografie ----------------------------------------------------- */
+h1, h2, h3 {
+  font-family: "Fraunces", "Fraunces Ersatz", Georgia, serif;
+  font-variation-settings: "opsz" 96;
+  letter-spacing: -0.022em;
+  color: var(--papier);
+  text-wrap: balance;
+}
+h1 { font-weight: 700; }
+h2, h3 { font-weight: 600; }
+
+/* Normkuerzel und Befundcodes sind Kennungen, keine Prosa. */
+.norm {
+  font-family: "Spline Sans Mono", ui-monospace, monospace;
+  font-size: 0.86em;
+  letter-spacing: 0.01em;
+  color: var(--tinte-hell);
+  white-space: nowrap;
+}
+
+/* --- Brotkrumen ----------------------------------------------------- */
+/* Nicht Zierde: Die Fachseiten haengen unter /funktionen, und ein Leser,
+   der aus der Suche mitten hineinspringt, muss sehen, wo er ist. */
+.brotkrumen {
+  font-size: 12.5px;
+  color: var(--tinte-matt);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.brotkrumen a { color: var(--tinte-matt); }
+.brotkrumen a:hover { color: var(--papier); }
+.brotkrumen [aria-current="page"] { color: var(--tinte-hell); }
+
+/* --- Der Textkoerper ------------------------------------------------ */
+/* Schmales Mass: Fliesstext wird gelesen, nicht ueberflogen. 68 Zeichen
+   ist die Grenze, ab der das Auge die naechste Zeile nicht mehr sicher
+   findet — dieselbe Entscheidung wie auf den Rechtsseiten. */
+.fach { max-width: 72ch; }
+
+.fach .vorlauf {
+  font-family: "Spline Sans Mono", ui-monospace, monospace;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--tinte-matt);
+  margin: 0 0 16px;
+}
+.fach h1 {
+  font-size: clamp(30px, 4.6vw, 50px);
+  line-height: 1.06;
+  margin: 0;
+}
+.fach .fuehrung {
+  color: var(--tinte-matt);
+  font-size: 16.5px;
+  line-height: 1.55;
+  margin: 18px 0 0;
+}
+.fach h2 {
+  font-size: clamp(20px, 2.8vw, 27px);
+  margin: var(--takt-4) 0 var(--takt-1);
+}
+.fach h3 {
+  font-size: 16px;
+  margin: var(--takt-3) 0 var(--takt-1);
+}
+.fach p {
+  color: var(--tinte-matt);
+  line-height: 1.62;
+  font-size: 15px;
+  margin: 0 0 var(--takt-2);
+  /* Normbezeichner sind lange Woerter ohne Bruchstelle. Die
+     XRechnung-Profilkennung
+     (urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0)
+     schob die Seite bei 390 px auf 525 px hinaus — gemessen, nicht
+     vermutet. Sie gehoert in den Fliesstext und nicht in eine
+     Auszeichnung: Uebersetzte Elemente tragen nur Text, weil der
+     Sprachwechsel `textContent` setzt und Markup darin verlaere. */
+  overflow-wrap: anywhere;
+}
+.fach ul, .fach ol { margin: 0 0 var(--takt-2); padding-left: 20px; }
+.fach li {
+  color: var(--tinte-matt);
+  line-height: 1.6;
+  font-size: 15px;
+  margin-bottom: 6px;
+  overflow-wrap: anywhere;
+}
+.fach strong { color: var(--tinte-hell); font-weight: 600; }
+.fach a { color: var(--tinte-hell); }
+
+/* Der Merksatz — was hier steht, ist der Punkt des Abschnitts. Ein
+   Balken statt eines Kastens: er unterbricht den Lesefluss nicht. */
+.merk {
+  border-left: 2px solid var(--stempel);
+  padding: 2px 0 2px 16px;
+  margin: var(--takt-3) 0;
+}
+.merk p {
+  color: var(--tinte-hell);
+  font-size: 15.5px;
+  margin: 0;
+}
+
+/* Die Grenze — was die Software ausdruecklich nicht tut. Gehoert auf
+   jede Fachseite: Eine Seite, die nur verspricht, wird beim ersten
+   Gegenbeweis unglaubwuerdig, und zwar im Ganzen. */
+.grenze {
+  margin-top: var(--takt-4);
+  padding-top: 16px;
+  border-top: 1px solid var(--kante);
+}
+.grenze h2 { font-size: 17px; margin: 0 0 var(--takt-1); }
+.grenze p, .grenze li { font-size: 14px; }
+
+/* --- Tabellen ------------------------------------------------------- */
+/* Schmale Geraete: lieber schieben als umbrechen. Eine Tabelle mit vier
+   Spalten wird bei 360 px sonst zur Treppe. */
+.tabellenhalter { overflow-x: auto; margin: var(--takt-2) 0; }
+.fach table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 30rem;
+}
+.fach th, .fach td {
+  text-align: left;
+  padding: 9px 12px 9px 0;
+  border-bottom: 1px solid var(--kante);
+  vertical-align: top;
+  color: var(--tinte-matt);
+}
+.fach th {
+  color: var(--tinte-hell);
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fach td .norm { color: var(--tinte-hell); }
+
+/* --- Kacheln (Uebersichtsseite) ------------------------------------- */
+.kacheln {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: var(--takt-3);
+  margin-top: var(--takt-4);
+}
+.kachel {
+  display: block;
+  background: var(--schwarz-2);
+  border: 1px solid var(--kante);
+  border-radius: 10px;
+  padding: 20px;
+  text-decoration: none;
+  transition: border-color 260ms var(--kurve-kurz),
+              transform 420ms var(--kurve);
+}
+.kachel:hover { border-color: var(--tinte-matt); transform: translateY(-2px); }
+.kachel h2 {
+  font-size: 18px;
+  margin: 0 0 var(--takt-1);
+  color: var(--papier);
+}
+.kachel p {
+  margin: 0;
+  color: var(--tinte-matt);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.kachel .norm { display: block; margin-top: 12px; font-size: 11.5px; color: var(--tinte-matt); }
+
+/* --- Weiterlesen ---------------------------------------------------- */
+.weiter { margin-top: var(--takt-4); }
+.weiter h2 { font-size: 15px; margin: 0 0 var(--takt-2); color: var(--tinte-matt); font-family: inherit; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; }
+.weiter ul { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; }
+.weiter li { margin: 0; }
+.weiter a { color: var(--tinte-hell); font-size: 14.5px; }
+
+/* --- Schluss (Aufruf) ----------------------------------------------- */
+.fachschluss {
+  margin-top: var(--takt-4);
+  padding: clamp(24px, 4vw, 40px) 0 0;
+  border-top: 1px solid var(--kante);
+}
+.fachschluss h2 { font-size: clamp(22px, 3.2vw, 32px); margin: 0 0 var(--takt-2); }
+.fachschluss p { color: var(--tinte-matt); font-size: 15px; max-width: 52ch; }
+.fachschluss .zeile { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 12px; }
+
+/* --- Knoepfe -------------------------------------------------------- */
+/* Wortgleich zur Startseite: Die Form ist ueberall dieselbe, nur Farbe
+   und Anordnung unterscheiden Werbung von Werkzeug. */
+.knopf {
+  background: var(--papier);
+  color: var(--schwarz);
+  border-radius: 999px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  padding: 12px 22px;
+  transition: transform 420ms var(--kurve),
+              background 240ms var(--kurve-kurz);
+}
+.knopf:hover { background: #fff; filter: none; }
+.knopf:active { transform: scale(0.975); }
+.knopf.leise {
+  background: transparent;
+  color: var(--tinte-hell);
+  border: 1px solid var(--kante);
+}
+.knopf.leise:hover { border-color: var(--tinte-matt); background: transparent; }
+
+/* basis.css setzt den Fokusring in Tuerkis — auf diesem Grund unsichtbar. */
+.knopf:focus-visible,
+.kachel:focus-visible,
+nav.reiter a:focus-visible,
+.brotkrumen a:focus-visible,
+.fach a:focus-visible,
+.fuss a:focus-visible {
+  outline: 2px solid var(--stempel);
+  outline-offset: 3px;
+}
+.sprachen button:focus-visible { outline: 2px solid var(--stempel); outline-offset: -2px; }
+
+/* --- Fusszeile ------------------------------------------------------ */
+.fuss {
+  margin-top: clamp(40px, 6vw, 72px);
+  padding: 22px 0 34px;
+  border-top: 1px solid var(--kante);
+  color: var(--tinte-matt);
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.fuss a { color: var(--tinte-hell); }
+
+/* --- Bewegung ------------------------------------------------------- */
+/* basis.css laesst die Karten der Arbeitsflaeche gestaffelt auftreten.
+   Auf einer Textseite waere das Zappeln: Der Leser kommt aus der Suche
+   und will lesen, nicht warten. */
+.buehne > .fach,
+.buehne > .brotkrumen { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .kachel { transition: none; }
+  .kachel:hover { transform: none; }
+}
