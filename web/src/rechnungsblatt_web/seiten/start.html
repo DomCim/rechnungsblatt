@@ -199,6 +199,21 @@
   }
   .auftakt .zeile { margin-top: 26px; }
 
+  /* Als Verweise erkennbar, aber ruhig: gepunktete Linie statt voller
+     Unterstreichung, damit die Zeile ein Band bleibt und keine Kette
+     von Knoepfen wird. */
+  .normen a.norm {
+    color: var(--tinte-matt);
+    text-decoration: underline dotted;
+    text-underline-offset: 4px;
+    text-decoration-color: var(--kante);
+  }
+  .normen a.norm:hover {
+    color: var(--papier);
+    text-decoration-color: var(--stempel);
+  }
+  .normen a.norm:focus-visible { outline: 2px solid var(--stempel); outline-offset: 3px; }
+
   .auftakt .normen {
     margin: 22px 0 0;
     display: flex;
@@ -689,6 +704,27 @@
   }
   .schluss h2 { font-size: clamp(26px, 4vw, 40px); }
 
+
+  /* Die Eintraege der Liste "Was noch drin steckt" fuehren auf die
+     Fachseiten. Zwoelf dauerhaft unterstrichene Zeilen zerhacken die
+     Aufzaehlung, deshalb zeigt sich der Strich erst beim Zeigen — der
+     Pfeil steht dafuer immer da und macht sie ueberhaupt als Wege
+     erkennbar. */
+  .koennen dt a {
+    color: var(--papier);
+    text-decoration: none;
+  }
+  .koennen dt a::after {
+    content: " \2192";          /* Pfeil nach rechts */
+    color: var(--tinte-matt);
+    font-size: 0.9em;
+    transition: transform 260ms var(--kurve-kurz);
+    display: inline-block;
+  }
+  .koennen dt a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .koennen dt a:hover::after { color: var(--stempel); }
+  .koennen dt a:focus-visible { outline: 2px solid var(--stempel); outline-offset: 3px; }
+
   .fuss {
     margin-top: clamp(40px, 6vw, 72px);
     padding: 22px 0 34px;
@@ -792,6 +828,7 @@
     <div class="marke">Rechnungsblatt</div>
     <div class="zeile">
       <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
         <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
       </nav>
       <div class="sprachen" role="group" aria-label="Sprache / Language">
@@ -814,11 +851,15 @@
       </div>
       <!-- Die Normen gleich beim Auftakt: wer weiß, wonach er sucht,
            erkennt hier in einer Zeile, ob er richtig ist. -->
+      <!-- Die Normkuerzel sind zugleich die Wege zu den Fachseiten. Sie
+           stehen hier ohne data-i18n, weil sie in beiden Sprachen gleich
+           heissen — deshalb duerfen sie Auszeichnung tragen, anders als
+           uebersetzte Elemente, deren Inhalt beim Wechsel ersetzt wird. -->
       <p class="normen">
-        <span class="norm">PDF/A-3B</span> ·
-        <span class="norm">Factur-X</span> ·
-        <span class="norm">XRechnung</span> ·
-        <span class="norm">§ 14 UStG</span>
+        <a class="norm" href="/zugferd">PDF/A-3B</a> ·
+        <a class="norm" href="/zugferd">Factur-X</a> ·
+        <a class="norm" href="/xrechnung">XRechnung</a> ·
+        <a class="norm" href="/pflichtangaben">§ 14 UStG</a>
       </p>
     </div>
 
@@ -992,29 +1033,29 @@
       </p>
     </div>
     <dl class="koennen">
-      <div><dt data-i18n="k1t">Storno und Korrektur</dt>
+      <div><dt><a href="/gutschrift-und-storno#belegtypen" data-i18n="k1t">Storno und Korrektur</a></dt>
         <dd data-i18n="k1">Gutschrift und Rechnungskorrektur mit Bezug zur Ursprungsrechnung — im XML nachvollziehbar.</dd></div>
-      <div><dt data-i18n="k2t">GiroCode</dt>
+      <div><dt><a href="/girocode#inhalt" data-i18n="k2t">GiroCode</a></dt>
         <dd data-i18n="k2">QR-Code auf dem Beleg; Ihr Kunde scannt ihn mit der Banking-App, Betrag und Zweck sind gefüllt.</dd></div>
-      <div><dt data-i18n="k3t">Mehrseitige Belege</dt>
+      <div><dt><a href="/briefpapier#mehrseitig" data-i18n="k3t">Mehrseitige Belege</a></dt>
         <dd data-i18n="k3">Mit Übertrag, wiederholtem Tabellenkopf und „Seite 1 von 3“. Der Summenblock wird nie getrennt.</dd></div>
-      <div><dt data-i18n="k4t">Sechs Layouts</dt>
+      <div><dt><a href="/briefpapier#layouts" data-i18n="k4t">Sechs Layouts</a></dt>
         <dd data-i18n="k4">Klassisch, kompakt, modern, zebra, luftig, doppelt — dazu wahlweise Ihre Akzentfarbe.</dd></div>
-      <div><dt data-i18n="k5t">Kunden und Artikel</dt>
+      <div><dt><a href="/kunden-und-artikel#kunden" data-i18n="k5t">Kunden und Artikel</a></dt>
         <dd data-i18n="k5">Adressbuch und wiederkehrende Leistungen. Ganze Positionslisten lassen sich als Vorlage sichern.</dd></div>
-      <div><dt data-i18n="k6t">Kleinunternehmer</dt>
+      <div><dt><a href="/kleinunternehmer#kategorie" data-i18n="k6t">Kleinunternehmer</a></dt>
         <dd data-i18n="k6">§ 19 UStG wird geprüft, nicht nur angekreuzt — in beide Richtungen, samt Pflichthinweis.</dd></div>
-      <div><dt data-i18n="k7t">Reverse Charge und Ausfuhr</dt>
+      <div><dt><a href="/reverse-charge#kategorien" data-i18n="k7t">Reverse Charge und Ausfuhr</a></dt>
         <dd data-i18n="k7">Auch innergemeinschaftliche Lieferung. Die USt-IdNr. beider Seiten wird verlangt, wo sie nötig ist.</dd></div>
-      <div><dt data-i18n="k8t">XRechnung</dt>
+      <div><dt><a href="/xrechnung#pflichtfelder" data-i18n="k8t">XRechnung</a></dt>
         <dd data-i18n="k8">Reines XML für Behördenkunden, mit Leitweg-ID — zusätzlich zum PDF/A-3B.</dd></div>
-      <div><dt data-i18n="k9t">Deutsch und Englisch</dt>
+      <div><dt><a href="/oberflaeche#sprachen" data-i18n="k9t">Deutsch und Englisch</a></dt>
         <dd data-i18n="k9">Die ganze Oberfläche, auch die Prüfbefunde.</dd></div>
-      <div><dt data-i18n="k10t">Aufs Handy legen</dt>
+      <div><dt><a href="/oberflaeche#app" data-i18n="k10t">Aufs Handy legen</a></dt>
         <dd data-i18n="k10">Lässt sich als App installieren und startet sofort. Geschrieben wird weiterhin online.</dd></div>
-      <div><dt data-i18n="k11t">Verschlüsselt abgelegt</dt>
+      <div><dt><a href="/aufbewahrung#verschluesselung" data-i18n="k11t">Verschlüsselt abgelegt</a></dt>
         <dd data-i18n="k11">Ihre Daten liegen mit Ihrem Passwort verschlüsselt — auch der Betreiber sieht sie nicht.</dd></div>
-      <div><dt data-i18n="k12t">Löschen heißt löschen</dt>
+      <div><dt><a href="/aufbewahrung#loeschen" data-i18n="k12t">Löschen heißt löschen</a></dt>
         <dd data-i18n="k12">Konto weg, Daten weg. Ohne Papierkorb, ohne Rest.</dd></div>
     </dl>
   </section>
@@ -1080,6 +1121,7 @@
 
   <footer class="fuss">
     <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
     <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
     <!-- Pflichtangaben: § 5 DDG verlangt sie "leicht erkennbar,
          unmittelbar erreichbar und ständig verfügbar" — die Fußzeile
@@ -1099,6 +1141,7 @@
   var texte = {
     de: {
       navAnmelden: "Anmelden",
+      navFunktionen: "Funktionen",
       heldVorlauf: "Pflicht seit 2025 · B2B in Deutschland",
       heldTitel: "Ihr Briefbogen bleibt. Die Rechnung wird maschinenlesbar.",
       bogenAlt: "Ein Briefbogen mit Kopf- und Fußzeile; dazwischen entsteht eine Rechnung, darunter das eingebettete XML.",
@@ -1193,6 +1236,7 @@
     },
     en: {
       navAnmelden: "Sign in",
+      navFunktionen: "Features",
       heldVorlauf: "Mandatory since 2025 · B2B in Germany",
       heldTitel: "Your letterhead stays. The invoice becomes machine-readable.",
       bogenAlt: "A letterhead with header and footer; an invoice takes shape between them, with the embedded XML below.",

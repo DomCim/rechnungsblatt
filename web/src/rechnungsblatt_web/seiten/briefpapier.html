@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rechnung auf eigenem Briefpapier — Layouts und Schreibzone | Rechnungsblatt</title>
+<meta name="description" content="Ihr Briefbogen als PDF hochladen, Schreibzone mit zwei Reglern festlegen, sechs geprüfte Layouts und eine Akzentfarbe. Mehrseitige Belege mit Übertrag.">
+<link rel="canonical" href="/briefpapier">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="Rechnung auf eigenem Briefpapier">
+<meta property="og:description" content="Ihr Bogen bleibt. Rechnungsblatt schreibt in die freie Fläche dazwischen — mit sechs geprüften Layouts statt eines Editors.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Briefpapier",
+      "item": "https://rechnungsblatt.de/briefpapier"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">Briefpapier</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Gestaltung · Ihr Bogen</p>
+  <h1 data-i18n="t3">Ihr Briefbogen bleibt, wie er ist</h1>
+  <p class="fuehrung" data-i18n="t4">Die meisten Rechnungsprogramme geben Ihnen ihr Layout. Logo, Farben und Fußzeile fallen weg oder kosten Aufpreis. Rechnungsblatt dreht das um: Sie laden Ihren gedruckten Briefbogen als PDF hoch, und die Rechnung wird in die freie Fläche dazwischen gesetzt.</p>
+
+  <h2 data-i18n="t5">Der Schritt, an dem PDF/A sonst scheitert</h2>
+  <p data-i18n="t6">Ein echter Briefbogen aus der Druckvorstufe ist meist CMYK, ein am Rechner gebauter meist RGB, und häufig stecken Schriften nur als Verweis darin. PDF/A erlaubt aber genau eine Ausgabebedingung und verlangt eingebettete Schriften. Ein roher Upload würde daran scheitern.</p>
+  <p data-i18n="t7">Rechnungsblatt normalisiert den Bogen deshalb einmal beim Einrichten: Farbraum auf sRGB vereinheitlichen, fehlende Schriften einbetten. Sie sehen anschließend an einer Ampel, ob der Bogen taugt. Gespeichert wird die normalisierte Fassung — mit ihr wird ab da gearbeitet.</p>
+
+  <h2 data-i18n="t8">Zwei Regler statt eines Editors</h2>
+  <p data-i18n="t9">Die Schreibzone kennt genau zwei Werte: wo Ihr Briefkopf endet und wo die Fußzeile beginnt. Dazwischen schreibt Rechnungsblatt, darüber und darunter rührt es nichts an. Keine Kästchen ziehen, keine Koordinaten.</p>
+  <div class="merk">
+    <p data-i18n="t10">Das ist eine bewusste Beschränkung. Wenige verständliche Entscheidungen schlagen einen Editor, in dem sich alles verschieben lässt und deshalb alles schiefgehen kann.</p>
+  </div>
+
+  <h2 id="layouts" data-i18n="t11">Die sechs Layouts</h2>
+  <p data-i18n="t12">Jedes ist eine fertige Kombination aus Titelgröße, Zeilenabstand, Linienführung und Anordnung der Belegdaten. Sie wählen eines aus und sehen es sofort in der Vorschau; nichts davon lässt sich einzeln verstellen, und genau das hält die Belege über Jahre gleich aussehend.</p>
+  <div class="tabellenhalter">
+    <table>
+      <thead><tr>
+        <th data-i18n="t13">Layout</th>
+        <th data-i18n="t14">Zeichnung</th>
+        <th data-i18n="t15">Wofür</th>
+      </tr></thead>
+      <tbody>
+      <tr>
+        <td data-i18n="t16">Klassisch</td>
+        <td data-i18n="t17">Belegdaten als Block rechts neben dem Anschriftenfeld, schwarze Linien, normaler Abstand, Titel vier Punkt über der Grundschrift.</td>
+        <td data-i18n="t18">Der Grundfall. Sieht aus wie das, was Ihr Kunde erwartet.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t19">Kompakt</td>
+        <td data-i18n="t20">Belegdaten als Zeile unter dem Titel, Abstände auf 85 Prozent gestaucht, schwarze Linien, Titel nur zwei Punkt größer.</td>
+        <td data-i18n="t21">Viele Positionen, die auf eine Seite sollen.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t22">Modern</td>
+        <td data-i18n="t23">Großer Titel, sieben Punkt über der Grundschrift, graue statt schwarze Linien, zehn Prozent mehr Luft, zusätzlicher Raum um den Titel.</td>
+        <td data-i18n="t24">Wenige Positionen, die wirken sollen.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t25">Zebra</td>
+        <td data-i18n="t26">Getönte Wechselzeilen statt Trennlinien, sonst normale Maße. Ist die Akzentfarbe an, tönt sie auch die Zeilen.</td>
+        <td data-i18n="t27">Lange Listen, in denen das Auge die Zeile verliert.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t28">Luftig</td>
+        <td data-i18n="t29">Gar keine Trennlinien — gegliedert wird allein über Abstände. Großer Titel, zwölf Prozent mehr Luft, viel Raum um den Titel.</td>
+        <td data-i18n="t30">Gestaltete Briefbögen, denen zusätzliche Linien im Weg sind.</td>
+      </tr>
+      <tr>
+        <td data-i18n="t31">Doppelt</td>
+        <td data-i18n="t32">Sehr eng, Abstände auf 78 Prozent, Belegdaten zweispaltig unter dem Titel, Titel kaum größer als der Fließtext.</td>
+        <td data-i18n="t33">Der dichteste Satz. Wenn auch Kompakt nicht reicht.</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <p data-i18n="t34">Ein Wert ist gemessen und nicht gewählt: Luftig lief mit dem Faktor 1,25 bei vier Positionen samt GiroCode aus der Schreibzone heraus. Luftig soll wirken, nicht die zweite Seite erzwingen — deshalb steht dort 1,12.</p>
+
+  <h2 id="schrift" data-i18n="t35">Schrift, Grad und Akzentfarbe</h2>
+  <ul>
+    <li data-i18n="t36">Fünf mitgelieferte Schriften: Liberation Sans (serifenlos, neutral), Liberation Serif (klassisch, mit Serifen), Carlito (freundlich, modern), Caladea (elegant, mit Serifen) und DejaVu Sans (kräftig, technisch).</li>
+    <li data-i18n="t37">Nur einbettbare TTFs aus einem gepflegten Katalog. PDF/A verlangt eingebettete Schriften, deshalb sind die vierzehn Standardschriften des PDF-Formats hier ausdrücklich tabu.</li>
+    <li data-i18n="t38">Drei Schriftgrade für die Grundschrift: neun, zehn und elf Punkt. Alles andere auf dem Blatt rechnet sich daraus ab — der Titel etwa als Grundschrift plus vier Punkt.</li>
+    <li data-i18n="t39">Eine eigene Akzentfarbe, quer zu allen sechs Layouts: aus bleiben die Linien schwarz oder grau, an tragen Titel und Linien Ihre Farbe.</li>
+    <li data-i18n="t40">Die kleine Absenderzeile über dem Anschriftenfeld lässt sich abschalten — viele Bögen tragen sie schon gedruckt, sonst stünde sie doppelt.</li>
+    <li data-i18n="t41">Das Anschriftenfeld sitzt fest bei 45 Millimetern von der Oberkante, nach DIN 5008 Form B. Damit passt es in ein Fensterkuvert, und zwar bei jedem Layout.</li>
+  </ul>
+
+  <h2 id="mehrseitig" data-i18n="t42">Wenn eine Seite nicht reicht</h2>
+  <p data-i18n="t43">Wird die Positionsliste lang, bricht der Beleg sauber um: Die Seite schließt mit „Übertrag“, die nächste beginnt damit und wiederholt den Tabellenkopf. Unten steht „Seite 1 von 3“ — dafür wird der Beleg zweimal durchlaufen, einmal zum Zählen und einmal zum Zeichnen, denn anders ist die Gesamtzahl auf der ersten Seite nicht bekannt.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t44">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t45">Es gibt keinen freien Layout-Editor. Wer Positionen pixelgenau setzen will, ist mit einem Satzprogramm besser bedient.</li>
+      <li data-i18n="t46">Ihr Bogen wird nicht gestaltet, sondern übernommen. Rechnungsblatt macht aus einem schlechten Briefpapier kein gutes.</li>
+      <li data-i18n="t47">Bögen, die keine freie Fläche lassen — etwa vollflächige Bilder über das ganze Blatt —, taugen nicht. Das zeigt die Ampel beim Einrichten.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/zugferd" data-i18n="t48">ZUGFeRD und Factur-X</a></li>
+      <li><a href="/girocode" data-i18n="t49">GiroCode</a></li>
+      <li><a href="/gutschrift-und-storno" data-i18n="t50">Gutschrift und Storno</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "Briefpapier",
+          "t2": "Gestaltung · Ihr Bogen",
+          "t3": "Ihr Briefbogen bleibt, wie er ist",
+          "t4": "Die meisten Rechnungsprogramme geben Ihnen ihr Layout. Logo, Farben und Fußzeile fallen weg oder kosten Aufpreis. Rechnungsblatt dreht das um: Sie laden Ihren gedruckten Briefbogen als PDF hoch, und die Rechnung wird in die freie Fläche dazwischen gesetzt.",
+          "t5": "Der Schritt, an dem PDF/A sonst scheitert",
+          "t6": "Ein echter Briefbogen aus der Druckvorstufe ist meist CMYK, ein am Rechner gebauter meist RGB, und häufig stecken Schriften nur als Verweis darin. PDF/A erlaubt aber genau eine Ausgabebedingung und verlangt eingebettete Schriften. Ein roher Upload würde daran scheitern.",
+          "t7": "Rechnungsblatt normalisiert den Bogen deshalb einmal beim Einrichten: Farbraum auf sRGB vereinheitlichen, fehlende Schriften einbetten. Sie sehen anschließend an einer Ampel, ob der Bogen taugt. Gespeichert wird die normalisierte Fassung — mit ihr wird ab da gearbeitet.",
+          "t8": "Zwei Regler statt eines Editors",
+          "t9": "Die Schreibzone kennt genau zwei Werte: wo Ihr Briefkopf endet und wo die Fußzeile beginnt. Dazwischen schreibt Rechnungsblatt, darüber und darunter rührt es nichts an. Keine Kästchen ziehen, keine Koordinaten.",
+          "t10": "Das ist eine bewusste Beschränkung. Wenige verständliche Entscheidungen schlagen einen Editor, in dem sich alles verschieben lässt und deshalb alles schiefgehen kann.",
+          "t11": "Die sechs Layouts",
+          "t12": "Jedes ist eine fertige Kombination aus Titelgröße, Zeilenabstand, Linienführung und Anordnung der Belegdaten. Sie wählen eines aus und sehen es sofort in der Vorschau; nichts davon lässt sich einzeln verstellen, und genau das hält die Belege über Jahre gleich aussehend.",
+          "t13": "Layout",
+          "t14": "Zeichnung",
+          "t15": "Wofür",
+          "t16": "Klassisch",
+          "t17": "Belegdaten als Block rechts neben dem Anschriftenfeld, schwarze Linien, normaler Abstand, Titel vier Punkt über der Grundschrift.",
+          "t18": "Der Grundfall. Sieht aus wie das, was Ihr Kunde erwartet.",
+          "t19": "Kompakt",
+          "t20": "Belegdaten als Zeile unter dem Titel, Abstände auf 85 Prozent gestaucht, schwarze Linien, Titel nur zwei Punkt größer.",
+          "t21": "Viele Positionen, die auf eine Seite sollen.",
+          "t22": "Modern",
+          "t23": "Großer Titel, sieben Punkt über der Grundschrift, graue statt schwarze Linien, zehn Prozent mehr Luft, zusätzlicher Raum um den Titel.",
+          "t24": "Wenige Positionen, die wirken sollen.",
+          "t25": "Zebra",
+          "t26": "Getönte Wechselzeilen statt Trennlinien, sonst normale Maße. Ist die Akzentfarbe an, tönt sie auch die Zeilen.",
+          "t27": "Lange Listen, in denen das Auge die Zeile verliert.",
+          "t28": "Luftig",
+          "t29": "Gar keine Trennlinien — gegliedert wird allein über Abstände. Großer Titel, zwölf Prozent mehr Luft, viel Raum um den Titel.",
+          "t30": "Gestaltete Briefbögen, denen zusätzliche Linien im Weg sind.",
+          "t31": "Doppelt",
+          "t32": "Sehr eng, Abstände auf 78 Prozent, Belegdaten zweispaltig unter dem Titel, Titel kaum größer als der Fließtext.",
+          "t33": "Der dichteste Satz. Wenn auch Kompakt nicht reicht.",
+          "t34": "Ein Wert ist gemessen und nicht gewählt: Luftig lief mit dem Faktor 1,25 bei vier Positionen samt GiroCode aus der Schreibzone heraus. Luftig soll wirken, nicht die zweite Seite erzwingen — deshalb steht dort 1,12.",
+          "t35": "Schrift, Grad und Akzentfarbe",
+          "t36": "Fünf mitgelieferte Schriften: Liberation Sans (serifenlos, neutral), Liberation Serif (klassisch, mit Serifen), Carlito (freundlich, modern), Caladea (elegant, mit Serifen) und DejaVu Sans (kräftig, technisch).",
+          "t37": "Nur einbettbare TTFs aus einem gepflegten Katalog. PDF/A verlangt eingebettete Schriften, deshalb sind die vierzehn Standardschriften des PDF-Formats hier ausdrücklich tabu.",
+          "t38": "Drei Schriftgrade für die Grundschrift: neun, zehn und elf Punkt. Alles andere auf dem Blatt rechnet sich daraus ab — der Titel etwa als Grundschrift plus vier Punkt.",
+          "t39": "Eine eigene Akzentfarbe, quer zu allen sechs Layouts: aus bleiben die Linien schwarz oder grau, an tragen Titel und Linien Ihre Farbe.",
+          "t40": "Die kleine Absenderzeile über dem Anschriftenfeld lässt sich abschalten — viele Bögen tragen sie schon gedruckt, sonst stünde sie doppelt.",
+          "t41": "Das Anschriftenfeld sitzt fest bei 45 Millimetern von der Oberkante, nach DIN 5008 Form B. Damit passt es in ein Fensterkuvert, und zwar bei jedem Layout.",
+          "t42": "Wenn eine Seite nicht reicht",
+          "t43": "Wird die Positionsliste lang, bricht der Beleg sauber um: Die Seite schließt mit „Übertrag“, die nächste beginnt damit und wiederholt den Tabellenkopf. Unten steht „Seite 1 von 3“ — dafür wird der Beleg zweimal durchlaufen, einmal zum Zählen und einmal zum Zeichnen, denn anders ist die Gesamtzahl auf der ersten Seite nicht bekannt.",
+          "t44": "Was hier nicht passiert",
+          "t45": "Es gibt keinen freien Layout-Editor. Wer Positionen pixelgenau setzen will, ist mit einem Satzprogramm besser bedient.",
+          "t46": "Ihr Bogen wird nicht gestaltet, sondern übernommen. Rechnungsblatt macht aus einem schlechten Briefpapier kein gutes.",
+          "t47": "Bögen, die keine freie Fläche lassen — etwa vollflächige Bilder über das ganze Blatt —, taugen nicht. Das zeigt die Ampel beim Einrichten.",
+          "t48": "ZUGFeRD und Factur-X",
+          "t49": "GiroCode",
+          "t50": "Gutschrift und Storno"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "Letterhead",
+          "t2": "Design · Your letterhead",
+          "t3": "Your letterhead stays exactly as it is",
+          "t4": "Most invoicing programs give you their layout. Logo, colours and footer fall away or cost extra. Rechnungsblatt turns that around: you upload your printed letterhead as a PDF and the invoice is set into the free area between header and footer.",
+          "t5": "The step where PDF/A usually fails",
+          "t6": "A real letterhead from prepress is usually CMYK, one built on a computer usually RGB, and fonts are often only referenced rather than embedded. PDF/A, however, permits exactly one output condition and requires embedded fonts. A raw upload would fail on that.",
+          "t7": "Rechnungsblatt therefore normalises the sheet once during setup: unify the colour space to sRGB, embed missing fonts. A traffic light then shows whether the sheet is usable. The normalised version is what gets stored and used from then on.",
+          "t8": "Two sliders instead of an editor",
+          "t9": "The writing zone has exactly two values: where your letterhead ends and where the footer begins. Rechnungsblatt writes in between and touches nothing above or below. No boxes to drag, no coordinates.",
+          "t10": "That is a deliberate restriction. A few comprehensible decisions beat an editor in which everything can be moved and therefore everything can go wrong.",
+          "t11": "The six layouts",
+          "t12": "Each is a finished combination of title size, line spacing, rule treatment and arrangement of the document data. You pick one and see it immediately in the preview; none of it can be adjusted individually, and that is exactly what keeps documents looking the same over the years.",
+          "t13": "Layout",
+          "t14": "Character",
+          "t15": "What for",
+          "t16": "Classic",
+          "t17": "Document data as a block to the right of the address field, black rules, normal spacing, title four points above the body size.",
+          "t18": "The default. Looks like what your customer expects.",
+          "t19": "Compact",
+          "t20": "Document data as a line under the title, spacing squeezed to 85 per cent, black rules, title only two points larger.",
+          "t21": "Many line items that should fit on one page.",
+          "t22": "Modern",
+          "t23": "Large title, seven points above the body size, grey rather than black rules, ten per cent more air, extra space around the title.",
+          "t24": "Few line items that should carry weight.",
+          "t25": "Zebra",
+          "t26": "Tinted alternating rows instead of separating rules, otherwise normal measurements. With the accent colour on, it tints the rows too.",
+          "t27": "Long lists in which the eye loses the row.",
+          "t28": "Airy",
+          "t29": "No separating rules at all — structure comes from spacing alone. Large title, twelve per cent more air, generous space around the title.",
+          "t30": "Designed letterheads for which extra rules get in the way.",
+          "t31": "Double",
+          "t32": "Very tight, spacing at 78 per cent, document data in two columns under the title, title barely larger than the body text.",
+          "t33": "The densest setting. When even Compact is not enough.",
+          "t34": "One value was measured, not chosen: Airy at a factor of 1.25 ran out of the writing zone with four line items plus a GiroCode. Airy should have effect, not force a second page — hence the 1.12.",
+          "t35": "Typeface, size and accent colour",
+          "t36": "Five bundled typefaces: Liberation Sans (sans-serif, neutral), Liberation Serif (classic, serif), Carlito (friendly, modern), Caladea (elegant, serif) and DejaVu Sans (sturdy, technical).",
+          "t37": "Only embeddable TTFs from a curated catalogue. PDF/A requires embedded fonts, so the fourteen standard PDF typefaces are expressly out of bounds here.",
+          "t38": "Three body sizes: nine, ten and eleven point. Everything else on the sheet derives from that — the title, for instance, as body size plus four points.",
+          "t39": "Your own accent colour, orthogonal to all six layouts: switched off the rules stay black or grey, switched on the title and rules take your colour.",
+          "t40": "The small sender line above the address block can be switched off — many letterheads already carry it in print, otherwise it would appear twice.",
+          "t41": "The address field sits fixed at 45 millimetres from the top edge, following DIN 5008 form B. That makes it fit a window envelope, in every layout.",
+          "t42": "When one page is not enough",
+          "t43": "If the item list grows long, the document breaks cleanly: the page closes with a carry-forward line, the next one opens with it and repeats the table header. At the bottom it says “page 1 of 3” — for which the document is run through twice, once to count and once to draw, because otherwise the total is not known on the first page.",
+          "t44": "What does not happen here",
+          "t45": "There is no free-form layout editor. Anyone wanting pixel-precise placement is better served by a typesetting program.",
+          "t46": "Your letterhead is adopted, not designed. Rechnungsblatt does not turn a poor letterhead into a good one.",
+          "t47": "Letterheads that leave no free area — a full-bleed image across the whole sheet, say — will not work. The traffic light shows that during setup.",
+          "t48": "ZUGFeRD and Factur-X",
+          "t49": "GiroCode",
+          "t50": "Credit note and reversal"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>

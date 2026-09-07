@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GiroCode auf der Rechnung — QR-Code zum Bezahlen | Rechnungsblatt</title>
+<meta name="description" content="Ein EPC-QR-Code nach EPC069-12 auf dem Beleg: Der Kunde scannt mit der Banking-App, Empfänger, IBAN, Betrag und Verwendungszweck sind ausgefüllt.">
+<link rel="canonical" href="/girocode">
+<meta name="robots" content="index, follow, max-image-preview:large">
+
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rechnungsblatt">
+<meta property="og:locale" content="de_DE">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:title" content="GiroCode auf der Rechnung">
+<meta property="og:description" content="QR-Code nach EPC069-12, als Vektor gezeichnet — die Banking-App füllt die Überweisung selbst aus.">
+<meta property="og:image" content="/seiten/symbole/symbol-512.png">
+<meta name="twitter:card" content="summary">
+
+<!-- Nur der Pfad, mehr nicht. Strukturierte Daten muessen stimmen; ein
+     erfundenes FAQ- oder Produkt-Markup gilt als irrefuehrend und
+     schadet mehr, als es nuetzt. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Start",
+      "item": "https://rechnungsblatt.de/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Funktionen",
+      "item": "https://rechnungsblatt.de/funktionen"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "GiroCode",
+      "item": "https://rechnungsblatt.de/girocode"
+    }
+  ]
+}
+</script>
+
+<link rel="stylesheet" href="/seiten/schriften/schriften.css">
+<link rel="stylesheet" href="/seiten/basis.css">
+<!-- Nach basis.css: die Fachseiten erben die Handschrift der Startseite,
+     nicht die nuechterne Arbeitsflaeche. -->
+<link rel="stylesheet" href="/seiten/funktionen.css">
+<link rel="icon" href="/seiten/symbole/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="/seiten/symbole/symbol-192.png">
+<!--PLAUSIBLE-->
+</head>
+<body>
+<div class="buehne">
+
+  <header class="kopf">
+    <div class="marke"><a href="/">Rechnungsblatt</a></div>
+    <div class="zeile">
+      <nav class="reiter">
+        <a href="/funktionen" data-i18n="navFunktionen">Funktionen</a>
+        <a href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a>
+      </nav>
+      <div class="sprachen" role="group" aria-label="Sprache / Language">
+        <button type="button" data-sprache="de" aria-pressed="true">DE</button>
+        <button type="button" data-sprache="en" aria-pressed="false">EN</button>
+      </div>
+    </div>
+  </header>
+
+
+  <nav class="brotkrumen" aria-label="Pfad">
+    <a href="/" data-i18n="krumeStart">Start</a>
+    <span aria-hidden="true">›</span>
+    <a href="/funktionen" data-i18n="krumeFunktionen">Funktionen</a>
+    <span aria-hidden="true">›</span>
+    <span aria-current="page" data-i18n="krume1">GiroCode</span>
+  </nav>
+
+  <article class="fach">
+  <p class="vorlauf" data-i18n="t2">Zahlung · EPC069-12</p>
+  <h1 data-i18n="t3">Der Code, der die Überweisung ausfüllt</h1>
+  <p class="fuehrung" data-i18n="t4">Ein kleines Quadrat unten auf der Rechnung. Ihr Kunde hält die Banking-App darauf, und Empfänger, IBAN, Betrag und Verwendungszweck stehen schon im Formular. Kein Abtippen, keine vertauschte Ziffer in der IBAN, keine Rückfrage, welche Rechnungsnummer gemeint war.</p>
+
+  <h2 id="inhalt" data-i18n="t5">Was im Code steht</h2>
+  <p data-i18n="t6">Der GiroCode folgt der Spezifikation EPC069-12 des European Payments Council — dasselbe Verfahren, das auf Spendenaufrufen und Vereinsbeiträgen klebt. Rechnungsblatt füllt ihn aus den Daten, die ohnehin auf dem Beleg stehen:</p>
+  <ul>
+    <li data-i18n="t7">Ihr Name als Zahlungsempfänger und Ihre IBAN aus den Stammdaten, die BIC, falls hinterlegt.</li>
+    <li data-i18n="t8">Den Bruttobetrag der Rechnung.</li>
+    <li data-i18n="t9">Den Verwendungszweck — in der Regel die Rechnungsnummer, damit der Zahlungseingang zuzuordnen ist.</li>
+  </ul>
+  <p data-i18n="t10">Die Spezifikation setzt Grenzen: Der Name darf 70 Zeichen lang sein, der Verwendungszweck 140, der Betrag muss zwischen 0,01 und 999.999.999,99 Euro liegen. Fällt der Betrag heraus, lässt Rechnungsblatt ihn weg — die App fragt dann danach, statt einen falschen Wert vorzuschlagen.</p>
+
+  <h2 data-i18n="t11">Gezeichnet, nicht eingefügt</h2>
+  <p data-i18n="t12">Der Code wird als Vektorgrafik direkt auf das Blatt gezeichnet: schwarze Rechtecke, kein Rasterbild. Das ist kein Selbstzweck. Ein eingefügtes Bild brächte einen eigenen Farbraum mit und damit genau das Problem, das die Briefpapier-Normalisierung gerade beseitigt hat — die PDF/A-Zusage wäre dahin.</p>
+  <div class="merk">
+    <p data-i18n="t13">Nebenbei bleibt der Code bei jeder Vergrößerung scharf und lässt sich auch von einem mäßig gedruckten Blatt noch lesen.</p>
+  </div>
+
+  <h2 data-i18n="t14">Ein Schalter in der Gestaltung</h2>
+  <p data-i18n="t15">Der GiroCode lässt sich an- und abschalten; er gilt dann für alle Belege. Voraussetzung ist eine gültige IBAN in den Stammdaten — die verlangt die §-14-Prüfung ohnehin, sonst entsteht die Rechnung nicht.</p>
+
+  <section class="grenze">
+    <h2 data-i18n="t16">Was hier nicht passiert</h2>
+    <ul>
+      <li data-i18n="t17">Rechnungsblatt ist kein Zahlungsdienstleister. Der Code füllt ein Überweisungsformular vor, mehr nicht — es fließt kein Geld über Rechnungsblatt.</li>
+      <li data-i18n="t18">Es gibt keinen Zahlungsabgleich. Ob und wann Ihr Kunde bezahlt hat, erfährt Rechnungsblatt nicht; ein Mahnwesen gibt es nicht.</li>
+      <li data-i18n="t19">Nicht jede Banking-App erkennt jeden QR-Code gleich zuverlässig. Der Code ersetzt die Angabe von IBAN und Verwendungszweck im Klartext nicht — beide stehen weiterhin auf dem Beleg.</li>
+    </ul>
+  </section>
+  </article>
+
+  <nav class="weiter" aria-label="Weiterlesen">
+    <h2 data-i18n="weiterTitel">Weiterlesen</h2>
+    <ul>
+      <li><a href="/briefpapier" data-i18n="t20">Eigenes Briefpapier</a></li>
+      <li><a href="/pflichtangaben" data-i18n="t21">Pflichtangaben nach § 14</a></li>
+      <li><a href="/zugferd" data-i18n="t22">ZUGFeRD und Factur-X</a></li>
+    </ul>
+  </nav>
+
+  <section class="fachschluss">
+    <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
+    <p data-i18n="schlussText">Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.</p>
+    <div class="zeile">
+      <a class="knopf" href="/app/anmelden#registrieren" data-i18n="schlussKnopf">Konto anlegen</a>
+      <a class="knopf leise" href="/" data-i18n="schlussMehr">Zur Startseite</a>
+    </div>
+  </section>
+
+  <footer class="fuss">
+    <span data-i18n="fussHinweis">Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.</span>
+    <span><a class="verweis" href="/funktionen" data-i18n="navFunktionen">Funktionen</a></span>
+    <span><a class="verweis" href="/app/anmelden" data-i18n="navAnmelden">Anmelden</a></span>
+    <span><a class="verweis" href="/impressum" data-i18n="navImpressum">Impressum</a></span>
+    <span><a class="verweis" href="/datenschutz" data-i18n="navDatenschutz">Datenschutz</a></span>
+    <span><a class="verweis" href="/agb" data-i18n="navAgb">AGB</a></span>
+  </footer>
+
+</div>
+
+<script src="/seiten/werkzeuge.js"></script>
+<script>
+(function () {
+  "use strict";
+  // Deutsch steht bereits im Markup — dieses Objekt liefert die englische
+  // Fassung und die Rueckkehr zur deutschen beim Umschalten.
+  var texte = {
+      "de": {
+          "navFunktionen": "Funktionen",
+          "navAnmelden": "Anmelden",
+          "navImpressum": "Impressum",
+          "navDatenschutz": "Datenschutz",
+          "navAgb": "AGB",
+          "fussHinweis": "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
+          "krumeStart": "Start",
+          "krumeFunktionen": "Funktionen",
+          "schlussTitel": "Einmal einrichten, dann steht es",
+          "schlussText": "Briefpapier hochladen, Schreibzone festlegen, Stammdaten eintragen. Danach ist die Startseite nach dem Anmelden das Rechnungsformular.",
+          "schlussKnopf": "Konto anlegen",
+          "schlussMehr": "Zur Startseite",
+          "weiterTitel": "Weiterlesen",
+          "krume1": "GiroCode",
+          "t2": "Zahlung · EPC069-12",
+          "t3": "Der Code, der die Überweisung ausfüllt",
+          "t4": "Ein kleines Quadrat unten auf der Rechnung. Ihr Kunde hält die Banking-App darauf, und Empfänger, IBAN, Betrag und Verwendungszweck stehen schon im Formular. Kein Abtippen, keine vertauschte Ziffer in der IBAN, keine Rückfrage, welche Rechnungsnummer gemeint war.",
+          "t5": "Was im Code steht",
+          "t6": "Der GiroCode folgt der Spezifikation EPC069-12 des European Payments Council — dasselbe Verfahren, das auf Spendenaufrufen und Vereinsbeiträgen klebt. Rechnungsblatt füllt ihn aus den Daten, die ohnehin auf dem Beleg stehen:",
+          "t7": "Ihr Name als Zahlungsempfänger und Ihre IBAN aus den Stammdaten, die BIC, falls hinterlegt.",
+          "t8": "Den Bruttobetrag der Rechnung.",
+          "t9": "Den Verwendungszweck — in der Regel die Rechnungsnummer, damit der Zahlungseingang zuzuordnen ist.",
+          "t10": "Die Spezifikation setzt Grenzen: Der Name darf 70 Zeichen lang sein, der Verwendungszweck 140, der Betrag muss zwischen 0,01 und 999.999.999,99 Euro liegen. Fällt der Betrag heraus, lässt Rechnungsblatt ihn weg — die App fragt dann danach, statt einen falschen Wert vorzuschlagen.",
+          "t11": "Gezeichnet, nicht eingefügt",
+          "t12": "Der Code wird als Vektorgrafik direkt auf das Blatt gezeichnet: schwarze Rechtecke, kein Rasterbild. Das ist kein Selbstzweck. Ein eingefügtes Bild brächte einen eigenen Farbraum mit und damit genau das Problem, das die Briefpapier-Normalisierung gerade beseitigt hat — die PDF/A-Zusage wäre dahin.",
+          "t13": "Nebenbei bleibt der Code bei jeder Vergrößerung scharf und lässt sich auch von einem mäßig gedruckten Blatt noch lesen.",
+          "t14": "Ein Schalter in der Gestaltung",
+          "t15": "Der GiroCode lässt sich an- und abschalten; er gilt dann für alle Belege. Voraussetzung ist eine gültige IBAN in den Stammdaten — die verlangt die §-14-Prüfung ohnehin, sonst entsteht die Rechnung nicht.",
+          "t16": "Was hier nicht passiert",
+          "t17": "Rechnungsblatt ist kein Zahlungsdienstleister. Der Code füllt ein Überweisungsformular vor, mehr nicht — es fließt kein Geld über Rechnungsblatt.",
+          "t18": "Es gibt keinen Zahlungsabgleich. Ob und wann Ihr Kunde bezahlt hat, erfährt Rechnungsblatt nicht; ein Mahnwesen gibt es nicht.",
+          "t19": "Nicht jede Banking-App erkennt jeden QR-Code gleich zuverlässig. Der Code ersetzt die Angabe von IBAN und Verwendungszweck im Klartext nicht — beide stehen weiterhin auf dem Beleg.",
+          "t20": "Eigenes Briefpapier",
+          "t21": "Pflichtangaben nach § 14",
+          "t22": "ZUGFeRD und Factur-X"
+      },
+      "en": {
+          "navFunktionen": "Features",
+          "navAnmelden": "Sign in",
+          "navImpressum": "Legal notice",
+          "navDatenschutz": "Privacy",
+          "navAgb": "Terms",
+          "fussHinweis": "Rechnungsblatt — electronic invoices on your own letterhead.",
+          "krumeStart": "Home",
+          "krumeFunktionen": "Features",
+          "schlussTitel": "Set it up once, then it stays",
+          "schlussText": "Upload your letterhead, set the writing zone, enter your master data. After that the page you land on after signing in is the invoice form.",
+          "schlussKnopf": "Create an account",
+          "schlussMehr": "To the home page",
+          "weiterTitel": "Read on",
+          "krume1": "GiroCode",
+          "t2": "Payment · EPC069-12",
+          "t3": "The code that fills in the transfer",
+          "t4": "A small square at the bottom of the invoice. Your customer points their banking app at it, and payee, IBAN, amount and reference are already filled in. No retyping, no transposed digit in the IBAN, no query about which invoice number was meant.",
+          "t5": "What the code contains",
+          "t6": "The GiroCode follows specification EPC069-12 of the European Payments Council — the same scheme found on donation appeals and club membership notices. Rechnungsblatt fills it from data already on the document:",
+          "t7": "Your name as payee and your IBAN from the master data, plus the BIC if stored.",
+          "t8": "The gross amount of the invoice.",
+          "t9": "The reference — usually the invoice number, so the incoming payment can be matched.",
+          "t10": "The specification sets limits: the name may be 70 characters, the reference 140, and the amount must lie between €0.01 and €999,999,999.99. If the amount falls outside, Rechnungsblatt omits it — the app then asks for it instead of proposing a wrong value.",
+          "t11": "Drawn, not pasted in",
+          "t12": "The code is drawn straight onto the sheet as vector graphics: black rectangles, no raster image. That is not for its own sake. An inserted image would bring its own colour space and with it exactly the problem the letterhead normalisation has just removed — the PDF/A guarantee would be gone.",
+          "t13": "As a side effect the code stays sharp at any magnification and can still be read from a mediocre printout.",
+          "t14": "One switch in the design settings",
+          "t15": "The GiroCode can be switched on and off; the setting applies to all documents. It requires a valid IBAN in the master data — which the § 14 check demands anyway, otherwise no invoice is created.",
+          "t16": "What does not happen here",
+          "t17": "Rechnungsblatt is not a payment service provider. The code pre-fills a transfer form, nothing more — no money moves through Rechnungsblatt.",
+          "t18": "There is no payment reconciliation. Rechnungsblatt does not learn whether or when your customer has paid; there is no dunning function.",
+          "t19": "Not every banking app reads every QR code equally reliably. The code does not replace stating the IBAN and reference in plain text — both remain on the document.",
+          "t20": "Your own letterhead",
+          "t21": "Mandatory details under § 14",
+          "t22": "ZUGFeRD and Factur-X"
+      }
+  };
+  RB.starte(texte);
+})();
+</script>
+</body>
+</html>
