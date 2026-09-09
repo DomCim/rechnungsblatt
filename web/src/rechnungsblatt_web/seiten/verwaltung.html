@@ -448,6 +448,43 @@
   </section>
 
   <section class="karte">
+    <h2 data-i18n="githubTitel">Meldungen</h2>
+    <p class="beschreibung" data-i18n="githubText">
+      Was Kunden im Konto melden, wird als Issue angelegt. Ohne Repository
+      und Token bleibt die Meldung trotzdem hier stehen — sie geht nur
+      nicht hinaus. Der Token wird verschlüsselt abgelegt und nie wieder
+      angezeigt.
+    </p>
+    <div class="felder">
+      <div class="feld breit">
+        <label for="githubRepo" data-i18n="fGithubRepo">Repository</label>
+        <input id="githubRepo" type="text" autocomplete="off"
+               placeholder="DomCim/rechnungsblatt">
+        <p class="feldhinweis" data-i18n="hGithubRepo">
+          Als <span class="kennung">Eigner/Name</span>. Issues m&uuml;ssen
+          dort eingeschaltet sein.
+        </p>
+      </div>
+      <div class="feld breit">
+        <label for="githubToken" data-i18n="fGithubToken">Token</label>
+        <input id="githubToken" type="password" autocomplete="off">
+        <p class="feldhinweis" data-i18n="hGithubToken">
+          Ein feingranularer Token mit dem Recht
+          &bdquo;Issues: read and write&ldquo; auf genau diesem
+          Repository. Mehr braucht es nicht &mdash; und mehr sollte er
+          nicht k&ouml;nnen.
+        </p>
+      </div>
+    </div>
+    <div class="zeile" style="margin-top:12px;">
+      <button type="button" class="knopf" id="githubSpeichern" data-i18n="speichern">Speichern</button>
+    </div>
+    <div class="meldung" id="githubMeldung" role="status" aria-live="polite"></div>
+
+    <div id="meldungsListe" style="margin-top:16px;"></div>
+  </section>
+
+  <section class="karte">
     <h2 data-i18n="tarifeTitel">Tarife</h2>
     <p class="beschreibung" data-i18n="tarifeText">
       Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900
@@ -606,6 +643,14 @@
       tarifLoeschenFrage: "Tarif „%s“ wirklich löschen?",
       tarifGeloescht: "Gelöscht.",
       tarifeTitel: "Tarife",
+      githubTitel: "Meldungen",
+      githubText: "Was Kunden im Konto melden, wird als Issue angelegt. Ohne Repository und Token bleibt die Meldung trotzdem hier stehen — sie geht nur nicht hinaus. Der Token wird verschlüsselt abgelegt und nie wieder angezeigt.",
+      fGithubRepo: "Repository",
+      hGithubRepo: "Als Eigner/Name. Issues müssen dort eingeschaltet sein.",
+      fGithubToken: "Token",
+      hGithubToken: "Ein feingranularer Token mit dem Recht „Issues: read and write“ auf genau diesem Repository. Mehr braucht es nicht — und mehr sollte er nicht können.",
+      meldungenLeer: "Noch keine Meldungen.",
+      meldungOffen: "nicht veröffentlicht",
       tarifeText: "Was hier steht, zeigt die öffentliche Seite. Beträge in Cent — 900 bedeutet 9,00 €. Inklusivmenge leer lassen heißt „unbegrenzt“.",
       spSchluessel: "Schlüssel", spName: "Name", spMonatsbeitrag: "Monat (ct)",
       spInklusiv: "Inklusiv", spJeRechnung: "Je Rechnung (ct)",
@@ -706,6 +751,14 @@
       tarifLoeschenFrage: "Really delete the plan “%s”?",
       tarifGeloescht: "Deleted.",
       tarifeTitel: "Plans",
+      githubTitel: "Reports",
+      githubText: "What customers report from their account is filed as an issue. Without a repository and token the report is still kept here — it just does not go out. The token is stored encrypted and never shown again.",
+      fGithubRepo: "Repository",
+      hGithubRepo: "As owner/name. Issues must be enabled there.",
+      fGithubToken: "Token",
+      hGithubToken: "A fine-grained token with “Issues: read and write” on exactly this repository. Nothing more is needed — and nothing more should be possible with it.",
+      meldungenLeer: "No reports yet.",
+      meldungOffen: "not published",
       tarifeText: "What stands here is what the public page shows. Amounts in cents — 900 means € 9.00. Leave the included allowance empty for “unlimited”.",
       spSchluessel: "Key", spName: "Name", spMonatsbeitrag: "Month (ct)",
       spInklusiv: "Included", spJeRechnung: "Per invoice (ct)",
@@ -1367,6 +1420,8 @@
     el("werbungZiel").value = werte.werbung_ziel || "";
     el("stripeFrei").checked = ["1", "ja", "true", "an"].indexOf(
       (werte.stripe_freier_betrag || "").toLowerCase()) >= 0;
+    el("githubRepo").value = werte.github_repo || "";
+    el("githubToken").value = werte.github_token || "";
   }
 
   // Jeder Bereich schickt nur seine eigenen Felder. Der Endpunkt nimmt
@@ -1430,6 +1485,89 @@
     };
   }, stripeMelde));
 
+  function githubMelde(text, gut) {
+    var ziel = el("githubMeldung");
+    ziel.className = "meldung hinweis" + (gut ? " gut" : "");
+    ziel.textContent = text;
+  }
+
+  el("githubSpeichern").addEventListener("click", speichernMit(function () {
+    return {
+      github_repo: el("githubRepo").value.trim(),
+      // Punkte heissen "unveraendert lassen" -- siehe smtp_passwort.
+      github_token: el("githubToken").value
+    };
+  }, githubMelde, ladeMeldungen));
+
+  // Die Meldungen stehen unter dem Zugang und nicht in einer eigenen Karte:
+  // Wer hier etwas eintraegt, will als Naechstes sehen, ob es ankommt.
+  async function ladeMeldungen() {
+    var ziel = el("meldungsListe");
+    var antwort = await RB.api("/api/verwaltung/meldungen");
+    if (!antwort.ok || !antwort.daten) return;
+    ziel.textContent = "";
+    if (!antwort.daten.length) {
+      var leer = document.createElement("p");
+      leer.className = "beschreibung";
+      leer.textContent = RB.t("meldungenLeer");
+      ziel.appendChild(leer);
+      return;
+    }
+    antwort.daten.forEach(function (meldung) {
+      var block = document.createElement("div");
+      block.className = "eintrag";
+      block.style.padding = "10px";
+      block.style.marginTop = "8px";
+
+      var kopf = document.createElement("strong");
+      kopf.textContent = "[" + meldung.art_name + "] " + meldung.titel;
+      block.appendChild(kopf);
+
+      var wer = document.createElement("p");
+      wer.className = "beschreibung";
+      wer.textContent = "#" + meldung.konto + " · " + meldung.email +
+        " · " + meldung.angelegt.replace("T", " ") +
+        (meldung.seite ? " · " + meldung.seite : "") +
+        (meldung.stand ? " · " + meldung.stand : "");
+      block.appendChild(wer);
+
+      var text = document.createElement("p");
+      text.textContent = meldung.text;
+      text.style.whiteSpace = "pre-wrap";
+      block.appendChild(text);
+
+      meldung.bilder.forEach(function (name, nummer) {
+        var verweis = document.createElement("a");
+        verweis.className = "verweis";
+        verweis.href = "/meldungen/bilder/" + encodeURIComponent(name);
+        verweis.target = "_blank";
+        verweis.rel = "noopener";
+        verweis.textContent = "Bild " + (nummer + 1);
+        verweis.style.marginRight = "10px";
+        block.appendChild(verweis);
+      });
+
+      var stand = document.createElement("p");
+      stand.className = "beschreibung";
+      if (meldung.issue_url) {
+        var issue = document.createElement("a");
+        issue.className = "verweis";
+        issue.href = meldung.issue_url;
+        issue.target = "_blank";
+        issue.rel = "noopener";
+        issue.textContent = "#" + meldung.issue_nummer;
+        stand.appendChild(issue);
+      } else {
+        // Warum es nicht hinausging, steht hier im Klartext: Sonst sieht
+        // der Betreiber nur, DASS nichts ankam.
+        stand.textContent = RB.t("meldungOffen") +
+          (meldung.issue_fehler ? " — " + meldung.issue_fehler : "");
+      }
+      block.appendChild(stand);
+      ziel.appendChild(block);
+    });
+  }
+
   el("postTest").addEventListener("click", async function () {
     postMelde(RB.t("laedt"), true);
     // Erst sichern, dann testen: Der Versand liest den gespeicherten
@@ -1483,6 +1621,7 @@
     zeichneZeitwahl();
     ladeBesucher();
     ladeDkim();
+    ladeMeldungen();
 
     zeichneNutzer();
     zeichneTarife();

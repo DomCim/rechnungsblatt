@@ -234,6 +234,43 @@
          aria-live="polite"></div>
   </section>
 
+  <!-- Etwas melden. Steht im Konto und nicht als sechster Reiter: Die
+       Leiste am unteren Rand hat je Eintrag rund 70 px (siehe
+       werkzeuge.js), und gemeldet wird selten. -->
+  <section class="karte" id="meldenKarte">
+    <h2 data-i18n="meldenTitel">Etwas melden</h2>
+    <p class="beschreibung" data-i18n="meldenText">
+      Ein Fehler, eine Ungereimtheit am Beleg, ein Wunsch. Was Sie hier
+      schreiben, wird im Fehlerverzeichnis des Projekts veröffentlicht —
+      bitte keine Namen Ihrer Kunden und keine Beträge hineinschreiben.
+      Ihre E-Mail-Adresse steht nicht dabei.
+    </p>
+    <div class="feld">
+      <label for="meldeArt" data-i18n="meldeArtLabel">Worum geht es?</label>
+      <select id="meldeArt"></select>
+    </div>
+    <div class="feld">
+      <label for="meldeTitel" data-i18n="meldeUeberschrift">Überschrift</label>
+      <input id="meldeTitel" type="text" maxlength="120">
+    </div>
+    <div class="feld">
+      <label for="meldeText" data-i18n="meldeBeschreibung">Was ist passiert?</label>
+      <textarea id="meldeText" rows="5"></textarea>
+    </div>
+    <div class="feld">
+      <label for="meldeSeite" data-i18n="meldeWo">Wo ist es passiert?</label>
+      <input id="meldeSeite" type="text" maxlength="200">
+    </div>
+    <div class="feld">
+      <label for="meldeBilder" data-i18n="meldeBilderLabel">Bildschirmfotos (bis zu vier)</label>
+      <input id="meldeBilder" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+    </div>
+    <div class="zeile">
+      <button class="knopf" type="button" id="meldeSenden" data-i18n="meldeSenden">Abschicken</button>
+    </div>
+    <div class="meldung" id="meldeMeldung" role="status" aria-live="polite"></div>
+  </section>
+
   <!-- Nur fuer Admins. Frueher stand der Adminbereich als sechster
        Reiter in der Leiste — am Handy passte das nicht nebeneinander,
        und gebraucht wird er selten. -->
@@ -340,6 +377,17 @@
       einrichtungText: "Briefpapier, Schreibzone, Ihre Angaben und das Aussehen der Rechnung. Einmal eingestellt, gilt es für jeden Beleg.",
       einrichtungKnopf: "Zur Einrichtung",
       einrichtungFuehrung: "Schritt für Schritt",
+      meldenTitel: "Etwas melden",
+      meldenText: "Ein Fehler, eine Ungereimtheit am Beleg, ein Wunsch. Was Sie hier schreiben, wird im Fehlerverzeichnis des Projekts veröffentlicht — bitte keine Namen Ihrer Kunden und keine Beträge hineinschreiben. Ihre E-Mail-Adresse steht nicht dabei.",
+      meldeArtLabel: "Worum geht es?",
+      meldeUeberschrift: "Überschrift",
+      meldeBeschreibung: "Was ist passiert?",
+      meldeWo: "Wo ist es passiert?",
+      meldeBilderLabel: "Bildschirmfotos (bis zu vier)",
+      meldeSenden: "Abschicken",
+      meldeLaeuft: "Wird abgeschickt …",
+      meldeLeer: "Bitte eine Überschrift und eine Beschreibung angeben.",
+      meldeDanke: "Danke — Ihre Meldung ist angekommen.",
       adminTitel: "Verwaltung",
       adminText: "Konten freischalten, Tarife pflegen, Postausgang und Zahlungen einrichten. Nur für Sie sichtbar.",
       adminKnopf: "Zum Adminbereich",
@@ -399,6 +447,17 @@
       einrichtungText: "Letterhead, writing area, your details and the look of the invoice. Set once, valid for every document.",
       einrichtungKnopf: "Open setup",
       einrichtungFuehrung: "Step by step",
+      meldenTitel: "Report something",
+      meldenText: "A bug, something wrong on the document, a wish. What you write here is published in the project's issue tracker — please do not include your customers' names or any amounts. Your e-mail address is not attached.",
+      meldeArtLabel: "What is it about?",
+      meldeUeberschrift: "Headline",
+      meldeBeschreibung: "What happened?",
+      meldeWo: "Where did it happen?",
+      meldeBilderLabel: "Screenshots (up to four)",
+      meldeSenden: "Send",
+      meldeLaeuft: "Sending …",
+      meldeLeer: "Please give a headline and a description.",
+      meldeDanke: "Thank you — your report has arrived.",
       adminTitel: "Administration",
       adminText: "Activate accounts, maintain plans, set up outgoing mail and payments. Visible only to you.",
       adminKnopf: "Open administration",
@@ -707,8 +766,71 @@ el("abmelden").addEventListener("click", async function () {
     window.location.href = "/";
   });
 
+  // --- Etwas melden -----------------------------------------------------
+  function meldeMeldung(text, istFehler) {
+    var kasten = el("meldeMeldung");
+    kasten.textContent = text;
+    kasten.className = "meldung hinweis" + (istFehler ? "" : " gut");
+  }
+
+  async function ladeMeldung() {
+    var antwort = await RB.api("/api/meldung");
+    if (!antwort.ok || !antwort.daten) return;
+    var auswahl = el("meldeArt");
+    auswahl.textContent = "";
+    antwort.daten.arten.forEach(function (art) {
+      var eintrag = document.createElement("option");
+      eintrag.value = art.schluessel;
+      eintrag.textContent = art.name;
+      auswahl.appendChild(eintrag);
+    });
+    // "Wo war das?" ist die haeufigste Rueckfrage. Vorausgefuellt, wenn der
+    // Kunde direkt aus dem Arbeitsbereich kam -- aber aenderbar, denn der
+    // Verweis stimmt nur dann.
+    var her = document.referrer || "";
+    if (her.indexOf(window.location.origin + "/app/") === 0) {
+      el("meldeSeite").value = her.slice(window.location.origin.length);
+    }
+  }
+
+  el("meldeSenden").addEventListener("click", async function () {
+    var titel = el("meldeTitel").value.trim();
+    var text = el("meldeText").value.trim();
+    if (!titel || !text) { meldeMeldung(RB.t("meldeLeer"), true); return; }
+    var daten = new FormData();
+    daten.append("art", el("meldeArt").value);
+    daten.append("titel", titel);
+    daten.append("text", text);
+    daten.append("seite", el("meldeSeite").value.trim());
+    var dateien = el("meldeBilder").files;
+    for (var i = 0; i < dateien.length && i < 4; i++) {
+      daten.append("bilder", dateien[i]);
+    }
+    // Kein Content-Type setzen: Den Trennstring der Multipart-Nachricht
+    // baut der Browser, und er kennt ihn nur, wenn er die Kopfzeile selbst
+    // schreibt.
+    el("meldeSenden").disabled = true;
+    meldeMeldung(RB.t("meldeLaeuft"), false);
+    var antwort = await RB.api("/api/meldung", { method: "POST", body: daten });
+    el("meldeSenden").disabled = false;
+    if (!antwort.ok) {
+      var grund = antwort.daten && antwort.daten.detail &&
+        antwort.daten.detail.grund;
+      meldeMeldung(grund || RB.t("fehlerAllgemein"), true);
+      return;
+    }
+    // Ob das Issue angelegt werden konnte, steht in der Antwort -- dem
+    // Kunden wird es nicht gesagt. Fuer ihn ist die Meldung angekommen;
+    // dass sie noch nicht veroeffentlicht ist, ist Sache des Betreibers.
+    el("meldeTitel").value = "";
+    el("meldeText").value = "";
+    el("meldeBilder").value = "";
+    meldeMeldung(RB.t("meldeDanke"), false);
+  });
+
   ladeBezahlen();
   ladeHinweis();
+  ladeMeldung();
 
   RB.starte(texte);
   RB.beiSprachwechsel(lade);

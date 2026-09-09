@@ -12,7 +12,7 @@ import shutil
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from . import bezahlen, dkim, konten, post, statistik
+from . import bezahlen, dkim, konten, meldungen, post, statistik
 from .basis import (
     datenverzeichnis,
     protokoll,
@@ -220,6 +220,12 @@ def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
                 },
 
             ) from fehler
+
+    # Die Bilder der Meldungen liegen ausserhalb des Nutzerverzeichnisses
+    # (oeffentlich, damit GitHub sie einbetten kann) und faellt die Zeile
+    # ueber ON DELETE CASCADE weg, blieben sie liegen. "Konto weg, Daten
+    # weg" waere dann nicht wahr.
+    meldungen.loesche_bilder(konten.meldungsbilder_von(nutzer_id))
 
     try:
 

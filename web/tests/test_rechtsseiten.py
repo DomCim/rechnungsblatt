@@ -94,6 +94,19 @@ def test_datenschutz_nennt_stripe_und_die_zaehlung(klient):
     assert "Kartendaten erreichen diesen Server nie" in text
 
 
+def test_datenschutz_nennt_github(klient):
+    """Meldungen aus dem Konto gehen nach draußen — das muss dort stehen.
+
+    Sie sind die einzige Verarbeitung, bei der ein Nutzer selbst
+    entscheidet, was übermittelt wird. Gerade deshalb muss die Erklärung
+    sagen, was mitgeht — und was nicht.
+    """
+    text = klient.get("/datenschutz").text
+
+    assert "GitHub" in text
+    assert "E-Mail-Adresse wird nicht &uuml;bermittelt" in text
+
+
 def test_agb_nennen_widerruf_und_haftung(klient):
     text = klient.get("/agb").text
 

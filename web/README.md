@@ -19,14 +19,25 @@ Sitzung, Tarif und Kontingent zu tun hat (PostgreSQL).
 | `/app/einrichtung` | Konto | Briefpapier, Schreibzone, Stammdaten, Gestaltung |
 | `/app/rechnung` | Konto | Rechnungsformular |
 | `/app/ablage` | Konto | Erzeugte Belege mit PDF und XML |
-| `/app/konto` | Anmeldung | Tarif, Verbrauch, Guthaben, Passwortwechsel |
+| `/app/konto` | Anmeldung | Tarif, Verbrauch, Guthaben, Passwortwechsel, Meldungen |
+| `/meldungen/bilder/<name>` | offen | Bildschirmfotos zu Meldungen — offen, weil der Bildproxy von GitHub sie holt |
 | `/app/verwaltung` | Admin | Konten freischalten und sperren, Rolle, Tarif, Guthaben, Tarife pflegen |
 | `/api/gesundheit` | offen | Healthcheck inkl. Datenbankprüfung |
 
 **Landung nach der Anmeldung ist das Rechnungsformular**, sobald Briefpapier,
 Schreibzone und Stammdaten vorliegen — die Einrichtung ist nur der Umweg
-davor. Wer noch nicht freigeschaltet ist, sieht statt der Seite den
-Wartehinweis.
+davor. Wer sich registriert, ist sofort frei; das Tor ist die Bestätigung
+der E-Mail-Adresse. Wessen Konto der Betreiber zurückgenommen oder gesperrt
+hat, sieht statt der Seite den Wartehinweis.
+
+**Meldungen** (`meldungen.py`, `wege_meldung.py`): Das Konto trägt ein
+Formular für Fehler, Beleg-Ungereimtheiten und Wünsche. Eine Meldung wird
+zuerst gespeichert und dann als GitHub-Issue angelegt — in dieser
+Reihenfolge, damit die Schilderung nicht verschwindet, wenn GitHub klemmt.
+Im Issue steht die **Nummer** des Kontos, nicht seine Adresse.
+Bildschirmfotos liegen unverschlüsselt unter `DATEN/meldungen/` mit
+Zufallsnamen, weil der Bildproxy von GitHub sie über das offene Netz holt;
+beim Löschen eines Kontos gehen sie mit.
 
 ## Die öffentlichen Seiten
 
