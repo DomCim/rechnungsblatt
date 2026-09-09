@@ -1072,9 +1072,9 @@
       <p class="beschreibung" data-i18n="laedt">Einen Moment …</p>
     </div>
     <p class="beschreibung" style="margin-top: 14px;" data-i18n="preiseFuss">
-      Alle Preise verstehen sich zuzüglich Umsatzsteuer. Das Modell ist noch
-      nicht endgültig — solange kein Bezahlweg angebunden ist, schaltet der
-      Betreiber Kontingente von Hand frei.
+      Alle Preise verstehen sich zuzüglich Umsatzsteuer. Bezahlt wird über
+      Stripe — Guthaben aufladen oder einen Tarif buchen. Kartendaten
+      erreichen unseren Server nie.
     </p>
   </section>
 
@@ -1099,8 +1099,8 @@
   <section class="karte schluss">
     <h2 data-i18n="schlussTitel">Einmal einrichten, dann steht es</h2>
     <p class="beschreibung" style="margin: 8px auto 16px; max-width: 46ch;" data-i18n="schlussText">
-      Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von
-      Hand freigeschaltet — das dauert in der Regel nicht lange.
+      Konto anlegen, Briefbogen hochladen, loslegen. E-Mail-Adresse
+      bestätigen, dann steht der Arbeitsbereich sofort offen.
     </p>
     <a class="knopf" href="/anmelden#registrieren" data-i18n="heldKnopf">Konto anlegen</a>
   </section>
@@ -1210,7 +1210,8 @@
       k12: "Konto weg, Daten weg. Ohne Papierkorb, ohne Rest.",
       preiseTitel: "Was es kostet",
       preiseText: "Sie fangen mit einem Probekontingent an — vollwertige Rechnungen, keine Wasserzeichen, keine Zahlungsdaten. Erst danach entscheiden Sie.",
-      preiseFuss: "Alle Preise verstehen sich zuzüglich Umsatzsteuer. Das Modell ist noch nicht endgültig — solange kein Bezahlweg angebunden ist, schaltet der Betreiber Kontingente von Hand frei.",
+      preiseFuss: "Alle Preise verstehen sich zuzüglich Umsatzsteuer. Bezahlt wird über Stripe — Guthaben aufladen oder einen Tarif buchen. Kartendaten erreichen unseren Server nie.",
+      tarifeLeer: "Zurzeit ist keine Preistafel veröffentlicht.",
       preisMonat: "je Monat",
       preisRechnung: "je Rechnung",
       preisKostenlos: "kostenlos", empfohlen: "Empfohlen",
@@ -1228,7 +1229,7 @@
       nicht5: "Keine Steuerberatung. Ob eine Angabe inhaltlich richtig ist, entscheiden Sie oder Ihr Berater.",
       nicht6: "Nicht offline. Rechnungsblatt lässt sich aufs Handy legen und startet sofort — aber die Rechnung entsteht auf dem Server, nicht im Browser. Ohne Netz gibt es eine klare Auskunft statt eines halben Belegs.",
       schlussTitel: "Einmal einrichten, dann steht es",
-      schlussText: "Konto anlegen, Briefbogen hochladen, loslegen. Neue Konten werden von Hand freigeschaltet — das dauert in der Regel nicht lange.",
+      schlussText: "Konto anlegen, Briefbogen hochladen, loslegen. E-Mail-Adresse bestätigen, dann steht der Arbeitsbereich sofort offen.",
       fussHinweis: "Rechnungsblatt — E-Rechnung auf eigenem Briefpapier.",
       navImpressum: "Impressum", navDatenschutz: "Datenschutz", navAgb: "AGB",
       hausText: "Rechnungsblatt entsteht bei DiD0m. Dort gibt es auch ERP- und CRM-Lösungen für kleine Betriebe — zugeschnitten statt von der Stange.",
@@ -1305,7 +1306,8 @@
       k12: "Account gone, data gone. No recycle bin, no leftovers.",
       preiseTitel: "What it costs",
       preiseText: "You start with a trial allowance — full invoices, no watermarks, no payment details. Only then do you decide.",
-      preiseFuss: "All prices are exclusive of VAT. The model is not final — while no payment route is connected, the operator grants allowances by hand.",
+      preiseFuss: "All prices are exclusive of VAT. Payment runs through Stripe — top up credit or book a plan. Card details never reach our server.",
+      tarifeLeer: "No price list is published at the moment.",
       preisMonat: "per month",
       preisRechnung: "per invoice",
       preisKostenlos: "free", empfohlen: "Recommended",
@@ -1323,7 +1325,7 @@
       nicht5: "No tax advice. Whether an entry is substantively correct is for you or your adviser to decide.",
       nicht6: "Not offline. Rechnungsblatt installs on your phone and starts instantly — but the invoice is built on the server, not in the browser. Without a connection you get a clear message rather than half a document.",
       schlussTitel: "Set it up once, then it stands",
-      schlussText: "Create an account, upload your letterhead, get going. New accounts are activated by hand — usually not a long wait.",
+      schlussText: "Create an account, upload your letterhead, get going. Confirm your e-mail address and the workspace opens right away.",
       fussHinweis: "Rechnungsblatt — e-invoicing on your own letterhead.",
       navImpressum: "Legal notice", navDatenschutz: "Privacy", navAgb: "Terms",
       hausText: "Rechnungsblatt is built at DiD0m, which also makes ERP and CRM systems for small businesses — tailored rather than off the shelf.",
@@ -1348,7 +1350,7 @@
     if (!geladene.length) {
       var leer = document.createElement("p");
       leer.className = "beschreibung";
-      leer.textContent = RB.t("preiseFuss");
+      leer.textContent = RB.t("tarifeLeer");
       ziel.appendChild(leer);
       return;
     }
