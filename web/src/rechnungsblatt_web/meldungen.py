@@ -17,7 +17,7 @@ heraus niemand identifizierbar, dessen Meldung einmal falsch adressiert
 ist.
 
 **Ohne Zugang geht nichts verloren.** Repo und Token stehen in den
-Einstellungen (Adminbereich → Betrieb), nicht in Umgebungsvariablen — so
+Einstellungen (Adminbereich → Meldungen), nicht in Umgebungsvariablen — so
 lässt sich das Ziel wechseln, ohne den Stack neu zu deployen. Fehlt eines
 von beiden oder antwortet GitHub nicht, wird die Meldung trotzdem
 gespeichert und der Grund am Datensatz vermerkt. Der Betreiber sieht sie
@@ -172,7 +172,7 @@ def lege_issue_an(titel: str, koerper: str, label: str) -> tuple[int, str]:
     repo, token = _zugang()
     if not repo or not token:
         raise MeldungFehler(
-            "Kein GitHub-Zugang eingetragen (Adminbereich → Betrieb)."
+            "Kein GitHub-Zugang eingetragen (Adminbereich → Meldungen)."
         )
     try:
         antwort = httpx.post(
