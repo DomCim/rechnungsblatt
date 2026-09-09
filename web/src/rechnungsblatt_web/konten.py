@@ -580,6 +580,15 @@ def registriere(email: str, passwort: str) -> tuple[Nutzer, str]:
     — nur seine Hülle um den Datenschlüssel. Wer ihn verliert und sein
     Passwort vergisst, kommt an die Daten nicht mehr heran; das ist der
     Zweck (siehe ``tresor``).
+
+    **Das Konto ist sofort frei.** Bis zum 09.09.2026 stand hier
+    ``STATUS_WARTET``: Jede Registrierung wartete auf einen Handgriff des
+    Betreibers. Das Tor bleibt trotzdem zu, denn ``pruefe_anmeldung``
+    verlangt eine bestätigte E-Mail-Adresse — der Code aus dem Postfach
+    leistet gegen Wegwerfkonten dasselbe wie die Freigabe von Hand, nur
+    ohne dass jemand wach sein muss. ``setze_status`` kann ein Konto
+    weiterhin auf ``wartet`` zurücknehmen oder sperren; das ist dann eine
+    Entscheidung über ein bestimmtes Konto und kein Standardzustand.
     """
     email = normalisiere_email(email)
     pruefe_passwortregeln(passwort)
@@ -593,9 +602,10 @@ def registriere(email: str, passwort: str) -> tuple[Nutzer, str]:
             raise KontoFehler("Für diese E-Mail-Adresse gibt es bereits ein Konto.")
         zeile = verb.execute(
             f"""INSERT INTO nutzer (email, passwort_hash, rolle, status, tarif,
-                                    huelle_passwort, huelle_code)
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {_NUTZER_SPALTEN}""",
-            (email, hashe_passwort(passwort), ROLLE_KUNDE, STATUS_WARTET,
+                                    huelle_passwort, huelle_code, freigegeben)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, now())
+                RETURNING {_NUTZER_SPALTEN}""",
+            (email, hashe_passwort(passwort), ROLLE_KUNDE, STATUS_FREI,
              STANDARD_TARIF,
              tresor.verpacke(datenschluessel, passwort),
              tresor.verpacke(datenschluessel, tresor.normalisiere_code(code))),
