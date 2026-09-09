@@ -253,7 +253,7 @@ def robots(anfrage: Request) -> Response:
 #
 # **Regel: Wer den Text einer Seite aendert, aendert hier das Datum mit.**
 SITEMAP: tuple[tuple[str, str, str, str], ...] = (
-    ("", "2026-09-07", "monthly", "1.0"),
+    ("", "2026-09-09", "monthly", "1.0"),
     ("impressum", "2026-09-02", "yearly", "0.3"),
     ("datenschutz", "2026-09-02", "yearly", "0.3"),
     ("agb", "2026-09-02", "yearly", "0.3"),

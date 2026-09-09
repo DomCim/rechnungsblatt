@@ -108,7 +108,7 @@ Diese Abgrenzungen sind belastbar und sollten nicht wegfallen:
 - [Startseite](https://rechnungsblatt.de/): Was die Anwendung tut, für
   wen, und was sie nicht tut.
 - [Anmelden und registrieren](https://rechnungsblatt.de/app/anmelden):
-  Neue Konten werden von Hand freigeschaltet.
+  Nach Bestätigung der E-Mail-Adresse ist das Konto sofort nutzbar.
 - [Impressum](https://rechnungsblatt.de/impressum): Anbieterangaben
   nach § 5 DDG.
 - [Datenschutzerklärung](https://rechnungsblatt.de/datenschutz): Welche
