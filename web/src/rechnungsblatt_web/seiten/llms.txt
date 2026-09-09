@@ -45,6 +45,10 @@ EN 16931.
   Rechnungsvorlagen (Positionslisten ohne Empfänger).
 - **Nummernkreis** mit Muster ({JJJJ}, {JJ}, Zähler). Eine vergebene
   Nummer wird nicht überschrieben.
+- **Meldungen aus dem Konto**: Fehler, Beleg-Ungereimtheiten und
+  Wuensche gehen aus dem Arbeitsbereich als Issue ins Fehlerverzeichnis
+  des Projekts -- mit Bildschirmfotos, ohne die E-Mail-Adresse des
+  Kontos.
 - **Als App installierbar** (PWA). Rechnungen entstehen weiterhin nur
   online — der Kern läuft auf dem Server.
 

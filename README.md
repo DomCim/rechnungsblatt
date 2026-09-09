@@ -122,10 +122,16 @@ Prototyp-Befund).
 - [x] Öffentliche Seite, die das Modell erklärt, mit Preistafel aus der
       Datenbank
 - [x] Konten und Mandantentrennung (PostgreSQL): Registrierung mit
-      Freischaltung durch den Admin, Sitzungen, Rollen, je Konto getrennte
-      Daten unter `nutzer/<id>/`, Adminbereich für Freigabe, Tarif und
+      Bestätigung der E-Mail-Adresse, Sitzungen, Rollen, je Konto getrennte
+      Daten unter `nutzer/<id>/`, Adminbereich für Rolle, Tarif und
       Guthaben; Landung nach der Anmeldung ist das Rechnungsformular
+- [x] Bezahlweg: Stripe Checkout für Guthaben und Abo. Der Admin kann Tarif
+      und Guthaben weiterhin von Hand buchen — die Zahlung ergänzt ihn,
+      sie ersetzt ihn nicht
+- [x] Meldungen aus dem Konto: fünf Arten (Fehler, Design, Idee, Beleg,
+      Sonstiges) mit Bildschirmfotos, veröffentlicht als GitHub-Issue.
+      Repository und Token stehen im Adminbereich
 - [ ] Artifex-Lizenzfrage klären (blockiert Produktivbetrieb, nicht die Entwicklung)
-- [ ] Abrechnungsmodell entscheiden und einen Bezahlweg anbinden — bis dahin
-      bucht der Admin Tarif und Guthaben von Hand
+- [ ] Abrechnungsmodell entscheiden — die Tarife liegen als Datensatz vor,
+      entschieden ist damit nichts (siehe „Offene Risiken" Nr. 4)
 - [ ] Zehn echte Testrechnungen mit echten Briefbögen

@@ -78,6 +78,7 @@ from . import (
     wege_beleg,
     wege_einrichtung,
     wege_konto,
+    wege_meldung,
     wege_seiten,
     wege_verwaltung,
     wege_zahlung,
@@ -181,6 +182,7 @@ app.include_router(wege_einrichtung.wege)
 app.include_router(wege_beleg.wege)
 app.include_router(wege_verwaltung.wege)
 app.include_router(wege_zahlung.wege)
+app.include_router(wege_meldung.wege)
 # Die Besucherzählung läuft über die eigene Adresse — das interne
 # Plausible ist vom Browser aus nicht erreichbar.
 app.include_router(zaehler.wege)

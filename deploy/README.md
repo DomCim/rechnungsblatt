@@ -140,13 +140,19 @@ verlässlich läuft.
 
 ## Zwei Punkte, bevor es öffentlich wird
 
-1. **Konten sind eingebaut, Bezahlung nicht.** Öffentlich erreichbar sind
-   nur Startseite und Anmeldung; alles unter `/app` und `/api` verlangt ein
-   freigeschaltetes Konto, und die Nutzdaten sind je Konto getrennt. Die
-   frühere BasicAuth-Notlösung ist damit hinfällig. **Neue Registrierungen
-   stehen auf „wartet"** und müssen unter `/app/verwaltung` von Hand
-   freigeschaltet werden — ohne diesen Schritt kommt niemand hinein. Ein
-   Bezahlweg ist nicht angebunden: Tarif und Guthaben setzt der Admin.
+1. **Konten und Bezahlung sind eingebaut.** Öffentlich erreichbar sind
+   Startseite, Fachseiten, Rechtsseiten und Anmeldung; alles unter `/app`
+   und `/api` verlangt ein freigeschaltetes Konto, und die Nutzdaten sind
+   je Konto getrennt. Die frühere BasicAuth-Notlösung ist damit hinfällig.
+
+   **Wer sich registriert, ist sofort frei.** Das einzige Tor ist die
+   Bestätigung der E-Mail-Adresse — und damit hängt der Zugang neuer
+   Kunden am Postausgang (Punkt 2 unten): Ohne eingerichtetes SMTP kommt
+   der sechsstellige Code nicht an, und niemand kann sich anmelden. Wer
+   den Stack aufsetzt, richtet den Versand also als Erstes ein.
+
+   Tarif und Guthaben setzt der Admin weiterhin von Hand; über Stripe
+   Checkout kauft der Kunde beides auch selbst.
 2. **Plausible und HTTPS.** Die Seite läuft über HTTPS (NPM terminiert
    es). Zeigt die Plausible-Adresse auf `http://…`, blockt der Browser das
    Skript als Mixed Content — sichtbar nur in der Konsole, die Zählung
@@ -158,6 +164,17 @@ verlässlich läuft.
    kein Skript eingebunden. Die Stack-Variable `PLAUSIBLE_URL` gibt es
    weiterhin als Rückfall, damit ältere Stacks nicht plötzlich ohne
    Zählung dastehen.
+
+3. **Meldungen aus dem Konto.** Damit sie als Issue ankommen, gehören
+   Repository und Token in den **Adminbereich** unter `/app/verwaltung` →
+   Meldungen. Der Token ist am besten ein feingranularer mit dem einen
+   Recht „Issues: read and write" auf genau diesem Repository — mehr
+   braucht es nicht. Ohne Eintrag bleiben die Meldungen im Adminbereich
+   stehen, statt verloren zu gehen.
+
+   `RECHNUNGSBLATT_VERSION` wird der App zusätzlich als Umgebungsvariable
+   gereicht: Jede Meldung trägt den laufenden Stand mit, sonst sucht man
+   einen gemeldeten Fehler im falschen.
 
 ## Lokal ausprobieren ohne Compose (nur docker run)
 
