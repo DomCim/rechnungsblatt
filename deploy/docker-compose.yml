@@ -66,6 +66,11 @@ services:
       - daten:/daten
     environment:
       DATENBANK_URL: postgresql://rechnungsblatt:${DB_PASSWORT}@datenbank:5432/rechnungsblatt
+      # Derselbe Wert, der oben das Image waehlt — hier noch einmal, damit
+      # die Anwendung ihren eigenen Stand KENNT. Eine Meldung aus dem Konto
+      # traegt ihn mit; ohne ihn sucht man den gemeldeten Fehler im
+      # falschen Stand. Ohne Angabe: "latest".
+      RECHNUNGSBLATT_VERSION: ${RECHNUNGSBLATT_VERSION:-latest}
       # Beim ersten Start wird dieses Konto als Admin angelegt und
       # freigeschaltet. Existiert es bereits, bleibt sein Passwort
       # unangetastet — ein Neustart dreht eine Änderung also nicht zurück.

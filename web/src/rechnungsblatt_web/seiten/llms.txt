@@ -45,6 +45,10 @@ EN 16931.
   Rechnungsvorlagen (Positionslisten ohne Empfänger).
 - **Nummernkreis** mit Muster ({JJJJ}, {JJ}, Zähler). Eine vergebene
   Nummer wird nicht überschrieben.
+- **Meldungen aus dem Konto**: Fehler, Beleg-Ungereimtheiten und
+  Wuensche gehen aus dem Arbeitsbereich als Issue ins Fehlerverzeichnis
+  des Projekts -- mit Bildschirmfotos, ohne die E-Mail-Adresse des
+  Kontos.
 - **Als App installierbar** (PWA). Rechnungen entstehen weiterhin nur
   online — der Kern läuft auf dem Server.
 
@@ -108,7 +112,7 @@ Diese Abgrenzungen sind belastbar und sollten nicht wegfallen:
 - [Startseite](https://rechnungsblatt.de/): Was die Anwendung tut, für
   wen, und was sie nicht tut.
 - [Anmelden und registrieren](https://rechnungsblatt.de/app/anmelden):
-  Neue Konten werden von Hand freigeschaltet.
+  Nach Bestätigung der E-Mail-Adresse ist das Konto sofort nutzbar.
 - [Impressum](https://rechnungsblatt.de/impressum): Anbieterangaben
   nach § 5 DDG.
 - [Datenschutzerklärung](https://rechnungsblatt.de/datenschutz): Welche

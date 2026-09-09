@@ -68,8 +68,8 @@
       <div class="marke"><a href="/" style="color:inherit;text-decoration:none;">Rechnungsblatt</a></div>
       <h1 data-i18n="titel">Anmelden</h1>
       <p class="untertitel" data-i18n="untertitel">
-        Melden Sie sich an, oder legen Sie ein Konto an. Neue Konten werden
-        vom Betreiber von Hand freigeschaltet.
+        Melden Sie sich an, oder legen Sie ein Konto an. Sie bestätigen nur
+        Ihre E-Mail-Adresse, dann geht es sofort los.
       </p>
     </div>
     <div class="sprachen" role="group" aria-label="Sprache / Language">
@@ -126,8 +126,8 @@
         <h2 data-i18n="registrierenTitel">Konto anlegen</h2>
       </summary>
       <p class="beschreibung" data-i18n="registrierenText">
-        Kostenlos und ohne Zahlungsdaten. Sie können sich erst anmelden,
-        nachdem Ihr Konto freigeschaltet wurde.
+        Kostenlos und ohne Zahlungsdaten. Sie bekommen einen
+        Bestätigungscode an Ihre Adresse — danach steht Ihnen alles offen.
       </p>
       <form id="registrierForm" novalidate>
         <div class="feld">
@@ -205,12 +205,12 @@
   var texte = {
     de: {
       titel: "Anmelden",
-      untertitel: "Melden Sie sich an, oder legen Sie ein Konto an. Neue Konten werden vom Betreiber von Hand freigeschaltet.",
+      untertitel: "Melden Sie sich an, oder legen Sie ein Konto an. Sie bestätigen nur Ihre E-Mail-Adresse, dann geht es sofort los.",
       anmeldenTitel: "Anmelden",
       anmeldenText: "Mit E-Mail-Adresse und Passwort.",
       anmeldenKnopf: "Anmelden",
       registrierenTitel: "Konto anlegen",
-      registrierenText: "Kostenlos und ohne Zahlungsdaten. Sie können sich erst anmelden, nachdem Ihr Konto freigeschaltet wurde.",
+      registrierenText: "Kostenlos und ohne Zahlungsdaten. Sie bekommen einen Bestätigungscode an Ihre Adresse — danach steht Ihnen alles offen.",
       registrierenKnopf: "Konto anlegen",
       email: "E-Mail",
       passwort: "Passwort",
@@ -228,17 +228,18 @@
       vergessenSenden: "Link schicken",
       vergessenGeschickt: "Falls es zu dieser Adresse ein Konto gibt, ist der Link unterwegs.",
       zurueck: "Zurück zur Übersicht",
-      registriert: "Konto angelegt. Sobald der Betreiber es freischaltet, können Sie sich anmelden.",
+      registriert: "Konto angelegt. Wir haben Ihnen einen Bestätigungscode geschickt.",
+      bereitZumAnmelden: "Alles erledigt — Sie können sich jetzt anmelden.",
       gesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber."
     },
     en: {
       titel: "Sign in",
-      untertitel: "Sign in, or create an account. New accounts are activated by the operator by hand.",
+      untertitel: "Sign in, or create an account. Just confirm your e-mail address and you are ready to go.",
       anmeldenTitel: "Sign in",
       anmeldenText: "With your e-mail address and password.",
       anmeldenKnopf: "Sign in",
       registrierenTitel: "Create account",
-      registrierenText: "Free and without payment details. You can only sign in once your account has been activated.",
+      registrierenText: "Free and without payment details. You will get a confirmation code by e-mail — after that everything is open to you.",
       registrierenKnopf: "Create account",
       email: "E-mail",
       passwort: "Password",
@@ -256,7 +257,8 @@
       vergessenSenden: "Send link",
       vergessenGeschickt: "If an account exists for this address, the link is on its way.",
       zurueck: "Back to the overview",
-      registriert: "Account created. As soon as the operator activates it you can sign in.",
+      registriert: "Account created. We have sent you a confirmation code.",
+      bereitZumAnmelden: "All done — you can sign in now.",
       gesperrt: "Your account is blocked. Please contact the operator."
     }
   };
@@ -369,7 +371,7 @@
   });
   el("rettungFertig").addEventListener("click", function () {
     el("rettungSchritt").hidden = true;
-    melde(el("registrierMeldung"), RB.t("registriert"), true);
+    melde(el("registrierMeldung"), RB.t("bereitZumAnmelden"), true);
   });
 
   // ---------- Passwort vergessen ----------

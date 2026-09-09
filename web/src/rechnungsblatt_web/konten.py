@@ -275,6 +275,32 @@ CREATE TABLE IF NOT EXISTS zahlungen (
     zeitpunkt  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS zahlungen_nutzer ON zahlungen (nutzer, zeitpunkt);
+
+-- Meldungen aus dem Arbeitsbereich (siehe meldungen.py). Sie liegen auch
+-- dann hier, wenn das Issue angelegt werden konnte: Ein Repository laesst
+-- sich umziehen oder loeschen, und der Betreiber soll nachlesen koennen,
+-- was gemeldet wurde. `issue_fehler` haelt fest, warum es NICHT geklappt
+-- hat -- ohne diese Spalte waere eine misslungene Veroeffentlichung von
+-- einer gelungenen nicht zu unterscheiden.
+CREATE TABLE IF NOT EXISTS meldungen (
+    id            BIGSERIAL PRIMARY KEY,
+    nutzer        BIGINT NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+    art           TEXT NOT NULL,
+    titel         TEXT NOT NULL,
+    text          TEXT NOT NULL,
+    seite         TEXT NOT NULL DEFAULT '',
+    browser       TEXT NOT NULL DEFAULT '',
+    stand         TEXT NOT NULL DEFAULT '',
+    -- Dateinamen der Bildschirmfotos, durch Zeilenumbruch getrennt. Kein
+    -- JSON: Es ist eine Liste kurzer Namen ohne Struktur, und so laesst
+    -- sie sich in der Datenbank lesen, ohne sie zu entpacken.
+    bilder        TEXT NOT NULL DEFAULT '',
+    issue_nummer  INTEGER,
+    issue_url     TEXT NOT NULL DEFAULT '',
+    issue_fehler  TEXT NOT NULL DEFAULT '',
+    angelegt      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS meldungen_nutzer ON meldungen (nutzer, angelegt);
 """
 
 # Nachträgliche Spalten.
@@ -580,6 +606,15 @@ def registriere(email: str, passwort: str) -> tuple[Nutzer, str]:
     — nur seine Hülle um den Datenschlüssel. Wer ihn verliert und sein
     Passwort vergisst, kommt an die Daten nicht mehr heran; das ist der
     Zweck (siehe ``tresor``).
+
+    **Das Konto ist sofort frei.** Bis zum 09.09.2026 stand hier
+    ``STATUS_WARTET``: Jede Registrierung wartete auf einen Handgriff des
+    Betreibers. Das Tor bleibt trotzdem zu, denn ``pruefe_anmeldung``
+    verlangt eine bestätigte E-Mail-Adresse — der Code aus dem Postfach
+    leistet gegen Wegwerfkonten dasselbe wie die Freigabe von Hand, nur
+    ohne dass jemand wach sein muss. ``setze_status`` kann ein Konto
+    weiterhin auf ``wartet`` zurücknehmen oder sperren; das ist dann eine
+    Entscheidung über ein bestimmtes Konto und kein Standardzustand.
     """
     email = normalisiere_email(email)
     pruefe_passwortregeln(passwort)
@@ -593,9 +628,10 @@ def registriere(email: str, passwort: str) -> tuple[Nutzer, str]:
             raise KontoFehler("Für diese E-Mail-Adresse gibt es bereits ein Konto.")
         zeile = verb.execute(
             f"""INSERT INTO nutzer (email, passwort_hash, rolle, status, tarif,
-                                    huelle_passwort, huelle_code)
-                VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING {_NUTZER_SPALTEN}""",
-            (email, hashe_passwort(passwort), ROLLE_KUNDE, STATUS_WARTET,
+                                    huelle_passwort, huelle_code, freigegeben)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, now())
+                RETURNING {_NUTZER_SPALTEN}""",
+            (email, hashe_passwort(passwort), ROLLE_KUNDE, STATUS_FREI,
              STANDARD_TARIF,
              tresor.verpacke(datenschluessel, passwort),
              tresor.verpacke(datenschluessel, tresor.normalisiere_code(code))),
@@ -897,9 +933,15 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # ändern lassen, ohne neu auszurollen — und abschalten,
                # wenn er nicht wirkt.
                "werbung_an", "werbung_titel", "werbung_text",
-               "werbung_knopf", "werbung_ziel")
+               "werbung_knopf", "werbung_ziel",
+               # GitHub. Ziel der Meldungen aus dem Arbeitsbereich
+               # ("DomCim/rechnungsblatt"); der Token liegt verschluesselt.
+               # Beides als Einstellung, damit sich das Ziel wechseln laesst,
+               # ohne den Stack neu zu deployen -- und damit ein abgelaufener
+               # Token nachgetragen werden kann, ohne jemanden zu wecken.
+               "github_repo", "github_token")
 _GEHEIME_FELDER = {"smtp_passwort", "stripe_secret", "stripe_webhook_secret",
-                   "plausible_api_key", "dkim_schluessel"}
+                   "plausible_api_key", "dkim_schluessel", "github_token"}
 
 
 def einstellungen(mit_geheimnissen: bool = False) -> dict[str, str]:
@@ -1153,6 +1195,75 @@ def zahlungen_von(nutzer_id: int, grenze: int = 20) -> list[dict]:
             (nutzer_id, grenze),
         ).fetchall()
     return [dict(z) for z in zeilen]
+
+
+# ---------------------------------------------------------------- Meldungen
+
+def lege_meldung_an(nutzer_id: int, art: str, titel: str, text: str,
+                    seite: str, browser: str, stand: str,
+                    bilder: list[str]) -> int:
+    """Speichert eine Meldung und liefert ihre Nummer."""
+    with verbindung() as verb:
+        zeile = verb.execute(
+            """INSERT INTO meldungen
+                   (nutzer, art, titel, text, seite, browser, stand, bilder)
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+            (nutzer_id, art, titel[:250], text, seite[:500], browser[:255],
+             stand[:80], "\n".join(bilder)),
+        ).fetchone()
+    return int(zeile["id"])
+
+
+def vermerke_issue(meldung_id: int, nummer: int | None, url: str,
+                   fehler: str) -> None:
+    """Haelt fest, was aus der Veroeffentlichung wurde."""
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE meldungen SET issue_nummer = %s, issue_url = %s, "
+            "issue_fehler = %s WHERE id = %s",
+            (nummer, url, fehler, meldung_id),
+        )
+
+
+def meldungen_seit(nutzer_id: int, stunden: int = 1) -> int:
+    """Wie viele Meldungen dieses Konto zuletzt abgeschickt hat."""
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT count(*) AS anzahl FROM meldungen "
+            "WHERE nutzer = %s AND angelegt > now() - make_interval(hours => %s)",
+            (nutzer_id, stunden),
+        ).fetchone()
+    return int(zeile["anzahl"])
+
+
+def meldungen(grenze: int = 100) -> list[dict]:
+    """Alle Meldungen fuer den Adminbereich, neueste zuerst."""
+    with verbindung() as verb:
+        zeilen = verb.execute(
+            """SELECT m.*, n.email FROM meldungen m
+                 JOIN nutzer n ON n.id = m.nutzer
+               ORDER BY m.angelegt DESC LIMIT %s""",
+            (grenze,),
+        ).fetchall()
+    return [dict(z) for z in zeilen]
+
+
+def meldungsbilder_von(nutzer_id: int) -> list[str]:
+    """Die Dateinamen aller Bilder eines Kontos.
+
+    Gebraucht beim Loeschen: Die Zeilen verschwinden ueber ON DELETE
+    CASCADE, die Dateien liegen aber ausserhalb der Datenbank und muessen
+    einzeln weg -- sonst ueberlebte ein Bildschirmfoto das Konto, dem es
+    gehoerte.
+    """
+    with verbindung() as verb:
+        zeilen = verb.execute(
+            "SELECT bilder FROM meldungen WHERE nutzer = %s", (nutzer_id,)
+        ).fetchall()
+    namen: list[str] = []
+    for zeile in zeilen:
+        namen += [n for n in (zeile["bilder"] or "").split("\n") if n]
+    return namen
 
 
 # ---------------------------------------------------------------- Nachweise

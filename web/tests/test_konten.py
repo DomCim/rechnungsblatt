@@ -67,12 +67,13 @@ def klient(tmp_path, monkeypatch, leere_konten):
 
 # ---------------------------------------------------------------- Registrierung
 
-def test_registrierung_wartet_auf_freigabe(klient, leere_konten):
+def test_registrierung_ist_sofort_frei(klient, leere_konten):
+    """Kein Handgriff des Betreibers mehr — die E-Mail-Bestätigung genügt."""
     antwort = klient.post(
         "/api/registrieren", json={"email": "neu@example.de", "passwort": "langgenug12"}
     )
     assert antwort.status_code == 201
-    assert antwort.json()["status"] == leere_konten.STATUS_WARTET
+    assert antwort.json()["status"] == leere_konten.STATUS_FREI
 
 
 def test_registrierung_prueft_eingaben(klient):
@@ -145,6 +146,10 @@ def test_wartendes_konto_kommt_nicht_in_den_arbeitsbereich(klient, leere_konten)
     # Adresse bestätigen: Hier geht es um die ADMIN-Freigabe, nicht um die
     # E-Mail-Bestätigung — die hat ihren eigenen Test.
     leere_konten.bestaetige_email(person.id)
+    # Seit dem 09.09.2026 ist eine frische Registrierung frei; auf "wartet"
+    # kommt ein Konto nur noch, wenn der Betreiber es dorthin zurücknimmt.
+    # Genau dieser Fall wird hier geprüft.
+    leere_konten.setze_status(person.id, leere_konten.STATUS_WARTET)
     melde_an(klient, "wartet@example.de", "langgenug12")
 
     antwort = klient.get("/api/status")
