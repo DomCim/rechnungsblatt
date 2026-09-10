@@ -375,6 +375,28 @@ def _pruefe_kategorie_gegen_land(
                 )
             )
 
+        if laender.ist_eu_ausland(land):
+            # Kein Fehler am Beleg, sondern eine Pflicht daneben: § 18a UStG
+            # verlangt fuer innergemeinschaftliche sonstige Leistungen die
+            # Zusammenfassende Meldung ans BZSt, vierteljaehrlich. Sie haengt
+            # an der Leistung und nicht am eigenen Steuerstatus -- die
+            # Kleinunternehmerregelung befreit davon NICHT. Das ist die
+            # Pflicht, die am haeufigsten uebersehen wird.
+            #
+            # Nur beim EU-Ausland: Fuer die Schweiz gibt es keine ZM, und
+            # § 13b im Inland ist ohnehin ein anderer Tatbestand.
+            befunde.append(
+                Befund(
+                    "ZM1",
+                    "rechnung.positionen",
+                    "Denken Sie an die Zusammenfassende Meldung: "
+                    "Innergemeinschaftliche sonstige Leistungen gehören "
+                    "vierteljährlich ans BZSt (§ 18a UStG) — auch als "
+                    "Kleinunternehmer.",
+                    blockierend=False,
+                )
+            )
+
     if Steuerkategorie.NICHT_STEUERBAR in kategorien:
         # Folge aus BR-O-02: Bei "nicht steuerbar" darf die eigene USt-IdNr.
         # nicht im Beleg stehen (siehe cii.py). Der Verkaeufer weist sich
