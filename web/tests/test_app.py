@@ -553,3 +553,22 @@ def test_schriften_liegen_lokal_vor():
         assert name in css, f"{name} liegt da, wird aber im CSS nicht genannt"
     for verweis in re.findall(r"url\(/seiten/schriften/([^)]+)\)", css):
         assert (schriften / verweis).exists(), f"{verweis} fehlt auf der Platte"
+
+
+def test_laenderliste_kommt_vom_server(client):
+    """Die EU-Liste hat genau eine Quelle — sonst laufen Server und Oberfläche
+    beim nächsten Beitritt auseinander."""
+    daten = client.get("/api/laender").json()
+
+    kennungen = {land["kennung"] for land in daten["eu"]}
+    assert len(kennungen) == 27
+    assert {"DE", "FR", "AT", "GR"} <= kennungen
+    assert "CH" not in kennungen and "GB" not in kennungen
+
+    # Griechenland: Kennzeichen GR, Präfix EL — der Klassiker.
+    griechenland = next(l for l in daten["eu"] if l["kennung"] == "GR")
+    assert griechenland["praefix"] == "EL"
+
+    # Der Name der Nummer reist mit: Danach fragt der Kunde seinen Kunden.
+    frankreich = next(l for l in daten["eu"] if l["kennung"] == "FR")
+    assert frankreich["nummer_heisst"] == "TVA intracommunautaire"

@@ -20,6 +20,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+from rechnungsblatt_kern import laender
 from rechnungsblatt_kern import (
     BlattUeberlauf,
     Belegtyp,
@@ -74,6 +75,30 @@ def nummern_vorschlag(wurzel: Path = Depends(mandant)) -> dict:
     jahr = dt.date.today().year
     stand = _nummern_stand(wurzel, jahr, hat_jahr)
     return {"nummer": _formatiere_nummer(muster, jahr, stand["laufend"] + 1)}
+
+
+@wege.get("/api/laender")
+def laender_liste() -> dict:
+    """Die Mitgliedstaaten — damit die Oberflaeche sie nicht doppelt pflegt.
+
+    Ohne diesen Weg stuende die EU-Liste ein zweites Mal in JavaScript, und
+    beim naechsten Beitritt oder Austritt waere eine der beiden falsch.
+    Der Name der Nummer kommt mit: Wer eine franzoesische Firma abrechnet,
+    fragt nach der TVA intracommunautaire, nicht nach einer USt-IdNr.
+    """
+    return {
+        "eu": [
+            {
+                "kennung": kennung,
+                "name": eintrag.name,
+                "nummer_heisst": eintrag.nummer_heisst,
+                "praefix": eintrag.praefix,
+            }
+            for kennung, eintrag in sorted(
+                laender.EU_LAENDER.items(), key=lambda p: p[1].name
+            )
+        ]
+    }
 
 
 @wege.get("/api/kunden")

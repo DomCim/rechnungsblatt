@@ -151,7 +151,11 @@ def test_reverse_charge_braucht_beide_ustidnr(rechnung, stammdaten):
             ust_idnr="ATU12345678",
         ),
     )
-    assert pruefe_paragraph14(mit_kunde, stammdaten) == []
+    # Uebrig bleibt nur der Hinweis auf die Zusammenfassende Meldung —
+    # er blockiert nicht, denn er betrifft eine Pflicht NEBEN dem Beleg.
+    befunde = pruefe_paragraph14(mit_kunde, stammdaten)
+    assert [b.code for b in befunde if b.blockierend] == []
+    assert codes(befunde) == {"ZM1"}
 
 
 def test_gutschrift_braucht_bezug(rechnung, stammdaten):

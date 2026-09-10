@@ -242,6 +242,13 @@
           <span class="fehler"></span>
         </div>
       </div>
+      <!-- Vorschlag, kein Zwang. Eine Rechnung kann gemischt sein, und
+           § 3a Abs. 3 (Grundstuecke, Eintritt, Befoerderung) haelt sich an
+           kein Laenderkennzeichen. Deshalb schlaegt die Automatik nur den
+           eindeutigen Fall vor und laesst den Rest in der Hand des
+           Menschen. -->
+      <div id="steuerfallVorschlag" class="meldung hinweis"
+           style="margin-top:12px;" hidden></div>
     </section>
 
     <!-- Positionen -->
@@ -406,7 +413,12 @@
       },
       eLand: "Land",
       hLand: "Zwei Buchstaben nach ISO 3166 — DE, FR, CH. Er entscheidet mit über den Steuerfall.",
-      hinweisTitel: "Bitte noch prüfen"
+      hinweisTitel: "Bitte noch prüfen",
+      vorschlagEu: "Empfänger in {land}. Mit {nummer} ist Reverse Charge hier der Regelfall.",
+      vorschlagEuOhneNummer: "Empfänger in {land} — ohne dessen {nummer} bleibt es beim Inlandsfall. Ohne die Nummer ist nicht belegt, dass er Unternehmer ist.",
+      vorschlagDrittland: "Empfänger außerhalb der EU. Bei einer Dienstleistung ist „nicht steuerbar“ richtig, bei einer Warenlieferung „Ausfuhr“ — das entscheiden Sie.",
+      vorschlagUebernehmen: "Für alle Positionen übernehmen",
+      vorschlagUebernommen: "Übernommen ✓"
     },
     en: {
       titel: "New invoice",
@@ -423,6 +435,11 @@
       eLand: "Country",
       hLand: "Two letters per ISO 3166 — DE, FR, CH. It co-determines the tax treatment.",
       hinweisTitel: "Worth a second look",
+      vorschlagEu: "Recipient in {land}. With a {nummer} reverse charge is the normal case here.",
+      vorschlagEuOhneNummer: "Recipient in {land} — without their {nummer} it stays a domestic case. Without the number there is no evidence that they are a business.",
+      vorschlagDrittland: "Recipient outside the EU. For a service “not taxable” is right, for goods “export” — that is your call.",
+      vorschlagUebernehmen: "Apply to all line items",
+      vorschlagUebernommen: "Applied ✓",
       eUstIdnr: "VAT ID (reverse charge / EU)", eEmail: "E-mail (for XRechnung)", eLeitweg: "Leitweg-ID (for XRechnung)",
       positionenTitel: "Line items",
       stornieren: "Cancel",
@@ -799,6 +816,81 @@
     RB.api("/api/hinweis/gesehen", { method: "POST" });
   }
 
+  // ---------- Steuerfall vorschlagen ----------
+  // Die Liste kommt vom Server (siehe /api/laender): Stuende sie hier
+  // ein zweites Mal, waere beim naechsten Beitritt eine der beiden falsch.
+  var gLaender = null;
+
+  async function ladeLaender() {
+    var antwort = await RB.api("/api/laender");
+    if (antwort.ok && antwort.daten) gLaender = antwort.daten.eu;
+    zeichneVorschlag();
+  }
+
+  function landEintrag(kennung) {
+    if (!gLaender) return null;
+    for (var i = 0; i < gLaender.length; i++) {
+      if (gLaender[i].kennung === kennung) return gLaender[i];
+    }
+    return null;
+  }
+
+  function zeichneVorschlag() {
+    var kasten = el("steuerfallVorschlag");
+    if (!kasten) return;
+    var land = el("eLand").value.trim().toUpperCase();
+    var nummer = el("eUstIdnr").value.trim();
+    kasten.textContent = "";
+
+    if (!land || land === "DE" || land.length !== 2) { kasten.hidden = true; return; }
+
+    var eintrag = landEintrag(land);
+    var text;
+    var uebernehmen = null;
+
+    if (eintrag) {
+      var wieHeisst = eintrag.nummer_heisst;
+      if (nummer) {
+        text = RB.t("vorschlagEu")
+          .replace("{land}", eintrag.name).replace("{nummer}", wieHeisst);
+        uebernehmen = "REVERSE_CHARGE";
+      } else {
+        text = RB.t("vorschlagEuOhneNummer")
+          .replace("{land}", eintrag.name).replace("{nummer}", wieHeisst);
+      }
+    } else {
+      // Drittland: KEIN Knopf. Ob Dienstleistung oder Ware, weiss das
+      // Formular nicht — und die Automatik laege bei Waren falsch.
+      text = RB.t("vorschlagDrittland");
+    }
+
+    var satz = document.createElement("span");
+    satz.textContent = text;
+    kasten.appendChild(satz);
+
+    if (uebernehmen) {
+      var knopf = document.createElement("button");
+      knopf.type = "button";
+      knopf.className = "knopf leise";
+      knopf.style.marginLeft = "10px";
+      knopf.textContent = RB.t("vorschlagUebernehmen");
+      knopf.addEventListener("click", function () {
+        var felder = document.querySelectorAll("#positionen .p-steuer");
+        for (var i = 0; i < felder.length; i++) {
+          felder[i].value = uebernehmen;
+          felder[i].dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        knopf.textContent = RB.t("vorschlagUebernommen");
+        knopf.disabled = true;
+      });
+      kasten.appendChild(knopf);
+    }
+    kasten.hidden = false;
+  }
+
+  el("eLand").addEventListener("input", zeichneVorschlag);
+  el("eUstIdnr").addEventListener("input", zeichneVorschlag);
+
   el("xrechnung").addEventListener("click", async function () {
     el("aktionMeldung").textContent = RB.t("laedt");
     var antwort = await fetch("/api/rechnung/xrechnung", {
@@ -877,6 +969,7 @@
     el("ePlz").value = anschrift.plz || "";
     el("eOrt").value = anschrift.ort || "";
     el("eLand").value = (anschrift.land || "DE").toUpperCase();
+    zeichneVorschlag();
     el("eUstIdnr").value = kunde.ust_idnr || "";
     el("eEmail").value = kunde.email || "";
     el("eLeitweg").value = kunde.leitweg_id || "";
@@ -1132,6 +1225,7 @@
     rechne();
     ladeAblage();
     ladeKunden();
+    zeichneVorschlag();
   });
 
   RB.starte(texte);
@@ -1142,6 +1236,7 @@
   pruefeEinrichtung();
   ladeAblage();
   ladeKunden();
+  ladeLaender();
   // Erst die Artikel, dann die Vorlagen: der Preisabgleich beim Laden
   // einer Vorlage braucht den Artikelstamm.
   ladeArtikel().then(ladeVorlagen);

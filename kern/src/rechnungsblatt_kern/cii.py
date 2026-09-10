@@ -14,6 +14,7 @@ import datetime as _dt
 import xml.etree.ElementTree as ET
 from decimal import Decimal
 
+from . import laender
 from .modell import Belegtyp, Profil, Rechnung, Stammdaten, Steuerkategorie
 from .summen import Summen
 
@@ -242,7 +243,14 @@ def _abrechnung(
         _el(steuer, "ram", "CalculatedAmount", _betrag(korb.steuer))
         _el(steuer, "ram", "TypeCode", "VAT")
         if korb.kategorie.hinweis:
-            _el(steuer, "ram", "ExemptionReason", korb.kategorie.hinweis)
+            _el(
+                steuer,
+                "ram",
+                "ExemptionReason",
+                laender.befreiungsgrund(
+                    korb.kategorie, rechnung.empfaenger.anschrift.land
+                ),
+            )
         _el(steuer, "ram", "BasisAmount", _betrag(korb.basis))
         _el(steuer, "ram", "CategoryCode", korb.kategorie.code)
         _el(steuer, "ram", "RateApplicablePercent", _betrag(korb.kategorie.satz))

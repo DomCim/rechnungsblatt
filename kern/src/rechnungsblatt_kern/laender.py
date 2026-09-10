@@ -168,3 +168,33 @@ def muster_passt(nummer: str, land: str) -> bool | None:
     if eintrag is None or not sauber:
         return None
     return bool(re.fullmatch(eintrag.muster, sauber))
+
+
+def befreiungsgrund(kategorie, land: str) -> str | None:
+    """Der Pflichthinweis zum Steuerfall — beim Auslandskunden ergänzt.
+
+    Auf dem Blatt und als ``ExemptionReason`` im XML steht sonst der Text
+    der Kategorie. Bei **Reverse Charge in einen anderen Mitgliedstaat**
+    lohnt sich mehr: Die Buchhaltung des Empfängers sucht den Begriff
+    ihrer eigenen Sprache und die Rechtsgrundlage, auf die sie ihre
+    Steuerschuld stützt.
+
+    **Nur beim EU-Ausland.** Inländisches Reverse Charge nach § 13b UStG
+    (Bauleistungen, Gebäudereinigung, Schrott) trägt denselben Code ``AE``
+    — dort wäre „autoliquidation“ und Art. 196 MwStSystRL schlicht falsch.
+    Ebenso im Drittland: Was ein Schweizer Empfänger schuldet, regelt
+    Schweizer Recht.
+
+    Die Pflichtangabe nach § 14a Abs. 5 UStG bleibt in jedem Fall der
+    deutsche Satz — ergänzt wird, nicht ersetzt.
+    """
+    grund = getattr(kategorie, "hinweis", None)
+    if not grund or getattr(kategorie, "code", "") != "AE":
+        return grund
+    eintrag = land_zu(land)
+    if eintrag is None or (land or "").strip().upper() == "DE":
+        return grund
+    return (
+        f"{grund.rstrip('.')} · {eintrag.umkehr_heisst} "
+        f"(Art. 196 MwStSystRL)."
+    )
