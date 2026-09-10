@@ -19,6 +19,7 @@ from fastapi.responses import (
 
 from . import konten
 from .basis import (
+    sitzungsschluessel,
     wurzel_von,
     PLAUSIBLE_DOMAIN,
     PLAUSIBLE_URL,
@@ -345,7 +346,19 @@ def arbeitsbereich(anfrage: Request) -> Response:
     # Wer noch nicht eingerichtet ist, landet im Assistenten — nicht auf
     # der Einrichtungsseite. Die zeigt alle vier Schritte nebeneinander
     # und setzt voraus, dass man weiß, womit man anfängt.
-    ziel = "/app/rechnung" if ist_bereit(wurzel_von(person)) else "/app/willkommen"
+    #
+    # Der Pfad braucht den Datenschlüssel: `ist_bereit` liest die
+    # Stammdaten, und die liegen verschlüsselt. Ohne ihn warf dieser Weg
+    # bei JEDEM fertig eingerichteten Mandanten 409 „kein_schluessel“ —
+    # und zwar genau dort, wohin die Anmeldung weiterleitet. Am
+    # 10.09.2026 im Browsertest aufgefallen, nachgemessen mit einer
+    # Passwort-Sitzung: /app 409, /app/rechnung 200.
+    from .ablage import Mandantenpfad
+
+    wurzel = Mandantenpfad(wurzel_von(person))
+    wurzel.schluessel = konten.datenschluessel_der_sitzung(
+        sitzungsschluessel(anfrage))
+    ziel = "/app/rechnung" if ist_bereit(wurzel) else "/app/willkommen"
     return RedirectResponse(ziel, status_code=303)
 
 

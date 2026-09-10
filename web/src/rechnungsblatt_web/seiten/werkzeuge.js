@@ -518,10 +518,68 @@ window.RB = (function () {
     });
   }
 
+  // --- Passkeys ------------------------------------------------------
+  // WebAuthn spricht ArrayBuffer, JSON spricht base64url. Diese vier
+  // Helfer sind die ganze Uebersetzung -- sie stehen hier, weil sowohl
+  // die Anmeldeseite als auch das Konto sie brauchen.
+  function ausB64(text) {
+    var roh = atob(String(text).replace(/-/g, "+").replace(/_/g, "/"));
+    var bytes = new Uint8Array(roh.length);
+    for (var i = 0; i < roh.length; i++) bytes[i] = roh.charCodeAt(i);
+    return bytes;
+  }
+
+  function nachB64(puffer) {
+    var bytes = new Uint8Array(puffer), roh = "";
+    for (var i = 0; i < bytes.length; i++) roh += String.fromCharCode(bytes[i]);
+    return btoa(roh).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  // Die Optionen kommen als JSON; die Felder, die der Browser als Puffer
+  // will, muessen einzeln umgestellt werden.
+  function optionenAufbereiten(roh) {
+    var o = typeof roh === "string" ? JSON.parse(roh) : roh;
+    if (o.challenge) o.challenge = ausB64(o.challenge);
+    if (o.user && o.user.id) o.user.id = ausB64(o.user.id);
+    ["excludeCredentials", "allowCredentials"].forEach(function (feld) {
+      if (o[feld]) o[feld] = o[feld].map(function (e) {
+        return Object.assign({}, e, { id: ausB64(e.id) });
+      });
+    });
+    return o;
+  }
+
+  // Eine Antwort des Authenticators so verpacken, wie der Server sie
+  // erwartet. `toJSON` kann noch nicht jeder Browser.
+  function antwortAlsJson(zeugnis) {
+    if (typeof zeugnis.toJSON === "function") return zeugnis.toJSON();
+    var a = zeugnis.response, fertig = {
+      id: zeugnis.id,
+      rawId: nachB64(zeugnis.rawId),
+      type: zeugnis.type,
+      clientExtensionResults: {},
+      response: { clientDataJSON: nachB64(a.clientDataJSON) }
+    };
+    if (a.attestationObject) fertig.response.attestationObject = nachB64(a.attestationObject);
+    if (a.authenticatorData) fertig.response.authenticatorData = nachB64(a.authenticatorData);
+    if (a.signature) fertig.response.signature = nachB64(a.signature);
+    if (a.userHandle) fertig.response.userHandle = nachB64(a.userHandle);
+    return fertig;
+  }
+
+  function passkeysMoeglich() {
+    return !!(window.PublicKeyCredential && window.isSecureContext);
+  }
+
   return {
     t: t,
     el: el,
     auszeichnen: auszeichnen,
+    ausB64: ausB64,
+    nachB64: nachB64,
+    optionenAufbereiten: optionenAufbereiten,
+    antwortAlsJson: antwortAlsJson,
+    passkeysMoeglich: passkeysMoeglich,
     euro: euro,
     starte: starte,
     api: api,
