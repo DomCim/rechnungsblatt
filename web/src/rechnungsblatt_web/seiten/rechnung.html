@@ -214,6 +214,18 @@
           <input id="eOrt">
           <span class="fehler"></span>
         </div>
+        <div class="feld" data-feld="empfaenger.anschrift">
+          <label for="eLand" data-i18n="eLand">Land</label>
+          <input id="eLand" value="DE" maxlength="2" size="2"
+                 style="text-transform: uppercase;" autocomplete="country">
+          <p class="feldhinweis" data-i18n="hLand">
+            Zwei Buchstaben nach ISO&nbsp;3166 &mdash;
+            <span class="kennung">DE</span>, <span class="kennung">FR</span>,
+            <span class="kennung">CH</span>. Er entscheidet mit &uuml;ber den
+            Steuerfall.
+          </p>
+          <span class="fehler"></span>
+        </div>
         <div class="feld" data-feld="empfaenger.ust_idnr">
           <label for="eUstIdnr" data-i18n="eUstIdnr">USt-IdNr. (bei Reverse Charge / EU)</label>
           <input id="eUstIdnr">
@@ -312,6 +324,10 @@
         <span class="beschreibung" id="aktionMeldung" style="margin:0;"></span>
       </div>
       <div class="ergebnis-links" id="ergebnis" style="margin-top:12px;"></div>
+      <!-- Nicht blockierende Befunde. Sie stehen UNTER dem Ergebnis: Der
+           Beleg ist erzeugt, hier ist nichts mehr aufzuhalten — es ist
+           eine Bitte, noch einmal hinzusehen. -->
+      <div id="hinweiseBefund" style="margin-top:12px;" hidden></div>
       <!-- Ein Wort des Betreibers, nur nach einem erzeugten Beleg und nur
            im vom Adminbereich gesetzten Abstand. Steht UNTER den beiden
            Knoepfen: Wer gerade eine Rechnung erzeugt hat, will sie
@@ -385,8 +401,12 @@
       steuern: {
         UST_19: "19 %", UST_7: "7 %", UST_0: "0 %",
         KLEINUNTERNEHMER: "§ 19 UStG", REVERSE_CHARGE: "Reverse Charge",
-        IG_LIEFERUNG: "innergem. Lieferung", AUSFUHR: "Ausfuhr"
-      }
+        IG_LIEFERUNG: "innergem. Lieferung", AUSFUHR: "Ausfuhr",
+        NICHT_STEUERBAR: "nicht steuerbar"
+      },
+      eLand: "Land",
+      hLand: "Zwei Buchstaben nach ISO 3166 — DE, FR, CH. Er entscheidet mit über den Steuerfall.",
+      hinweisTitel: "Bitte noch prüfen"
     },
     en: {
       titel: "New invoice",
@@ -400,6 +420,9 @@
       bezug: "References invoice no.", bezugPlatzhalter: "RE-2026-0001",
       empfaengerTitel: "Recipient", merkliste: "Fill from saved customers …",
       eName: "Name / company", strasse: "Street and number", plz: "Postcode", ort: "City",
+      eLand: "Country",
+      hLand: "Two letters per ISO 3166 — DE, FR, CH. It co-determines the tax treatment.",
+      hinweisTitel: "Worth a second look",
       eUstIdnr: "VAT ID (reverse charge / EU)", eEmail: "E-mail (for XRechnung)", eLeitweg: "Leitweg-ID (for XRechnung)",
       positionenTitel: "Line items",
       stornieren: "Cancel",
@@ -425,12 +448,15 @@
       steuern: {
         UST_19: "19 %", UST_7: "7 %", UST_0: "0 %",
         KLEINUNTERNEHMER: "§ 19 UStG", REVERSE_CHARGE: "reverse charge",
+        NICHT_STEUERBAR: "not taxable",
         IG_LIEFERUNG: "intra-EU supply", AUSFUHR: "export"
       }
     }
   };
 
-  var STEUERSAETZE = { UST_19: 19, UST_7: 7, UST_0: 0, KLEINUNTERNEHMER: 0, REVERSE_CHARGE: 0, IG_LIEFERUNG: 0, AUSFUHR: 0 };
+  var STEUERSAETZE = { UST_19: 19, UST_7: 7, UST_0: 0, KLEINUNTERNEHMER: 0,
+                       REVERSE_CHARGE: 0, IG_LIEFERUNG: 0, AUSFUHR: 0,
+                       NICHT_STEUERBAR: 0 };
   var el = function (id) { return document.getElementById(id); };
 
   function zahl(text) {
@@ -657,7 +683,10 @@
           strasse: el("eStrasse").value.trim(),
           plz: el("ePlz").value.trim(),
           ort: el("eOrt").value.trim(),
-          land: "DE"
+          // Bis zum 10.09.2026 stand hier fest "DE". Eine Rechnung nach
+          // Lauterbourg trug damit im XML CountryID=DE -- formal gueltig,
+          // sachlich falsch, und keine Pruefung schlug an.
+          land: el("eLand").value.trim().toUpperCase() || "DE"
         },
         ust_idnr: el("eUstIdnr").value.trim() || null,
         email: el("eEmail").value.trim() || null,
@@ -697,12 +726,39 @@
     el("ergebnis").innerHTML =
       '<a class="knopf" target="_blank" rel="noopener" href="' + antwort.daten.pdf + '">' + RB.t("pdfOeffnen") + "</a>" +
       '<a class="knopf leise" href="' + antwort.daten.xml + '">' + RB.t("xmlLaden") + "</a>";
+    zeigeHinweise(antwort.daten.hinweise);
     ladeAblage();
     ladeKunden();
     el("nummer").value = "";  // nächster Vorschlag aus dem Nummernkreis
     ladeNummer();
     zeigeHinweis();
   });
+
+  // Nicht blockierende Befunde: erzeugt ist erzeugt, aber etwas ist
+  // auffaellig. Bewusst in ruhigem Ton — wer hier einen Fehler laese, wo
+  // keiner ist, traute der Ampel beim naechsten Mal nicht mehr.
+  function zeigeHinweise(hinweise) {
+    var kasten = el("hinweiseBefund");
+    kasten.textContent = "";
+    if (!hinweise || !hinweise.length) { kasten.hidden = true; return; }
+
+    var titel = document.createElement("p");
+    titel.className = "beschreibung";
+    titel.style.marginBottom = "4px";
+    titel.textContent = RB.t("hinweisTitel");
+    kasten.appendChild(titel);
+
+    var liste = document.createElement("ul");
+    liste.className = "beschreibung";
+    liste.style.margin = "0";
+    hinweise.forEach(function (befund) {
+      var zeile = document.createElement("li");
+      zeile.textContent = RB.befundText(befund.code, befund.text);
+      liste.appendChild(zeile);
+    });
+    kasten.appendChild(liste);
+    kasten.hidden = false;
+  }
 
   // ---------- Hinweis des Betreibers ----------
   // Erst hier abgefragt und nicht beim Laden der Seite: Wer nie eine
@@ -820,6 +876,7 @@
     el("eStrasse").value = anschrift.strasse || "";
     el("ePlz").value = anschrift.plz || "";
     el("eOrt").value = anschrift.ort || "";
+    el("eLand").value = (anschrift.land || "DE").toUpperCase();
     el("eUstIdnr").value = kunde.ust_idnr || "";
     el("eEmail").value = kunde.email || "";
     el("eLeitweg").value = kunde.leitweg_id || "";

@@ -40,6 +40,21 @@ class Steuerkategorie(enum.Enum):
         "Steuerfreie innergemeinschaftliche Lieferung.",
     )
     AUSFUHR = ("G", Decimal("0"), "Steuerfreie Ausfuhrlieferung.")
+    # Sonstige Leistung, deren Ort nicht im Inland liegt (§ 3a Abs. 2 UStG bei
+    # einem Empfaenger im Drittland, § 3a Abs. 3 etwa bei einem Grundstueck im
+    # Ausland). Der Umsatz ist in Deutschland nicht steuerbar.
+    #
+    # Bewusst NICHT "AE": Reverse Charge nach Art. 196 MwStSystRL gibt es nur
+    # im Gemeinschaftsgebiet. Ob ein Schweizer Empfaenger die Steuer schuldet,
+    # regelt Schweizer Recht (Bezugsteuer) und nicht das deutsche -- eine
+    # deutsche Rechnung darf ihm das nicht auferlegen. Und bewusst nicht "G":
+    # das ist die Warenausfuhr.
+    NICHT_STEUERBAR = (
+        "O",
+        Decimal("0"),
+        "Nicht steuerbare sonstige Leistung, Leistungsort im Ausland "
+        "(§ 3a UStG).",
+    )
 
     def __init__(self, code: str, satz: Decimal, hinweis: str | None):
         self.code = code
