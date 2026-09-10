@@ -22,7 +22,8 @@ COPY web/ web/
 # faellt es erst beim Start des Containers auf.
 RUN pip install --no-cache-dir ./kern \
     && pip install --no-cache-dir fastapi "uvicorn[standard]" python-multipart \
-       "psycopg[binary,pool]>=3.1" "cryptography>=42" "stripe>=9" "httpx>=0.27"
+       "psycopg[binary,pool]>=3.1" "cryptography>=42" "stripe>=9" "httpx>=0.27" \
+       "webauthn>=2.0"
 
 # App läuft aus dem Quellbaum (Seiten und Zonen-Editor liegen neben dem Paket)
 ENV PYTHONPATH=/srv/web/src \

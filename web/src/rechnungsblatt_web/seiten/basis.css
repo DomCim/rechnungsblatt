@@ -493,6 +493,11 @@ nav.reiter { display: none; }
 }
 .karte > h2 { margin-bottom: 4px; }
 .karte .beschreibung { color: var(--tinte-2); font-size: 13.5px; margin-bottom: 14px; }
+/* Absaetze eines ausgezeichneten Textes (RB.auszeichnen). Der eigene
+   Abstand statt des Browser-Vorgabewerts von 1em: Zwei Saetze in einer
+   Karte sollen zusammengehoeren, nicht auseinanderfallen. */
+.beschreibung .absatz { margin: 0 0 8px; }
+.beschreibung .absatz:last-child { margin-bottom: 0; }
 /* Erklärung direkt unter einem Eingabefeld — kleiner als die
    Kartenbeschreibung und ohne deren Abstand nach unten, weil sie
    innerhalb des Feldes sitzt und nicht davor. */

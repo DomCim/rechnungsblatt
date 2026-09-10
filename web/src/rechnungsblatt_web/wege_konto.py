@@ -8,12 +8,14 @@ Anmeldeentscheidung gehört und ohne Konto abrufbar sein muss.
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from . import konten, post
+from . import konten, passkey, post, tresor, zweifaktor
 from .basis import (
+    sitzungsschluessel,
     SITZUNG_KOPFZEILE,
     SITZUNG_COOKIE,
     SPAETER,
@@ -193,6 +195,18 @@ def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
                 "grund": "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.",
             },
         )
+    if person.mfa_aktiv is not None and not _zweiter_faktor_stimmt(person, daten):
+        # Kein eigener Schritt auf dem Server, keine halbe Sitzung: Die
+        # Oberflaeche fragt den Code nach und schickt Passwort UND Code
+        # zusammen erneut. Damit liegt zwischendurch nirgends ein halb
+        # angemeldeter Zustand samt Datenschluessel herum.
+        raise HTTPException(
+            401,
+            detail={
+                "code": "mfa_noetig",
+                "grund": "Bitte den sechsstelligen Code aus Ihrer App eingeben.",
+            },
+        )
     if datenschluessel is None:
         # Konto aus der Zeit vor der Verschlüsselung (oder der Startadmin,
         # der ohne Registrierung entsteht): Hülle jetzt nachlegen, solange
@@ -204,6 +218,224 @@ def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
     if SITZUNG_KOPFZEILE:
         # Nur lokal: die Seite legt den Schlüssel ab und reicht ihn nach,
         # falls iOS das Cookie verworfen hat.
+        nutzdaten["sitzung"] = schluessel
+    antwort = JSONResponse(nutzdaten)
+    setze_sitzungscookie(antwort, schluessel, anfrage)
+    return antwort
+
+
+def _zweiter_faktor_stimmt(person: Nutzer, daten: dict) -> bool:
+    """Sechsstelliger Code aus der App — oder ein Ersatzcode.
+
+    Der Ersatzcode wird dabei verbraucht. Beides in einem Feld, weil der
+    Kunde im Zweifel ohnehin eintippt, was er gerade hat.
+    """
+    eingabe = str(daten.get("code", "") or "").strip()
+    if not eingabe:
+        return False
+    geheimnis = konten.mfa_geheimnis_von(person.id)
+    if geheimnis and zweifaktor.stimmt(geheimnis, eingabe):
+        return True
+    return konten.loese_ersatzcode_ein(person.id, eingabe)
+
+
+@wege.post("/api/ich/mfa/start")
+def mfa_start(person: Nutzer = Depends(angemeldet)) -> dict:
+    """Ein neues Geheimnis samt QR-Bild — noch nicht scharf.
+
+    Scharf wird es erst, wenn der Kunde einen Code daraus vorzeigt. Wer
+    sofort einschaltete, sperrte jeden aus, dessen App den QR-Code nicht
+    sauber gelesen hat.
+    """
+    if person.mfa_aktiv is not None:
+        raise HTTPException(
+            409,
+            detail={"grund": "Der zweite Faktor ist bereits eingeschaltet."},
+        )
+    geheimnis = zweifaktor.neues_geheimnis()
+    konten.merke_mfa_geheimnis(person.id, geheimnis)
+    adresse = zweifaktor.otpauth_adresse(person.email, geheimnis)
+    return {
+        # Zum Abtippen, wenn die Kamera streikt.
+        "geheimnis": geheimnis,
+        "adresse": adresse,
+        "qr": zweifaktor.qr_svg(adresse),
+    }
+
+
+@wege.post("/api/ich/mfa/ein")
+def mfa_einschalten(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
+    """Schaltet scharf und gibt die Ersatzcodes heraus — EINMAL."""
+    geheimnis = konten.mfa_geheimnis_von(person.id)
+    if not geheimnis:
+        raise HTTPException(
+            409, detail={"grund": "Bitte zuerst den QR-Code einlesen."}
+        )
+    if not zweifaktor.stimmt(geheimnis, str(daten.get("code", ""))):
+        raise HTTPException(
+            422,
+            detail={
+                "code": "code_falsch",
+                "grund": "Der Code stimmt nicht. Geht die Uhr des Telefons richtig?",
+            },
+        )
+    codes = zweifaktor.neue_ersatzcodes()
+    konten.schalte_mfa_ein(person.id, codes)
+    # Gehasht abgelegt, hier zum ersten und letzten Mal im Klartext --
+    # dieselbe Regel wie beim Wiederherstellungscode.
+    return {"ersatzcodes": codes}
+
+
+@wege.post("/api/ich/mfa/aus")
+def mfa_ausschalten(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
+    """Abschalten verlangt das Passwort.
+
+    Sonst genuegte eine offene Sitzung an einem unbeaufsichtigten Rechner,
+    um den zweiten Faktor loszuwerden -- und er waere seinen Zweck los.
+    """
+    if not konten.passwort_stimmt_fuer(person.id, str(daten.get("passwort", ""))):
+        raise HTTPException(422, detail={"grund": "Das Passwort stimmt nicht."})
+    konten.schalte_mfa_aus(person.id)
+    return {"aus": True}
+
+
+# ---------------------------------------------------------------- Passkeys
+#
+# Der Ablauf ist zweigeteilt, weil WebAuthn es so verlangt: Der Server
+# stellt eine Aufgabe, der Browser laesst sie vom Authenticator
+# unterschreiben, der Server prueft die Unterschrift gegen die Aufgabe.
+
+def _rp_und_herkunft(anfrage: Request) -> tuple[str, str]:
+    adresse = oeffentliche_adresse(anfrage)
+    return passkey.rp_aus_adresse(adresse), adresse
+
+
+@wege.get("/api/ich/passkeys")
+def passkeys_liste(person: Nutzer = Depends(angemeldet)) -> list[dict]:
+    return konten.passkeys_von(person.id)
+
+
+@wege.post("/api/ich/passkey/start")
+def passkey_start(anfrage: Request, person: Nutzer = Depends(angemeldet)) -> dict:
+    rp_id, _ = _rp_und_herkunft(anfrage)
+    kennung, optionen = passkey.anlegen_beginnen(
+        person.id, person.email, rp_id, konten.passkey_kennungen_von(person.id)
+    )
+    # Das Salz kommt vom Server, damit es genau eine Quelle hat: Wer es
+    # aendert, macht jede bestehende Huelle unlesbar.
+    return {"vorgang": kennung, "optionen": optionen,
+            "salz": passkey.b64(passkey.SALZ)}
+
+
+@wege.post("/api/ich/passkey/fertig")
+def passkey_fertig(
+    daten: dict, anfrage: Request, person: Nutzer = Depends(angemeldet)
+) -> dict:
+    """Nimmt den Passkey an -- aber nur MIT PRF-Geheimnis.
+
+    Ohne das Geheimnis liesse sich der Datenschluessel nicht verpacken,
+    und der Passkey koennte die verschluesselte Ablage spaeter nicht
+    oeffnen. Ein solcher Passkey waere ein zweites, schwaecheres
+    Sicherheitsniveau -- deshalb entsteht er hier gar nicht erst.
+    """
+    geheimnis = str(daten.get("prf", "") or "").strip()
+    if not geheimnis:
+        raise HTTPException(
+            422,
+            detail={
+                "code": "kein_prf",
+                "grund": "Dieser Authenticator liefert kein Schlüsselmaterial "
+                "(WebAuthn-PRF). Ohne das könnte der Passkey Ihre Rechnungen "
+                "nicht entschlüsseln — melden Sie sich weiter mit Passwort an.",
+            },
+        )
+    datenschluessel = konten.datenschluessel_der_sitzung(sitzungsschluessel(anfrage))
+    if datenschluessel is None:
+        raise HTTPException(
+            409,
+            detail={"grund": "Diese Sitzung trägt keinen Schlüssel. Bitte neu anmelden."},
+        )
+
+    rp_id, herkunft = _rp_und_herkunft(anfrage)
+    try:
+        aufgabe = passkey.hole_aufgabe(str(daten.get("vorgang", "")))
+        geprueft = passkey.anlegen_pruefen(
+            daten.get("antwort") or {}, aufgabe, rp_id, herkunft
+        )
+    except passkey.PasskeyFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+
+    konten.lege_passkey_an(
+        person.id,
+        passkey.b64(geprueft.credential_id),
+        geprueft.credential_public_key,
+        geprueft.sign_count,
+        str(daten.get("name", "") or "Passkey"),
+        tresor.verpacke(datenschluessel, geheimnis),
+    )
+    return {"angelegt": True}
+
+
+@wege.delete("/api/ich/passkeys/{kennung}")
+def passkey_loeschen(kennung: str, person: Nutzer = Depends(angemeldet)) -> dict:
+    if not konten.loesche_passkey(person.id, kennung):
+        raise HTTPException(404, detail={"grund": "Kein solcher Passkey."})
+    return {"geloescht": kennung}
+
+
+@wege.post("/api/anmelden/passkey/start")
+def passkey_anmelden_start(anfrage: Request) -> dict:
+    """Ohne Anmeldung erreichbar -- hier faengt sie ja erst an.
+
+    Es geht keine Liste hinaus: Der Passkey ist auffindbar (residentKey),
+    der Browser bietet selbst an, was er hat. Eine Liste verriete
+    ausserdem, welche Konten es gibt.
+    """
+    rp_id, _ = _rp_und_herkunft(anfrage)
+    kennung, optionen = passkey.anmelden_beginnen(rp_id)
+    return {"vorgang": kennung, "optionen": optionen,
+            "salz": passkey.b64(passkey.SALZ)}
+
+
+@wege.post("/api/anmelden/passkey")
+def passkey_anmelden(daten: dict, anfrage: Request) -> JSONResponse:
+    """Anmeldung mit Passkey -- und das PRF-Geheimnis oeffnet die Huelle."""
+    geheimnis = str(daten.get("prf", "") or "").strip()
+    antwort_daten = daten.get("antwort") or {}
+    kennung = str(antwort_daten.get("id", "") or "")
+    eintrag = konten.passkey(kennung)
+    if not eintrag or not geheimnis:
+        raise HTTPException(401, detail={"grund": "Anmeldung nicht möglich."})
+
+    rp_id, herkunft = _rp_und_herkunft(anfrage)
+    try:
+        aufgabe = passkey.hole_aufgabe(str(daten.get("vorgang", "")))
+        geprueft = passkey.anmelden_pruefen(
+            antwort_daten, aufgabe, rp_id, herkunft,
+            bytes(eintrag["schluessel"]), eintrag["zaehler"],
+        )
+    except passkey.PasskeyFehler as fehler:
+        raise HTTPException(401, detail={"grund": str(fehler)}) from fehler
+
+    person = konten.nutzer(eintrag["nutzer"])
+    if person is None or person.status == konten.STATUS_GESPERRT:
+        raise HTTPException(403, detail={"grund": "Ihr Konto ist gesperrt."})
+    try:
+        datenschluessel = tresor.oeffne(bytes(eintrag["huelle"]), geheimnis)
+    except tresor.TresorFehler as fehler:
+        # Der Passkey stimmt, das Schluesselmaterial nicht -- etwa, weil er
+        # auf einem anderen Geraet neu angelegt wurde.
+        raise HTTPException(
+            401, detail={"grund": "Dieser Passkey öffnet Ihre Daten nicht."}
+        ) from fehler
+
+    # KEIN zweiter Faktor: Ein Passkey IST bereits zweierlei -- Besitz des
+    # Geraets und Nachweis der Person (userVerification ist Pflicht, siehe
+    # passkey.py). Noch einen Code zu verlangen, waere Theater.
+    konten.merke_passkey_nutzung(kennung, geprueft.new_sign_count)
+    schluessel = konten.starte_sitzung(person.id, datenschluessel)
+    nutzdaten = nutzer_json(person)
+    if SITZUNG_KOPFZEILE:
         nutzdaten["sitzung"] = schluessel
     antwort = JSONResponse(nutzdaten)
     setze_sitzungscookie(antwort, schluessel, anfrage)
@@ -253,7 +485,45 @@ def hinweis(person: Nutzer = Depends(angemeldet)) -> dict:
         "text": text,
         "knopf": (werte.get("werbung_knopf") or "").strip() or "Mehr erfahren",
         "ziel": ziel,
+        # Ob er ZUSAETZLICH nach einem erzeugten Beleg erscheinen darf.
+        #
+        # Die Karte im Konto ist harmlos: Wer sie sehen will, muss dorthin
+        # gehen. Nach einem Beleg erscheint sie ungefragt -- deshalb haengt
+        # nur dieser Ort an der Drossel, und sie ist von Haus aus zu.
+        "nach_beleg": _darf_nach_beleg(person, werte),
     }
+
+
+def _abstand_tage(werte: dict) -> int:
+    """Wie viele Tage zwischen zwei Hinweisen liegen muessen. 0 = gar nicht."""
+    try:
+        return max(0, int((werte.get("werbung_abstand_tage") or "0").strip() or 0))
+    except ValueError:
+        # Ein unlesbarer Wert soll nicht dazu fuehren, dass der Hinweis
+        # ploetzlich bei jedem Beleg erscheint.
+        return 0
+
+
+def _darf_nach_beleg(person: Nutzer, werte: dict) -> bool:
+    tage = _abstand_tage(werte)
+    if not tage:
+        return False
+    if person.hinweis_gesehen is None:
+        return True
+    vergangen = dt.datetime.now(dt.timezone.utc) - person.hinweis_gesehen
+    return vergangen >= dt.timedelta(days=tage)
+
+
+@wege.post("/api/hinweis/gesehen")
+def hinweis_gesehen(person: Nutzer = Depends(angemeldet)) -> dict:
+    """Der Hinweis wurde gerade gezeigt — die Drossel beginnt zu laufen.
+
+    Gemeldet von der Oberflaeche und nicht beim Abruf gesetzt: Abgerufen
+    wird auch, wenn am Ende gar nichts erscheint, weil Titel oder Ziel
+    fehlen. Gezaehlt werden soll, was der Kunde wirklich gesehen hat.
+    """
+    konten.merke_hinweis_gesehen(person.id)
+    return {"gemerkt": True}
 
 
 @wege.post("/api/ich/passwort")

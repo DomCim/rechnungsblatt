@@ -14,6 +14,7 @@ import datetime as _dt
 import xml.etree.ElementTree as ET
 from decimal import Decimal
 
+from . import laender
 from .modell import Belegtyp, Profil, Rechnung, Stammdaten, Steuerkategorie
 from .summen import Summen
 
@@ -130,7 +131,11 @@ def _positionselement(transaktion: ET.Element, nummer: int, position) -> None:
     steuer = _el(abrechnung, "ram", "ApplicableTradeTax")
     _el(steuer, "ram", "TypeCode", "VAT")
     _el(steuer, "ram", "CategoryCode", position.steuer.code)
-    _el(steuer, "ram", "RateApplicablePercent", _betrag(position.steuer.satz))
+    if position.steuer is not Steuerkategorie.NICHT_STEUERBAR:
+        # BR-O-05: Eine Zeile mit "nicht steuerbar" darf keinen Steuersatz
+        # (BT-152) tragen -- auch keine Null. Der Validator lehnt sie sonst
+        # ab; nachgemessen am 10.09.2026 mit dem Mustang-Validator.
+        _el(steuer, "ram", "RateApplicablePercent", _betrag(position.steuer.satz))
     zeilensumme = _el(abrechnung, "ram", "SpecifiedTradeSettlementLineMonetarySummation")
     from .summen import zeilensumme as berechne_zeilensumme
 
@@ -147,8 +152,19 @@ def _vereinbarung(
     if profil is Profil.XRECHNUNG and rechnung.empfaenger.leitweg_id:
         _el(vereinbarung, "ram", "BuyerReference", rechnung.empfaenger.leitweg_id)
 
+    # BR-O-02: Enthaelt der Beleg eine Zeile "nicht steuerbar", darf WEDER
+    # die USt-IdNr. des Verkaeufers (BT-31) NOCH die des Kaeufers (BT-48)
+    # darin stehen. Das ist konsequent: Ein Umsatz, der dem deutschen
+    # Umsatzsteuerrecht nicht unterliegt, wird nicht unter einer
+    # Umsatzsteuer-Nummer abgerechnet. Der Verkaeufer weist sich dann ueber
+    # seine Steuernummer aus (BT-32), die BR-CO-26 ebenso erfuellt.
+    ohne_ustidnr = any(
+        position.steuer is Steuerkategorie.NICHT_STEUERBAR
+        for position in rechnung.positionen
+    )
+
     verkaeufer = _el(vereinbarung, "ram", "SellerTradeParty")
-    if not stammdaten.ust_idnr and stammdaten.steuernummer:
+    if (not stammdaten.ust_idnr or ohne_ustidnr) and stammdaten.steuernummer:
         # BR-CO-26: ohne USt-IdNr. (BT-31) braucht der Verkäufer eine
         # Kennung (BT-29) — die Steuernummer erfüllt das.
         _el(verkaeufer, "ram", "ID", stammdaten.steuernummer)
@@ -171,7 +187,7 @@ def _vereinbarung(
     if stammdaten.steuernummer:
         registrierung = _el(verkaeufer, "ram", "SpecifiedTaxRegistration")
         _el(registrierung, "ram", "ID", stammdaten.steuernummer, schemeID="FC")
-    if stammdaten.ust_idnr:
+    if stammdaten.ust_idnr and not ohne_ustidnr:
         registrierung = _el(verkaeufer, "ram", "SpecifiedTaxRegistration")
         _el(registrierung, "ram", "ID", stammdaten.ust_idnr, schemeID="VA")
 
@@ -182,7 +198,7 @@ def _vereinbarung(
         # BT-49 elektronische Adresse (PEPPOL-EN16931-R010)
         uri = _el(kaeufer, "ram", "URIUniversalCommunication")
         _el(uri, "ram", "URIID", rechnung.empfaenger.email, schemeID="EM")
-    if rechnung.empfaenger.ust_idnr:
+    if rechnung.empfaenger.ust_idnr and not ohne_ustidnr:
         registrierung = _el(kaeufer, "ram", "SpecifiedTaxRegistration")
         _el(registrierung, "ram", "ID", rechnung.empfaenger.ust_idnr, schemeID="VA")
 
@@ -227,7 +243,14 @@ def _abrechnung(
         _el(steuer, "ram", "CalculatedAmount", _betrag(korb.steuer))
         _el(steuer, "ram", "TypeCode", "VAT")
         if korb.kategorie.hinweis:
-            _el(steuer, "ram", "ExemptionReason", korb.kategorie.hinweis)
+            _el(
+                steuer,
+                "ram",
+                "ExemptionReason",
+                laender.befreiungsgrund(
+                    korb.kategorie, rechnung.empfaenger.anschrift.land
+                ),
+            )
         _el(steuer, "ram", "BasisAmount", _betrag(korb.basis))
         _el(steuer, "ram", "CategoryCode", korb.kategorie.code)
         _el(steuer, "ram", "RateApplicablePercent", _betrag(korb.kategorie.satz))

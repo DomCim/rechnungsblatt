@@ -24,6 +24,7 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
+from . import laender
 from .modell import (
     Belegtyp,
     Blattgestaltung,
@@ -677,8 +678,14 @@ def _rendere(
     text_breite = rechts - _RAND_LINKS
     hinweise: list[str] = []
     for korb in summen.koerbe:
-        if korb.kategorie.hinweis:
-            hinweise.append(korb.kategorie.hinweis)
+        # Beim EU-Auslandskunden traegt der Hinweis zusaetzlich den Begriff
+        # der Landessprache und Art. 196 MwStSystRL -- danach sucht die
+        # Buchhaltung des Empfaengers.
+        grund = laender.befreiungsgrund(
+            korb.kategorie, rechnung.empfaenger.anschrift.land
+        )
+        if grund:
+            hinweise.append(grund)
     if rechnung.faelligkeit:
         hinweise.append(f"Zahlbar ohne Abzug bis {rechnung.faelligkeit.strftime('%d.%m.%Y')}.")
     else:

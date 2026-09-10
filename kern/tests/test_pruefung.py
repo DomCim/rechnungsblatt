@@ -139,11 +139,23 @@ def test_reverse_charge_braucht_beide_ustidnr(rechnung, stammdaten):
     assert "RC1" in codes(pruefe_paragraph14(rc, stammdaten))
     ohne_eigene = dataclasses.replace(stammdaten, ust_idnr=None)
     assert "RC2" in codes(pruefe_paragraph14(rc, ohne_eigene))
+    # Anschrift MIT nach Oesterreich: Eine ATU-Nummer an einer deutschen
+    # Anschrift ist ein Widerspruch und faellt seit E4 auf. Der Fall, den
+    # dieser Test meint, ist der innergemeinschaftliche -- also gehoert der
+    # Kunde auch dorthin.
     mit_kunde = dataclasses.replace(
         rc,
-        empfaenger=dataclasses.replace(rc.empfaenger, ust_idnr="ATU12345678"),
+        empfaenger=dataclasses.replace(
+            rc.empfaenger,
+            anschrift=dataclasses.replace(rc.empfaenger.anschrift, land="AT"),
+            ust_idnr="ATU12345678",
+        ),
     )
-    assert pruefe_paragraph14(mit_kunde, stammdaten) == []
+    # Uebrig bleibt nur der Hinweis auf die Zusammenfassende Meldung —
+    # er blockiert nicht, denn er betrifft eine Pflicht NEBEN dem Beleg.
+    befunde = pruefe_paragraph14(mit_kunde, stammdaten)
+    assert [b.code for b in befunde if b.blockierend] == []
+    assert codes(befunde) == {"ZM1"}
 
 
 def test_gutschrift_braucht_bezug(rechnung, stammdaten):

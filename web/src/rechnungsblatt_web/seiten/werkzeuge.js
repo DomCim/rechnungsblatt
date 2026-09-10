@@ -31,6 +31,9 @@ window.RB = (function () {
         S6: "IBAN ist ungültig (Prüfsumme).",
         E1: "Name des Empfängers fehlt.",
         E2: "Anschrift des Empfängers ist unvollständig.",
+        E3: "Land ist kein Kennzeichen nach ISO 3166 — zwei Großbuchstaben, etwa DE, FR oder CH.",
+        E4: "Die USt-IdNr. gehört zu einem anderen Land als die Anschrift.",
+        E5: "Die USt-IdNr. sieht für dieses Land ungewöhnlich aus — bitte prüfen.",
         R1: "Rechnungsnummer fehlt.",
         R2: "Rechnungsdatum fehlt.",
         R3: "Leistungsdatum oder Leistungszeitraum ist Pflicht.",
@@ -45,6 +48,10 @@ window.RB = (function () {
         K2: "„§ 19 UStG“ ist nur möglich, wenn die Stammdaten Kleinunternehmer ausweisen.",
         RC1: "Reverse Charge braucht die USt-IdNr. des Empfängers.",
         RC2: "Reverse Charge braucht Ihre eigene USt-IdNr. (Stammdaten).",
+        RC4: "Reverse Charge gibt es nur im EU-Ausland. Für ein Drittland: „nicht steuerbar“ bei Leistungen, „Ausfuhr“ bei Waren.",
+        O1: "Bei „nicht steuerbar“ darf die USt-IdNr. nicht auf der Rechnung stehen — dafür braucht es Ihre Steuernummer in den Stammdaten.",
+        O2: "„Nicht steuerbar“ lässt sich nicht mit anderen Steuersätzen auf einer Rechnung mischen — bitte zwei Rechnungen.",
+        ZM1: "Denken Sie an die Zusammenfassende Meldung ans BZSt (§ 18a UStG), vierteljährlich — auch als Kleinunternehmer.",
         IG1: "Innergemeinschaftliche Lieferung braucht die USt-IdNr. beider Seiten.",
         G1: "Gutschrift/Korrektur braucht die Nummer der Ursprungsrechnung.",
         X1: "XRechnung braucht eine Leitweg-ID.",
@@ -76,6 +83,9 @@ window.RB = (function () {
         S6: "IBAN is invalid (checksum).",
         E1: "Recipient name is missing.",
         E2: "Recipient address is incomplete.",
+        E3: "Country is not an ISO 3166 code — two capital letters, e.g. DE, FR or CH.",
+        E4: "The VAT ID belongs to a different country than the address.",
+        E5: "The VAT ID looks unusual for this country — please check.",
         R1: "Invoice number is missing.",
         R2: "Invoice date is missing.",
         R3: "Delivery date or period is required.",
@@ -90,6 +100,10 @@ window.RB = (function () {
         K2: "“§ 19 UStG” is only possible if your master data marks you as a small business.",
         RC1: "Reverse charge requires the recipient’s VAT ID.",
         RC2: "Reverse charge requires your own VAT ID (setup).",
+        RC4: "Reverse charge applies within the EU only. For a third country use “not taxable” for services, “export” for goods.",
+        O1: "With “not taxable” the VAT ID must not appear on the invoice — your tax number in the master data is required instead.",
+        O2: "“Not taxable” cannot be mixed with other VAT rates on one invoice — please split it in two.",
+        ZM1: "Remember the recapitulative statement to the BZSt (§ 18a UStG), quarterly — small businesses included.",
         IG1: "Intra-community supply requires both VAT IDs.",
         G1: "Credit note/correction requires the original invoice number.",
         X1: "XRechnung requires a Leitweg-ID.",
@@ -463,9 +477,109 @@ window.RB = (function () {
     });
   }
 
+  // Winzige Auszeichnung fuer redaktionellen Text aus der Datenbank:
+  // **fett**, *kursiv*, eine Leerzeile trennt Absaetze, ein einzelner
+  // Umbruch bleibt ein Umbruch.
+  //
+  // Bewusst kein Editor und bewusst kein innerHTML. Der Text kommt aus den
+  // Einstellungen und wird jedem angemeldeten Kunden gezeigt. Wer ihn aus
+  // createElement und Textknoten zusammensetzt, kann gar kein Markup
+  // einschleusen -- die Sicherheit haengt dann nicht an einer Filterliste,
+  // die irgendwann eine Luecke hat, sondern am Bauprinzip.
+  var AUSZEICHNUNG = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+
+  function zeileAnhaengen(ziel, zeile) {
+    var rest = 0, treffer;
+    AUSZEICHNUNG.lastIndex = 0;
+    while ((treffer = AUSZEICHNUNG.exec(zeile)) !== null) {
+      if (treffer.index > rest) {
+        ziel.appendChild(document.createTextNode(zeile.slice(rest, treffer.index)));
+      }
+      var marke = document.createElement(treffer[1] ? "strong" : "em");
+      marke.textContent = treffer[1] || treffer[2];
+      ziel.appendChild(marke);
+      rest = treffer.index + treffer[0].length;
+    }
+    if (rest < zeile.length) {
+      ziel.appendChild(document.createTextNode(zeile.slice(rest)));
+    }
+  }
+
+  function auszeichnen(ziel, text) {
+    ziel.textContent = "";
+    String(text || "").split(/\n[ \t]*\n/).forEach(function (roh) {
+      var absatz = document.createElement("p");
+      absatz.className = "absatz";
+      roh.split("\n").forEach(function (zeile, nummer) {
+        if (nummer) absatz.appendChild(document.createElement("br"));
+        zeileAnhaengen(absatz, zeile);
+      });
+      if (absatz.textContent.trim()) ziel.appendChild(absatz);
+    });
+  }
+
+  // --- Passkeys ------------------------------------------------------
+  // WebAuthn spricht ArrayBuffer, JSON spricht base64url. Diese vier
+  // Helfer sind die ganze Uebersetzung -- sie stehen hier, weil sowohl
+  // die Anmeldeseite als auch das Konto sie brauchen.
+  function ausB64(text) {
+    var roh = atob(String(text).replace(/-/g, "+").replace(/_/g, "/"));
+    var bytes = new Uint8Array(roh.length);
+    for (var i = 0; i < roh.length; i++) bytes[i] = roh.charCodeAt(i);
+    return bytes;
+  }
+
+  function nachB64(puffer) {
+    var bytes = new Uint8Array(puffer), roh = "";
+    for (var i = 0; i < bytes.length; i++) roh += String.fromCharCode(bytes[i]);
+    return btoa(roh).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  // Die Optionen kommen als JSON; die Felder, die der Browser als Puffer
+  // will, muessen einzeln umgestellt werden.
+  function optionenAufbereiten(roh) {
+    var o = typeof roh === "string" ? JSON.parse(roh) : roh;
+    if (o.challenge) o.challenge = ausB64(o.challenge);
+    if (o.user && o.user.id) o.user.id = ausB64(o.user.id);
+    ["excludeCredentials", "allowCredentials"].forEach(function (feld) {
+      if (o[feld]) o[feld] = o[feld].map(function (e) {
+        return Object.assign({}, e, { id: ausB64(e.id) });
+      });
+    });
+    return o;
+  }
+
+  // Eine Antwort des Authenticators so verpacken, wie der Server sie
+  // erwartet. `toJSON` kann noch nicht jeder Browser.
+  function antwortAlsJson(zeugnis) {
+    if (typeof zeugnis.toJSON === "function") return zeugnis.toJSON();
+    var a = zeugnis.response, fertig = {
+      id: zeugnis.id,
+      rawId: nachB64(zeugnis.rawId),
+      type: zeugnis.type,
+      clientExtensionResults: {},
+      response: { clientDataJSON: nachB64(a.clientDataJSON) }
+    };
+    if (a.attestationObject) fertig.response.attestationObject = nachB64(a.attestationObject);
+    if (a.authenticatorData) fertig.response.authenticatorData = nachB64(a.authenticatorData);
+    if (a.signature) fertig.response.signature = nachB64(a.signature);
+    if (a.userHandle) fertig.response.userHandle = nachB64(a.userHandle);
+    return fertig;
+  }
+
+  function passkeysMoeglich() {
+    return !!(window.PublicKeyCredential && window.isSecureContext);
+  }
+
   return {
     t: t,
     el: el,
+    auszeichnen: auszeichnen,
+    ausB64: ausB64,
+    nachB64: nachB64,
+    optionenAufbereiten: optionenAufbereiten,
+    antwortAlsJson: antwortAlsJson,
+    passkeysMoeglich: passkeysMoeglich,
     euro: euro,
     starte: starte,
     api: api,

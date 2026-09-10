@@ -24,6 +24,12 @@ dependencies = [
     # Test-Abhaengigkeit (der FastAPI-Testklient braucht sie); seit die
     # Verwaltung die Zahlen abruft, gehoert sie zur Laufzeit.
     "httpx>=0.27",
+    # Passkeys. Anders als bei TOTP -- dreissig Zeilen, gegen die
+    # RFC-Vektoren belegt -- ist die Pruefung einer WebAuthn-Antwort
+    # nichts, was man selbst schreibt: CBOR, COSE, Attestierungsformate,
+    # Signaturpruefung ueber mehrere Kurven. Ein Fehler darin faellt nicht
+    # auf, er laesst nur den Falschen herein.
+    "webauthn>=2.0",
 ]
 
 [project.optional-dependencies]

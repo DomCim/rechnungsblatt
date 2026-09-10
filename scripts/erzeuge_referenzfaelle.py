@@ -65,6 +65,30 @@ EMPFAENGER = Empfaenger(
     anschrift=Anschrift(strasse="Industriestr. 5", plz="95028", ort="Hof"),
 )
 
+# Der EU-Fall: sonstige Leistung an einen Unternehmer in Frankreich.
+# Leistungsort beim Empfaenger (§ 3a Abs. 2 UStG), Steuerschuld bei ihm
+# (Art. 196 MwStSystRL), Kategorie AE.
+EU_KUNDE = Empfaenger(
+    name="Next-Concept SAS",
+    anschrift=Anschrift(
+        strasse="24 avenue Georges Clemenceau",
+        plz="67630",
+        ort="Lauterbourg",
+        land="FR",
+    ),
+    ust_idnr="FR53987550159",
+)
+
+# Der Drittlandsfall: dieselbe Leistung in die Schweiz. KEINE USt-IdNr. --
+# die Schweiz fuehrt eine UID -- und Kategorie O statt AE, weil Art. 196
+# MwStSystRL ausserhalb der EU nicht gilt.
+DRITTLAND_KUNDE = Empfaenger(
+    name="Alpenwerk AG",
+    anschrift=Anschrift(
+        strasse="Bahnhofstrasse 14", plz="8001", ort="Zürich", land="CH"
+    ),
+)
+
 BEHOERDE = Empfaenger(
     name="Stadt Hof",
     anschrift=Anschrift(strasse="Klosterstr. 1", plz="95028", ort="Hof"),
@@ -120,6 +144,47 @@ def _kleinunternehmer_rechnung() -> Rechnung:
                 einheit="C62",
                 einzelpreis=Decimal("850.00"),
                 steuer=Steuerkategorie.KLEINUNTERNEHMER,
+            ),
+        ),
+    )
+
+
+def _reverse_charge_eu() -> Rechnung:
+    """Reverse Charge nach Frankreich — Kategorie AE, beide USt-IdNr."""
+    return Rechnung(
+        nummer="RE-2026-0043",
+        rechnungsdatum=dt.date(2026, 8, 21),
+        empfaenger=EU_KUNDE,
+        leistungsdatum=dt.date(2026, 8, 20),
+        positionen=(
+            Position(
+                bezeichnung="Softwareentwicklung",
+                menge=Decimal("40"),
+                einheit="HUR",
+                einzelpreis=Decimal("95.00"),
+                steuer=Steuerkategorie.REVERSE_CHARGE,
+            ),
+        ),
+    )
+
+
+def _nicht_steuerbar_drittland() -> Rechnung:
+    """Dieselbe Leistung in die Schweiz — Kategorie O, ohne USt-IdNr.
+
+    Der Fall, fuer den es bis zum 10.09.2026 keine richtige Kategorie gab.
+    """
+    return Rechnung(
+        nummer="RE-2026-0044",
+        rechnungsdatum=dt.date(2026, 8, 21),
+        empfaenger=DRITTLAND_KUNDE,
+        leistungsdatum=dt.date(2026, 8, 20),
+        positionen=(
+            Position(
+                bezeichnung="Softwareentwicklung",
+                menge=Decimal("40"),
+                einheit="HUR",
+                einzelpreis=Decimal("95.00"),
+                steuer=Steuerkategorie.NICHT_STEUERBAR,
             ),
         ),
     )
@@ -223,6 +288,12 @@ def main() -> None:
         ("rechnung_standard", _standard_rechnung(), STAMMDATEN, boegen["gut"], None),
         ("rechnung_kleinunternehmer", _kleinunternehmer_rechnung(), KLEINUNTERNEHMERIN, boegen["boese"], None),
         ("gutschrift", _gutschrift(), STAMMDATEN, boegen["gut"], None),
+        # Ausland: derselbe Umsatz einmal in die EU (AE) und einmal ins
+        # Drittland (O). Beide muessen die Schematron-Regeln BR-AE-* bzw.
+        # BR-O-* erfuellen -- ohne diese Faelle stuende die Gueltigkeit
+        # allein auf der Behauptung des Entwicklers.
+        ("rechnung_reverse_charge_eu", _reverse_charge_eu(), STAMMDATEN, boegen["gut"], None),
+        ("rechnung_nicht_steuerbar_ch", _nicht_steuerbar_drittland(), STAMMDATEN, boegen["gut"], None),
         # Gestaltungs-Referenz: andere Schrift, anderes Layout — muss genauso
         # PDF/A-3B-konform sein wie der Standard
         ("rechnung_gestaltet", _standard_rechnung(), STAMMDATEN, boegen["gut"], modern),

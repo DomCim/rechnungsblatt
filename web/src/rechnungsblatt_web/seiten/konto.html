@@ -234,6 +234,67 @@
          aria-live="polite"></div>
   </section>
 
+  <section class="karte" id="passkeyKarte" hidden>
+    <h2 data-i18n="pkTitel">Passkeys</h2>
+    <p class="beschreibung" data-i18n="pkText">
+      Anmelden mit Gesicht, Fingerabdruck oder Ger&auml;te-PIN &mdash; ohne
+      Passwort und ohne Code. Ihr Ger&auml;t liefert dabei auch das
+      Schl&uuml;sselmaterial, mit dem Ihre Rechnungen entschl&uuml;sselt
+      werden; ohne das legt Rechnungsblatt gar keinen Passkey an.
+    </p>
+    <div id="pkListe"></div>
+    <div class="zeile" style="margin-top:12px;">
+      <button class="knopf" type="button" id="pkAnlegen" data-i18n="pkAnlegen">Passkey hinzufügen</button>
+    </div>
+    <div class="meldung" id="pkMeldung" role="status" aria-live="polite"></div>
+  </section>
+
+  <section class="karte" id="mfaKarte">
+    <h2 data-i18n="mfaTitel">Zwei-Faktor-Anmeldung</h2>
+    <p class="beschreibung" data-i18n="mfaText">
+      Ein zusätzlicher sechsstelliger Code beim Anmelden, erzeugt von einer
+      App auf Ihrem Telefon. Ihre Rechnungen bleiben davon unberührt: Sie
+      liegen mit Ihrem Passwort verschlüsselt, und daran ändert der zweite
+      Faktor nichts.
+    </p>
+    <p class="meldung hinweis gut" id="mfaStand" hidden></p>
+
+    <!-- Schritt 1: QR-Bild und Geheimnis -->
+    <div id="mfaEinrichten" hidden>
+      <div id="mfaBild" style="margin:12px 0;"></div>
+      <p class="beschreibung" data-i18n="mfaAbtippen">
+        Kamera streikt? Dann diesen Schl&uuml;ssel in der App eintippen:
+      </p>
+      <p class="kennung" id="mfaGeheimnis" style="user-select:all;"></p>
+      <div class="feld">
+        <label for="mfaCodeFeld" data-i18n="mfaPruefcode">Code aus der App zur Probe</label>
+        <input id="mfaCodeFeld" inputmode="numeric" maxlength="6" placeholder="123456">
+      </div>
+      <div class="zeile">
+        <button class="knopf" type="button" id="mfaBestaetigen"
+                data-i18n="mfaBestaetigen">Einschalten</button>
+      </div>
+    </div>
+
+    <!-- Schritt 2: die Ersatzcodes, einmalig -->
+    <div id="mfaErsatz" hidden>
+      <p class="meldung hinweis" data-i18n="mfaErsatzText">
+        Notieren Sie diese Codes jetzt &mdash; am besten ausgedruckt. Jeder
+        l&auml;sst Sie genau einmal herein, wenn das Telefon nicht zur Hand
+        ist. Sie werden nie wieder angezeigt.
+      </p>
+      <ul class="kennung" id="mfaErsatzListe" style="user-select:all;"></ul>
+    </div>
+
+    <div class="zeile" id="mfaKnoepfe">
+      <button class="knopf" type="button" id="mfaStarten"
+              data-i18n="mfaStarten">Einrichten</button>
+      <button class="knopf leise" type="button" id="mfaAusschalten" hidden
+              data-i18n="mfaAusschalten">Abschalten</button>
+    </div>
+    <div class="meldung" id="mfaMeldung" role="status" aria-live="polite"></div>
+  </section>
+
   <!-- Etwas melden. Steht im Konto und nicht als sechster Reiter: Die
        Leiste am unteren Rand hat je Eintrag rund 70 px (siehe
        werkzeuge.js), und gemeldet wird selten. -->
@@ -290,7 +351,9 @@
        bleibt die Karte verborgen — siehe /api/hinweis. -->
   <section class="karte" id="hinweisKarte" hidden>
     <h2 id="hinweisTitel"></h2>
-    <p class="beschreibung" id="hinweisText"></p>
+    <!-- div statt p: Der Text darf Absaetze haben, und ein p im p
+         waere ungueltiges HTML. -->
+    <div class="beschreibung" id="hinweisText"></div>
     <div class="zeile">
       <a class="knopf leise" id="hinweisKnopf" href="#"
          target="_blank" rel="noopener"></a>
@@ -377,6 +440,29 @@
       einrichtungText: "Briefpapier, Schreibzone, Ihre Angaben und das Aussehen der Rechnung. Einmal eingestellt, gilt es für jeden Beleg.",
       einrichtungKnopf: "Zur Einrichtung",
       einrichtungFuehrung: "Schritt für Schritt",
+      pkTitel: "Passkeys",
+      pkText: "Anmelden mit Gesicht, Fingerabdruck oder Geräte-PIN — ohne Passwort und ohne Code. Ihr Gerät liefert dabei auch das Schlüsselmaterial, mit dem Ihre Rechnungen entschlüsselt werden; ohne das legt Rechnungsblatt gar keinen Passkey an.",
+      pkAnlegen: "Passkey hinzufügen",
+      pkKeine: "Noch kein Passkey auf diesem Konto.",
+      pkEntfernen: "Entfernen",
+      pkAngelegt: "Passkey angelegt.",
+      pkLaeuft: "Warten auf Ihr Gerät …",
+      pkNameFrage: "Wie soll dieser Passkey heißen? (z. B. „iPhone“)",
+      pkKeinPrf: "Dieses Gerät liefert kein Schlüsselmaterial (WebAuthn-PRF). Ohne das könnte der Passkey Ihre Rechnungen nicht entschlüsseln — deshalb wird keiner angelegt. Melden Sie sich weiter mit Passwort an.",
+      pkAbgebrochen: "Abgebrochen.",
+      pkSeit: "angelegt am {datum}",
+      mfaTitel: "Zwei-Faktor-Anmeldung",
+      mfaText: "Ein zusätzlicher sechsstelliger Code beim Anmelden, erzeugt von einer App auf Ihrem Telefon. Ihre Rechnungen bleiben davon unberührt: Sie liegen mit Ihrem Passwort verschlüsselt, und daran ändert der zweite Faktor nichts.",
+      mfaStarten: "Einrichten",
+      mfaAbtippen: "Kamera streikt? Dann diesen Schlüssel in der App eintippen:",
+      mfaPruefcode: "Code aus der App zur Probe",
+      mfaBestaetigen: "Einschalten",
+      mfaAusschalten: "Abschalten",
+      mfaErsatzText: "Notieren Sie diese Codes jetzt — am besten ausgedruckt. Jeder lässt Sie genau einmal herein, wenn das Telefon nicht zur Hand ist. Sie werden nie wieder angezeigt.",
+      mfaAn: "Eingeschaltet. Noch {n} Ersatzcodes übrig.",
+      mfaAus: "Abgeschaltet.",
+      mfaPasswortFrage: "Zum Abschalten bitte Ihr Passwort eingeben:",
+      mfaCodeFalsch: "Der Code stimmt nicht. Geht die Uhr des Telefons richtig?",
       meldenTitel: "Etwas melden",
       meldenText: "Ein Fehler, eine Ungereimtheit am Beleg, ein Wunsch. Was Sie hier schreiben, wird im Fehlerverzeichnis des Projekts veröffentlicht — bitte keine Namen Ihrer Kunden und keine Beträge hineinschreiben. Ihre E-Mail-Adresse steht nicht dabei.",
       meldeArtLabel: "Worum geht es?",
@@ -447,6 +533,29 @@
       einrichtungText: "Letterhead, writing area, your details and the look of the invoice. Set once, valid for every document.",
       einrichtungKnopf: "Open setup",
       einrichtungFuehrung: "Step by step",
+      pkTitel: "Passkeys",
+      pkText: "Sign in with face, fingerprint or device PIN — no password, no code. Your device also supplies the key material that decrypts your invoices; without it Rechnungsblatt does not create a passkey at all.",
+      pkAnlegen: "Add passkey",
+      pkKeine: "No passkey on this account yet.",
+      pkEntfernen: "Remove",
+      pkAngelegt: "Passkey created.",
+      pkLaeuft: "Waiting for your device …",
+      pkNameFrage: "What should this passkey be called? (e.g. “iPhone”)",
+      pkKeinPrf: "This device does not supply key material (WebAuthn PRF). Without it the passkey could not decrypt your invoices — so none is created. Please keep signing in with your password.",
+      pkAbgebrochen: "Cancelled.",
+      pkSeit: "created on {datum}",
+      mfaTitel: "Two-factor sign-in",
+      mfaText: "An additional six-digit code at sign-in, generated by an app on your phone. Your invoices are unaffected: they are encrypted with your password, and the second factor does not change that.",
+      mfaStarten: "Set up",
+      mfaAbtippen: "Camera not cooperating? Then type this key into the app:",
+      mfaPruefcode: "Code from the app, to check",
+      mfaBestaetigen: "Turn on",
+      mfaAusschalten: "Turn off",
+      mfaErsatzText: "Write these codes down now — printed, ideally. Each one lets you in exactly once when your phone is not at hand. They are never shown again.",
+      mfaAn: "On. {n} backup codes left.",
+      mfaAus: "Off.",
+      mfaPasswortFrage: "Please enter your password to turn it off:",
+      mfaCodeFalsch: "The code does not match. Is the phone clock correct?",
       meldenTitel: "Report something",
       meldenText: "A bug, something wrong on the document, a wish. What you write here is published in the project's issue tracker — please do not include your customers' names or any amounts. Your e-mail address is not attached.",
       meldeArtLabel: "What is it about?",
@@ -515,6 +624,8 @@
     if (!person) { window.location.href = "/app/anmelden"; return; }
     el("adminKarte").hidden = person.rolle !== "admin";
     zeigeKonto(person);
+    mfaStandZeigen(person);
+    ladePasskeys();
     var verbrauch = await RB.api("/api/ich/verbrauch");
     zeigeVerbrauch((verbrauch.ok && verbrauch.daten) || []);
   }
@@ -752,7 +863,7 @@ async function ladeHinweis() {
   if (!antwort.ok || !antwort.daten || !antwort.daten.an) return;
   var h = antwort.daten;
   el("hinweisTitel").textContent = h.titel;
-  el("hinweisText").textContent = h.text || "";
+  RB.auszeichnen(el("hinweisText"), h.text);
   var knopf = el("hinweisKnopf");
   knopf.textContent = h.knopf;
   knopf.href = h.ziel;
@@ -765,6 +876,181 @@ el("abmelden").addEventListener("click", async function () {
     await RB.api("/api/abmelden", { method: "POST" });
     window.location.href = "/";
   });
+
+  // --- Passkeys ----------------------------------------------------------
+  function pkMeldung(text, gut) {
+    var kasten = el("pkMeldung");
+    kasten.textContent = text;
+    kasten.className = "meldung hinweis" + (gut ? " gut" : "");
+  }
+
+  async function ladePasskeys() {
+    if (!RB.passkeysMoeglich()) { el("passkeyKarte").hidden = true; return; }
+    el("passkeyKarte").hidden = false;
+    var antwort = await RB.api("/api/ich/passkeys");
+    var liste = el("pkListe");
+    liste.textContent = "";
+    var eintraege = (antwort.ok && antwort.daten) || [];
+    if (!eintraege.length) {
+      var leer = document.createElement("p");
+      leer.className = "beschreibung";
+      leer.textContent = RB.t("pkKeine");
+      liste.appendChild(leer);
+      return;
+    }
+    eintraege.forEach(function (eintrag) {
+      var zeile = document.createElement("div");
+      zeile.className = "zeile";
+      zeile.style.justifyContent = "space-between";
+      var text = document.createElement("span");
+      text.textContent = eintrag.name + " — " +
+        RB.t("pkSeit").replace("{datum}", (eintrag.angelegt || "").slice(0, 10));
+      zeile.appendChild(text);
+      var weg = document.createElement("button");
+      weg.type = "button";
+      weg.className = "knopf leise";
+      weg.textContent = RB.t("pkEntfernen");
+      weg.addEventListener("click", async function () {
+        await RB.api("/api/ich/passkeys/" + encodeURIComponent(eintrag.kennung),
+                     { method: "DELETE" });
+        ladePasskeys();
+      });
+      zeile.appendChild(weg);
+      liste.appendChild(zeile);
+    });
+  }
+
+  el("pkAnlegen").addEventListener("click", async function () {
+    pkMeldung(RB.t("pkLaeuft"), true);
+    var start = await RB.api("/api/ich/passkey/start", { method: "POST" });
+    if (!start.ok) { pkMeldung(grundVon(start), false); return; }
+
+    var optionen = RB.optionenAufbereiten(start.daten.optionen);
+    // PRF gleich beim Anlegen verlangen. Manche Browser liefern das
+    // Geheimnis erst bei einer Anmeldung -- dann wird unten nachgefasst.
+    var salz = RB.ausB64(start.daten.salz);
+    optionen.extensions = { prf: { eval: { first: salz } } };
+
+    var zeugnis;
+    try {
+      zeugnis = await navigator.credentials.create({ publicKey: optionen });
+    } catch (fehler) { pkMeldung(RB.t("pkAbgebrochen"), false); return; }
+
+    var erweiterungen = zeugnis.getClientExtensionResults();
+    if (!erweiterungen.prf || !erweiterungen.prf.enabled) {
+      // Kein PRF, kein Passkey -- sonst entstuende einer, der die Ablage
+      // nicht oeffnen kann.
+      pkMeldung(RB.t("pkKeinPrf"), false);
+      return;
+    }
+
+    var geheim = erweiterungen.prf.results && erweiterungen.prf.results.first;
+    if (!geheim) {
+      // Nachfassen: eine Anmeldung mit demselben Salz liefert es.
+      var holen = await RB.api("/api/anmelden/passkey/start", { method: "POST" });
+      if (!holen.ok) { pkMeldung(grundVon(holen), false); return; }
+      var opt2 = RB.optionenAufbereiten(holen.daten.optionen);
+      opt2.extensions = { prf: { eval: { first: salz } } };
+      try {
+        var zweites = await navigator.credentials.get({ publicKey: opt2 });
+        geheim = zweites.getClientExtensionResults().prf.results.first;
+      } catch (fehler) { pkMeldung(RB.t("pkAbgebrochen"), false); return; }
+    }
+    if (!geheim) { pkMeldung(RB.t("pkKeinPrf"), false); return; }
+
+    var name = window.prompt(RB.t("pkNameFrage"), "Passkey") || "Passkey";
+    var fertig = await RB.api("/api/ich/passkey/fertig", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vorgang: start.daten.vorgang,
+        antwort: RB.antwortAlsJson(zeugnis),
+        prf: RB.nachB64(geheim),
+        name: name
+      })
+    });
+    if (!fertig.ok) { pkMeldung(grundVon(fertig), false); return; }
+    pkMeldung(RB.t("pkAngelegt"), true);
+    ladePasskeys();
+  });
+
+  // --- Zwei-Faktor-Anmeldung ---------------------------------------------
+  function mfaMeldung(text, gut) {
+    var kasten = el("mfaMeldung");
+    kasten.textContent = text;
+    kasten.className = "meldung hinweis" + (gut ? " gut" : "");
+  }
+
+  function mfaStandZeigen(konto) {
+    var an = konto && konto.mfa_aktiv;
+    el("mfaStand").hidden = !an;
+    if (an) {
+      el("mfaStand").textContent =
+        RB.t("mfaAn").replace("{n}", konto.mfa_ersatzcodes_offen);
+    }
+    el("mfaStarten").hidden = !!an;
+    el("mfaAusschalten").hidden = !an;
+    if (an) el("mfaEinrichten").hidden = true;
+  }
+
+  el("mfaStarten").addEventListener("click", async function () {
+    mfaMeldung(RB.t("laedt"), true);
+    var antwort = await RB.api("/api/ich/mfa/start", { method: "POST" });
+    if (!antwort.ok) { mfaMeldung(grundVon(antwort), false); return; }
+    // Das QR-Bild kommt als fertiges SVG vom Server — es traegt das
+    // Geheimnis und darf nirgends als Datei liegen bleiben.
+    el("mfaBild").innerHTML = antwort.daten.qr;
+    el("mfaGeheimnis").textContent = antwort.daten.geheimnis;
+    el("mfaEinrichten").hidden = false;
+    el("mfaCodeFeld").value = "";
+    el("mfaCodeFeld").focus();
+    mfaMeldung("", true);
+  });
+
+  el("mfaBestaetigen").addEventListener("click", async function () {
+    var antwort = await RB.api("/api/ich/mfa/ein", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: el("mfaCodeFeld").value.trim() })
+    });
+    if (!antwort.ok) {
+      var kennung = antwort.daten && antwort.daten.detail && antwort.daten.detail.code;
+      mfaMeldung(kennung === "code_falsch"
+        ? RB.t("mfaCodeFalsch") : grundVon(antwort), false);
+      return;
+    }
+    // Einmal und nie wieder: Die Codes liegen ab jetzt nur noch gehasht.
+    var liste = el("mfaErsatzListe");
+    liste.textContent = "";
+    antwort.daten.ersatzcodes.forEach(function (code) {
+      var zeile = document.createElement("li");
+      zeile.textContent = code;
+      liste.appendChild(zeile);
+    });
+    el("mfaEinrichten").hidden = true;
+    el("mfaErsatz").hidden = false;
+    mfaMeldung("", true);
+    lade();
+  });
+
+  el("mfaAusschalten").addEventListener("click", async function () {
+    var passwort = window.prompt(RB.t("mfaPasswortFrage"), "");
+    if (passwort === null) return;
+    var antwort = await RB.api("/api/ich/mfa/aus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passwort: passwort })
+    });
+    if (!antwort.ok) { mfaMeldung(grundVon(antwort), false); return; }
+    el("mfaErsatz").hidden = true;
+    mfaMeldung(RB.t("mfaAus"), true);
+    lade();
+  });
+
+  function grundVon(antwort) {
+    return (antwort.daten && antwort.daten.detail && antwort.daten.detail.grund)
+      || RB.t("fehlerAllgemein");
+  }
 
   // --- Etwas melden -----------------------------------------------------
   function meldeMeldung(text, istFehler) {

@@ -57,6 +57,9 @@ def verwaltung_nutzer(_: Nutzer = Depends(verwalter)) -> list[dict]:
             ),
 
             "verbraucht_monat": konten.verbrauch_monat(person.id),
+            # Damit die Liste den Ruecksetzknopf nur dort zeigt, wo er
+            # etwas bewirkt.
+            "mfa_aktiv": person.mfa_aktiv is not None,
 
         }
 
@@ -236,6 +239,21 @@ def verwaltung_loeschen(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
         raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
 
     return {"geloescht": nutzer_id}
+
+
+@wege.post("/api/verwaltung/nutzer/{nutzer_id}/mfa-aus")
+def verwaltung_mfa_aus(nutzer_id: int, _: Nutzer = Depends(verwalter)) -> dict:
+    """Zweiten Faktor eines Kontos zuruecksetzen.
+
+    Der Kundendienstfall: Telefon weg, Ersatzcodes weg. Ohne diesen Weg
+    kaeme der Kunde nie wieder herein.
+
+    **Keine Hintertuer.** Der Datenschluessel haengt am Passwort, nicht am
+    zweiten Faktor -- wer hier zuruecksetzt, sieht danach trotzdem keine
+    einzige Rechnung. Genau deshalb ist der Weg vertretbar.
+    """
+    konten.schalte_mfa_aus(nutzer_id)
+    return {"mfa": "aus"}
 
 
 @wege.get("/api/verwaltung/dubletten")

@@ -245,14 +245,18 @@ def test_kundenstamm_wird_gepflegt(client):
         RECHNUNG,
         empfaenger=dict(
             RECHNUNG["empfaenger"],
-            ust_idnr="ATU12345678",
+            # Deutsche Nummer zu deutscher Anschrift: Eine ATU-Nummer stand
+            # hier frueher an einer Anschrift in Hof -- seit dem Befund E4
+            # ist das ein Widerspruch. Hier geht es um den Kundenstamm, nicht
+            # um den Steuerfall.
+            ust_idnr="DE123456789",
             email="buchhaltung@beispielkunde.example",
         ),
     )
     assert client.post("/api/rechnung", json=mit_details).status_code == 200
     kunden = client.get("/api/kunden").json()
     assert kunden[0]["name"] == "Beispielkunde GmbH"
-    assert kunden[0]["ust_idnr"] == "ATU12345678"
+    assert kunden[0]["ust_idnr"] == "DE123456789"
     assert kunden[0]["email"] == "buchhaltung@beispielkunde.example"
 
     # gleicher Kunde erneut, andere Daten → Upsert, kein Duplikat
@@ -549,3 +553,47 @@ def test_schriften_liegen_lokal_vor():
         assert name in css, f"{name} liegt da, wird aber im CSS nicht genannt"
     for verweis in re.findall(r"url\(/seiten/schriften/([^)]+)\)", css):
         assert (schriften / verweis).exists(), f"{verweis} fehlt auf der Platte"
+
+
+def test_laenderliste_kommt_vom_server(client):
+    """Die EU-Liste hat genau eine Quelle — sonst laufen Server und Oberfläche
+    beim nächsten Beitritt auseinander."""
+    daten = client.get("/api/laender").json()
+
+    kennungen = {land["kennung"] for land in daten["eu"]}
+    assert len(kennungen) == 27
+    assert {"DE", "FR", "AT", "GR"} <= kennungen
+    assert "CH" not in kennungen and "GB" not in kennungen
+
+    # Griechenland: Kennzeichen GR, Präfix EL — der Klassiker.
+    griechenland = next(l for l in daten["eu"] if l["kennung"] == "GR")
+    assert griechenland["praefix"] == "EL"
+
+    # Der Name der Nummer reist mit: Danach fragt der Kunde seinen Kunden.
+    frankreich = next(l for l in daten["eu"] if l["kennung"] == "FR")
+    assert frankreich["nummer_heisst"] == "TVA intracommunautaire"
+
+
+@benoetigt_gs
+def test_app_leitet_auch_bei_fertiger_einrichtung_weiter(client):
+    """`/app` ist der Weg, auf den die Anmeldung schickt — er muss tragen.
+
+    Bis zum 10.09.2026 antwortete er bei jedem FERTIG eingerichteten
+    Mandanten mit 409 „kein_schluessel“: Er las die verschlüsselten
+    Stammdaten über einen Pfad ohne Datenschlüssel. Wer seine Einrichtung
+    abgeschlossen hatte, sah nach dem Anmelden eine JSON-Fehlerseite statt
+    des Rechnungsformulars. Im Browsertest aufgefallen, hier festgenagelt.
+    """
+    _richte_ein(client)
+
+    antwort = client.get("/app", follow_redirects=False)
+
+    assert antwort.status_code == 303, antwort.text
+    assert antwort.headers["location"] == "/app/rechnung"
+
+
+def test_app_ohne_einrichtung_fuehrt_in_den_assistenten(client):
+    antwort = client.get("/app", follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/app/willkommen"

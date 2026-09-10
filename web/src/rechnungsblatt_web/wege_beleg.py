@@ -20,6 +20,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+from rechnungsblatt_kern import laender
 from rechnungsblatt_kern import (
     BlattUeberlauf,
     Belegtyp,
@@ -30,12 +31,13 @@ from rechnungsblatt_kern import (
     Stammdaten,
     Steuerkategorie,
     UngueltigeRechnung,
+    pruefe_paragraph14,
     Zeitraum,
     erzeuge_rechnung,
     erzeuge_xrechnung,
 )
 
-from . import konten, protokoll_beleg, siegel, verfahrensdokumentation
+from . import konten, protokoll_beleg, siegel, ustid, verfahrensdokumentation
 from .ablage import (
     ablage_ordner,
     briefpapier_pfad,
@@ -73,6 +75,67 @@ def nummern_vorschlag(wurzel: Path = Depends(mandant)) -> dict:
     jahr = dt.date.today().year
     stand = _nummern_stand(wurzel, jahr, hat_jahr)
     return {"nummer": _formatiere_nummer(muster, jahr, stand["laufend"] + 1)}
+
+
+def _pruefungen_lesen(wurzel: Path) -> dict:
+    return lese_json(wurzel / "ustid_pruefungen.json") or {}
+
+
+@wege.get("/api/ustid/pruefungen")
+def ustid_pruefungen(wurzel: Path = Depends(mandant)) -> dict:
+    """Was zu dieser Nummer zuletzt herauskam.
+
+    Die Oberflaeche zeigt damit „geprueft am ...“ neben dem Feld, ohne
+    dafuer erneut nach Bruessel zu telefonieren.
+    """
+    return _pruefungen_lesen(wurzel)
+
+
+@wege.post("/api/ustid/pruefen")
+def ustid_pruefen(daten: dict, wurzel: Path = Depends(mandant)) -> dict:
+    """Fragt MIAS/VIES -- auf Knopfdruck, mit harter Zeitgrenze.
+
+    Das Ergebnis wird je Mandant gemerkt. Beim Erzeugen einer Rechnung
+    wird NICHT erneut gefragt: Der Beleg haengt dann an einem fremden
+    Server, und der ist notorisch wackelig. Stattdessen wandert das
+    gemerkte Ergebnis samt Zeitpunkt ins Belegprotokoll -- das ist der
+    Nachweis, den eine Pruefung spaeter sehen will.
+    """
+    ergebnis = ustid.pruefe(
+        str(daten.get("nummer", "") or ""), str(daten.get("land", "") or "")
+    )
+    if ergebnis["nummer"]:
+        gemerkt = _pruefungen_lesen(wurzel)
+        # Ein "unbekannt" ueberschreibt kein frueheres Ergebnis: Dass der
+        # Dienst heute schweigt, entwertet die Auskunft von gestern nicht.
+        if ergebnis["stand"] != ustid.UNBEKANNT or ergebnis["nummer"] not in gemerkt:
+            gemerkt[ergebnis["nummer"]] = ergebnis
+            schreibe_json(wurzel / "ustid_pruefungen.json", gemerkt)
+    return ergebnis
+
+
+@wege.get("/api/laender")
+def laender_liste() -> dict:
+    """Die Mitgliedstaaten — damit die Oberflaeche sie nicht doppelt pflegt.
+
+    Ohne diesen Weg stuende die EU-Liste ein zweites Mal in JavaScript, und
+    beim naechsten Beitritt oder Austritt waere eine der beiden falsch.
+    Der Name der Nummer kommt mit: Wer eine franzoesische Firma abrechnet,
+    fragt nach der TVA intracommunautaire, nicht nach einer USt-IdNr.
+    """
+    return {
+        "eu": [
+            {
+                "kennung": kennung,
+                "name": eintrag.name,
+                "nummer_heisst": eintrag.nummer_heisst,
+                "praefix": eintrag.praefix,
+            }
+            for kennung, eintrag in sorted(
+                laender.EU_LAENDER.items(), key=lambda p: p[1].name
+            )
+        ]
+    }
 
 
 @wege.get("/api/kunden")
@@ -289,6 +352,22 @@ def rechnung_erzeugen(
     schreibe_datei(ordner / "factur-x.xml", ergebnis.xml)
     schreibe_json(ordner / "daten.json", daten)
     # Ins Protokoll, bevor der Nummernkreis fortschreibt: Scheitert das
+    # Die Bestaetigungsabfrage, falls es eine gab. KEIN Netzzugriff hier --
+    # nur das, was der Kunde vorher auf Knopfdruck geholt hat. So haengt
+    # das Erzeugen einer Rechnung an keinem fremden Server.
+    gemerkt = _pruefungen_lesen(wurzel).get(
+        laender.normalisiere_nummer(rechnung.empfaenger.ust_idnr or "")
+    )
+    if gemerkt:
+        protokoll_beleg.haenge_an(
+            ordner,
+            "ustid_geprueft",
+            nummer=gemerkt.get("nummer", ""),
+            stand=gemerkt.get("stand", ""),
+            zeitpunkt=gemerkt.get("zeitpunkt", ""),
+            name=gemerkt.get("name", ""),
+        )
+
     # Schreiben, ist die Nummer noch frei und der Vorgang wiederholbar.
     protokoll_beleg.haenge_an(
         ordner,
@@ -320,9 +399,19 @@ def rechnung_erzeugen(
             )
     _nummernkreis_fortschreiben(wurzel, rechnung.nummer)
     _kunde_merken(wurzel, rechnung)
+    # Nicht blockierende Befunde reisen mit der Erfolgsmeldung: Der Beleg ist
+    # erzeugt, aber etwas daran ist auffaellig -- eine auslaendische USt-IdNr.
+    # etwa, deren Form die Tabelle nicht kennt. Die Pruefung ist eine reine
+    # Funktion ohne Ein- und Ausgabe, der zweite Aufruf kostet nichts.
+    hinweise = [
+        dataclasses.asdict(befund)
+        for befund in pruefe_paragraph14(rechnung, stammdaten)
+        if not befund.blockierend
+    ]
     return JSONResponse(
         {
             "nummer": rechnung.nummer,
+            "hinweise": hinweise,
             "brutto": str(ergebnis.summen.brutto),
             "pdf": f"/api/ablage/{rechnung.nummer}/pdf",
             "xml": f"/api/ablage/{rechnung.nummer}/xml",

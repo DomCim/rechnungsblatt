@@ -1,0 +1,326 @@
+"""Rechnungen ins Ausland: Land, Nummer, Kategorie.
+
+Der Leitgedanke dieser Tests: **widersprechen, wo es unmöglich ist —
+nachfragen, wo es nur ungewöhnlich ist.** Ein Befund, der bei einer
+legitimen Rechnung anschlägt, ist schlimmer als keiner; danach klickt man
+alle weg. Deshalb steht hier zu jeder blockierenden Regel auch der Fall,
+in dem sie schweigen muss.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+from decimal import Decimal
+
+import pytest
+
+from rechnungsblatt_kern import (
+    Anschrift,
+    Empfaenger,
+    Position,
+    Steuerkategorie,
+    pruefe_paragraph14,
+)
+
+
+def codes(befunde) -> set[str]:
+    return {b.code for b in befunde}
+
+
+def blockierend(befunde) -> set[str]:
+    return {b.code for b in befunde if b.blockierend}
+
+
+def mit_empfaenger(rechnung, *, land, ust_idnr=None, kategorie=None):
+    """Rechnung mit Empfänger in einem bestimmten Land."""
+    empfaenger = Empfaenger(
+        name="Next-Concept SAS",
+        anschrift=Anschrift(
+            strasse="24 avenue Georges Clemenceau",
+            plz="67630",
+            ort="Lauterbourg",
+            land=land,
+        ),
+        ust_idnr=ust_idnr,
+    )
+    geaendert = dataclasses.replace(rechnung, empfaenger=empfaenger)
+    if kategorie is not None:
+        geaendert = dataclasses.replace(
+            geaendert,
+            positionen=[
+                dataclasses.replace(p, steuer=kategorie) for p in rechnung.positionen
+            ],
+        )
+    return geaendert
+
+
+# --- Länderkennzeichen (E3) ------------------------------------------
+
+def test_ausgeschriebenes_land_blockiert(rechnung, stammdaten):
+    """„Frankreich“ landet sonst als CountryID im XML und macht es ungültig."""
+    kaputt = mit_empfaenger(rechnung, land="Frankreich")
+    assert "E3" in blockierend(pruefe_paragraph14(kaputt, stammdaten))
+
+
+def test_gueltiges_kennzeichen_schweigt(rechnung, stammdaten):
+    for land in ("DE", "FR", "CH", "US"):
+        gut = mit_empfaenger(rechnung, land=land)
+        assert "E3" not in codes(pruefe_paragraph14(gut, stammdaten)), land
+
+
+# --- Präfix gegen Land (E4, blockierend) -----------------------------
+
+def test_franzoesische_nummer_an_deutscher_anschrift(rechnung, stammdaten):
+    kaputt = mit_empfaenger(rechnung, land="DE", ust_idnr="FR53987550159")
+    befunde = pruefe_paragraph14(kaputt, stammdaten)
+    assert "E4" in blockierend(befunde)
+
+
+def test_griechische_nummer_wird_nicht_abgewiesen(rechnung, stammdaten):
+    """EL an einer GR-Anschrift ist richtig — die häufigste Fehlmeldung."""
+    gut = mit_empfaenger(rechnung, land="GR", ust_idnr="EL123456789")
+    assert "E4" not in codes(pruefe_paragraph14(gut, stammdaten))
+
+
+def test_ohne_nummer_kein_befund(rechnung, stammdaten):
+    gut = mit_empfaenger(rechnung, land="FR", ust_idnr=None)
+    assert not {"E4", "E5"} & codes(pruefe_paragraph14(gut, stammdaten))
+
+
+def test_schweizer_uid_wird_nicht_beurteilt(rechnung, stammdaten):
+    """Die Schweiz führt eine UID; ihre Form kennt die Tabelle nicht.
+
+    Sie darf deshalb weder beanstandet noch stillschweigend als USt-IdNr.
+    behandelt werden.
+    """
+    gut = mit_empfaenger(rechnung, land="CH", ust_idnr="CHE-123.456.789 MWST")
+    assert not {"E4", "E5"} & codes(pruefe_paragraph14(gut, stammdaten))
+
+
+# --- Muster (E5, nur Hinweis) ----------------------------------------
+
+def test_ungewoehnliche_nummer_ist_nur_ein_hinweis(rechnung, stammdaten):
+    """Die Mustertabelle könnte zu eng sein — sie darf niemanden aussperren."""
+    seltsam = mit_empfaenger(rechnung, land="FR", ust_idnr="FR1")
+    befunde = pruefe_paragraph14(seltsam, stammdaten)
+
+    assert "E5" in codes(befunde)
+    assert "E5" not in blockierend(befunde)
+
+
+def test_hinweis_haelt_die_erzeugung_nicht_auf(rechnung, stammdaten):
+    from rechnungsblatt_kern import erzwinge_paragraph14
+
+    seltsam = mit_empfaenger(rechnung, land="FR", ust_idnr="FR1")
+    erzwinge_paragraph14(seltsam, stammdaten)      # darf nicht werfen
+
+
+# --- Kategorie gegen Land (RC4, O2) ----------------------------------
+
+def test_reverse_charge_in_die_schweiz_blockiert(rechnung, stammdaten):
+    """Art. 196 MwStSystRL gilt nur im Gemeinschaftsgebiet."""
+    kaputt = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.REVERSE_CHARGE,
+    )
+    befunde = pruefe_paragraph14(kaputt, stammdaten)
+
+    assert "RC4" in blockierend(befunde)
+    text = next(b.text for b in befunde if b.code == "RC4")
+    assert "Nicht steuerbar" in text and "Ausfuhr" in text
+
+
+def test_reverse_charge_nach_frankreich_ist_richtig(rechnung, stammdaten):
+    gut = mit_empfaenger(
+        rechnung, land="FR", ust_idnr="FR53987550159",
+        kategorie=Steuerkategorie.REVERSE_CHARGE,
+    )
+    assert "RC4" not in codes(pruefe_paragraph14(gut, stammdaten))
+
+
+def test_inlaendisches_reverse_charge_bleibt_erlaubt(rechnung, stammdaten):
+    """§ 13b UStG: Bauleistungen im Inland tragen denselben Code AE."""
+    gut = mit_empfaenger(
+        rechnung, land="DE", ust_idnr="DE123456789",
+        kategorie=Steuerkategorie.REVERSE_CHARGE,
+    )
+    assert "RC4" not in codes(pruefe_paragraph14(gut, stammdaten))
+
+
+def test_nicht_steuerbar_laesst_sich_nicht_mischen(rechnung, stammdaten):
+    """EN 16931 verbietet O neben anderen Kategorien im selben Beleg."""
+    gemischt = mit_empfaenger(rechnung, land="CH")
+    gemischt = dataclasses.replace(
+        gemischt,
+        positionen=[
+            dataclasses.replace(
+                gemischt.positionen[0], steuer=Steuerkategorie.NICHT_STEUERBAR
+            ),
+            Position(
+                bezeichnung="Material",
+                menge=Decimal("1"),
+                einheit="C62",
+                einzelpreis=Decimal("100.00"),
+                steuer=Steuerkategorie.UST_19,
+            ),
+        ],
+    )
+    assert "O2" in blockierend(pruefe_paragraph14(gemischt, stammdaten))
+
+
+def test_nicht_steuerbar_allein_geht_durch(rechnung, stammdaten):
+    """Der Regelfall Schweiz: Dienstleistung, nicht steuerbar, ohne Nummer."""
+    gut = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert pruefe_paragraph14(gut, stammdaten) == []
+
+
+def test_nicht_steuerbar_im_inland_wird_nicht_beanstandet(rechnung, stammdaten):
+    """§ 3a Abs. 3: Ein Grundstück in Wien, abgerechnet an einen Deutschen.
+
+    Der Leistungsort liegt dann im Ausland, obwohl der Empfänger im Inland
+    sitzt. Wer das blockierte, läge falsch.
+    """
+    gut = mit_empfaenger(
+        rechnung, land="DE", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert pruefe_paragraph14(gut, stammdaten) == []
+
+
+def test_kategorie_o_traegt_den_code_und_einen_grund():
+    """BR-O-10 verlangt einen Befreiungsgrund — ohne ihn ist das XML ungültig."""
+    kategorie = Steuerkategorie.NICHT_STEUERBAR
+    assert kategorie.code == "O"
+    assert kategorie.satz == Decimal("0")
+    assert kategorie.hinweis and "3a" in kategorie.hinweis
+
+
+# --- Folge aus BR-O-02 (O2) ------------------------------------------
+
+def test_ohne_steuernummer_kein_nicht_steuerbarer_beleg(rechnung, stammdaten):
+    """BR-O-02 verbietet die USt-IdNr. im Beleg — dann braucht es die Steuernummer.
+
+    Sonst bliebe der Rechnungsteller ohne jede Kennung und BR-CO-26 wäre
+    verletzt. Der Mustang-Validator hat genau das aufgedeckt.
+    """
+    nur_ustidnr = dataclasses.replace(stammdaten, steuernummer=None)
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert "O1" in blockierend(pruefe_paragraph14(beleg, nur_ustidnr))
+
+
+def test_mit_steuernummer_geht_es_durch(rechnung, stammdaten):
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert "O1" not in codes(pruefe_paragraph14(beleg, stammdaten))
+
+
+def test_die_xml_laesst_bei_o_die_ustidnr_weg(rechnung, stammdaten):
+    """Gegenprobe zu BR-O-02 und BR-O-05, damit es nicht zurückfällt."""
+    from rechnungsblatt_kern.cii import erzeuge_cii_xml
+    from rechnungsblatt_kern.summen import berechne_summen
+
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    xml = erzeuge_cii_xml(beleg, stammdaten, berechne_summen(beleg))
+    if isinstance(xml, bytes):
+        xml = xml.decode("utf-8")
+
+    assert stammdaten.ust_idnr not in xml, "BT-31 darf bei O nicht im Beleg stehen"
+    assert stammdaten.steuernummer in xml, "die Steuernummer muss ihn ausweisen"
+    kopf, _, rest = xml.partition("ApplicableHeaderTradeSettlement")
+    assert "RateApplicablePercent" not in kopf, "BT-152 darf in einer O-Zeile fehlen"
+
+
+# --- Fusstext je Fall (Punkt 5) --------------------------------------
+
+def test_fusstext_traegt_den_begriff_der_landessprache():
+    """Die Buchhaltung in Frankreich sucht „autoliquidation“, nicht „Reverse Charge“."""
+    from rechnungsblatt_kern import laender
+
+    grund = laender.befreiungsgrund(Steuerkategorie.REVERSE_CHARGE, "FR")
+
+    assert "Steuerschuldnerschaft des Leistungsempfängers" in grund
+    assert "autoliquidation" in grund
+    assert "Art. 196" in grund
+
+
+@pytest.mark.parametrize("land,begriff", [
+    ("IT", "inversione contabile"),
+    ("ES", "inversión del sujeto pasivo"),
+    ("PL", "odwrotne obciążenie"),
+    ("NL", "btw verlegd"),
+    ("AT", "Übergang der Steuerschuld"),
+])
+def test_jedes_land_hat_seinen_begriff(land, begriff):
+    from rechnungsblatt_kern import laender
+
+    assert begriff in laender.befreiungsgrund(Steuerkategorie.REVERSE_CHARGE, land)
+
+
+def test_inland_bleibt_unveraendert():
+    """§ 13b trägt denselben Code — „autoliquidation“ wäre dort falsch."""
+    from rechnungsblatt_kern import laender
+
+    grund = laender.befreiungsgrund(Steuerkategorie.REVERSE_CHARGE, "DE")
+
+    assert grund == Steuerkategorie.REVERSE_CHARGE.hinweis
+    assert "Art. 196" not in grund
+
+
+def test_drittland_bleibt_unveraendert():
+    """Was ein Schweizer schuldet, regelt Schweizer Recht."""
+    from rechnungsblatt_kern import laender
+
+    assert laender.befreiungsgrund(Steuerkategorie.REVERSE_CHARGE, "CH") == \
+        Steuerkategorie.REVERSE_CHARGE.hinweis
+    assert laender.befreiungsgrund(Steuerkategorie.NICHT_STEUERBAR, "CH") == \
+        Steuerkategorie.NICHT_STEUERBAR.hinweis
+
+
+def test_steuersatz_hat_keinen_grund():
+    from rechnungsblatt_kern import laender
+
+    assert laender.befreiungsgrund(Steuerkategorie.UST_19, "FR") is None
+
+
+# --- Zusammenfassende Meldung (Punkt 6) ------------------------------
+
+def test_eu_reverse_charge_erinnert_an_die_zusammenfassende_meldung(
+    rechnung, stammdaten
+):
+    beleg = mit_empfaenger(
+        rechnung, land="FR", ust_idnr="FR53987550159",
+        kategorie=Steuerkategorie.REVERSE_CHARGE,
+    )
+    befunde = pruefe_paragraph14(beleg, stammdaten)
+
+    assert "ZM1" in codes(befunde)
+    assert "ZM1" not in blockierend(befunde), "ein Hinweis, kein Fehler"
+    assert "18a" in next(b.text for b in befunde if b.code == "ZM1")
+
+
+def test_kein_zm_hinweis_im_inland(rechnung, stammdaten):
+    """§ 13b ist keine innergemeinschaftliche Leistung."""
+    beleg = mit_empfaenger(
+        rechnung, land="DE", ust_idnr="DE123456789",
+        kategorie=Steuerkategorie.REVERSE_CHARGE,
+    )
+    assert "ZM1" not in codes(pruefe_paragraph14(beleg, stammdaten))
+
+
+def test_kein_zm_hinweis_fuer_die_schweiz(rechnung, stammdaten):
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert "ZM1" not in codes(pruefe_paragraph14(beleg, stammdaten))
