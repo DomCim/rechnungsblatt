@@ -366,8 +366,14 @@
         <input id="werbungTitelFeld" placeholder="Website, Shop oder Beratung?"></div>
       <div class="feld breit">
         <label for="werbungTextFeld" data-i18n="fWerbungText">Text</label>
-        <input id="werbungTextFeld"
-               placeholder="Rechnungsblatt entsteht bei DiD0m. Wir bauen auch Ihre Website."></div>
+        <textarea id="werbungTextFeld" rows="3"
+               placeholder="Rechnungsblatt entsteht bei DiD0m. Wir bauen auch Ihre Website."></textarea>
+        <p class="feldhinweis" data-i18n="hWerbungText">
+          <span class="kennung">**fett**</span>,
+          <span class="kennung">*kursiv*</span>, eine Leerzeile trennt
+          Abs&auml;tze. Mehr gibt es nicht &mdash; der Text wird aus
+          Textbausteinen zusammengesetzt und nie als HTML eingef&uuml;gt.
+        </p></div>
       <div class="feld">
         <label for="werbungKnopf" data-i18n="fWerbungKnopf">Knopfbeschriftung</label>
         <input id="werbungKnopf" placeholder="Mehr erfahren"></div>
@@ -608,6 +614,7 @@
       fWerbungAn: "Hinweis anzeigen", fWerbungTitel: "Überschrift",
       fWerbungText: "Text", fWerbungKnopf: "Knopfbeschriftung",
       fWerbungZiel: "Verweis",
+      hWerbungText: "**fett**, *kursiv*, eine Leerzeile trennt Absätze. Mehr gibt es nicht — der Text wird aus Textbausteinen zusammengesetzt und nie als HTML eingefügt.",
       werbungZielFehlt: "Der Verweis muss mit https:// beginnen.",
       stripeTitel: "Zahlungen",
       stripeText: "Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden verschlüsselt abgelegt und nie wieder angezeigt.",
@@ -716,6 +723,7 @@
       fWerbungAn: "Show notice", fWerbungTitel: "Heading",
       fWerbungText: "Text", fWerbungKnopf: "Button label",
       fWerbungZiel: "Link",
+      hWerbungText: "**bold**, *italic*, a blank line starts a new paragraph. That is all there is — the text is assembled from text nodes and never inserted as HTML.",
       werbungZielFehlt: "The link must start with https://.",
       stripeTitel: "Payments",
       stripeText: "Without keys the app offers no payment — you then set plans and credit by hand, as before. The keys are stored encrypted and never shown again.",

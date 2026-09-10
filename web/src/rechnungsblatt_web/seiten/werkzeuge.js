@@ -463,9 +463,51 @@ window.RB = (function () {
     });
   }
 
+  // Winzige Auszeichnung fuer redaktionellen Text aus der Datenbank:
+  // **fett**, *kursiv*, eine Leerzeile trennt Absaetze, ein einzelner
+  // Umbruch bleibt ein Umbruch.
+  //
+  // Bewusst kein Editor und bewusst kein innerHTML. Der Text kommt aus den
+  // Einstellungen und wird jedem angemeldeten Kunden gezeigt. Wer ihn aus
+  // createElement und Textknoten zusammensetzt, kann gar kein Markup
+  // einschleusen -- die Sicherheit haengt dann nicht an einer Filterliste,
+  // die irgendwann eine Luecke hat, sondern am Bauprinzip.
+  var AUSZEICHNUNG = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+
+  function zeileAnhaengen(ziel, zeile) {
+    var rest = 0, treffer;
+    AUSZEICHNUNG.lastIndex = 0;
+    while ((treffer = AUSZEICHNUNG.exec(zeile)) !== null) {
+      if (treffer.index > rest) {
+        ziel.appendChild(document.createTextNode(zeile.slice(rest, treffer.index)));
+      }
+      var marke = document.createElement(treffer[1] ? "strong" : "em");
+      marke.textContent = treffer[1] || treffer[2];
+      ziel.appendChild(marke);
+      rest = treffer.index + treffer[0].length;
+    }
+    if (rest < zeile.length) {
+      ziel.appendChild(document.createTextNode(zeile.slice(rest)));
+    }
+  }
+
+  function auszeichnen(ziel, text) {
+    ziel.textContent = "";
+    String(text || "").split(/\n[ \t]*\n/).forEach(function (roh) {
+      var absatz = document.createElement("p");
+      absatz.className = "absatz";
+      roh.split("\n").forEach(function (zeile, nummer) {
+        if (nummer) absatz.appendChild(document.createElement("br"));
+        zeileAnhaengen(absatz, zeile);
+      });
+      if (absatz.textContent.trim()) ziel.appendChild(absatz);
+    });
+  }
+
   return {
     t: t,
     el: el,
+    auszeichnen: auszeichnen,
     euro: euro,
     starte: starte,
     api: api,

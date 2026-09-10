@@ -290,7 +290,9 @@
        bleibt die Karte verborgen — siehe /api/hinweis. -->
   <section class="karte" id="hinweisKarte" hidden>
     <h2 id="hinweisTitel"></h2>
-    <p class="beschreibung" id="hinweisText"></p>
+    <!-- div statt p: Der Text darf Absaetze haben, und ein p im p
+         waere ungueltiges HTML. -->
+    <div class="beschreibung" id="hinweisText"></div>
     <div class="zeile">
       <a class="knopf leise" id="hinweisKnopf" href="#"
          target="_blank" rel="noopener"></a>
@@ -752,7 +754,7 @@ async function ladeHinweis() {
   if (!antwort.ok || !antwort.daten || !antwort.daten.an) return;
   var h = antwort.daten;
   el("hinweisTitel").textContent = h.titel;
-  el("hinweisText").textContent = h.text || "";
+  RB.auszeichnen(el("hinweisText"), h.text);
   var knopf = el("hinweisKnopf");
   knopf.textContent = h.knopf;
   knopf.href = h.ziel;
