@@ -196,3 +196,46 @@ def test_kategorie_o_traegt_den_code_und_einen_grund():
     assert kategorie.code == "O"
     assert kategorie.satz == Decimal("0")
     assert kategorie.hinweis and "3a" in kategorie.hinweis
+
+
+# --- Folge aus BR-O-02 (O2) ------------------------------------------
+
+def test_ohne_steuernummer_kein_nicht_steuerbarer_beleg(rechnung, stammdaten):
+    """BR-O-02 verbietet die USt-IdNr. im Beleg — dann braucht es die Steuernummer.
+
+    Sonst bliebe der Rechnungsteller ohne jede Kennung und BR-CO-26 wäre
+    verletzt. Der Mustang-Validator hat genau das aufgedeckt.
+    """
+    nur_ustidnr = dataclasses.replace(stammdaten, steuernummer=None)
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert "O2" in blockierend(pruefe_paragraph14(beleg, nur_ustidnr))
+
+
+def test_mit_steuernummer_geht_es_durch(rechnung, stammdaten):
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    assert "O2" not in codes(pruefe_paragraph14(beleg, stammdaten))
+
+
+def test_die_xml_laesst_bei_o_die_ustidnr_weg(rechnung, stammdaten):
+    """Gegenprobe zu BR-O-02 und BR-O-05, damit es nicht zurückfällt."""
+    from rechnungsblatt_kern.cii import erzeuge_cii_xml
+    from rechnungsblatt_kern.summen import berechne_summen
+
+    beleg = mit_empfaenger(
+        rechnung, land="CH", ust_idnr=None,
+        kategorie=Steuerkategorie.NICHT_STEUERBAR,
+    )
+    xml = erzeuge_cii_xml(beleg, stammdaten, berechne_summen(beleg))
+    if isinstance(xml, bytes):
+        xml = xml.decode("utf-8")
+
+    assert stammdaten.ust_idnr not in xml, "BT-31 darf bei O nicht im Beleg stehen"
+    assert stammdaten.steuernummer in xml, "die Steuernummer muss ihn ausweisen"
+    kopf, _, rest = xml.partition("ApplicableHeaderTradeSettlement")
+    assert "RateApplicablePercent" not in kopf, "BT-152 darf in einer O-Zeile fehlen"

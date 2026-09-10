@@ -30,6 +30,7 @@ from rechnungsblatt_kern import (
     Stammdaten,
     Steuerkategorie,
     UngueltigeRechnung,
+    pruefe_paragraph14,
     Zeitraum,
     erzeuge_rechnung,
     erzeuge_xrechnung,
@@ -320,9 +321,19 @@ def rechnung_erzeugen(
             )
     _nummernkreis_fortschreiben(wurzel, rechnung.nummer)
     _kunde_merken(wurzel, rechnung)
+    # Nicht blockierende Befunde reisen mit der Erfolgsmeldung: Der Beleg ist
+    # erzeugt, aber etwas daran ist auffaellig -- eine auslaendische USt-IdNr.
+    # etwa, deren Form die Tabelle nicht kennt. Die Pruefung ist eine reine
+    # Funktion ohne Ein- und Ausgabe, der zweite Aufruf kostet nichts.
+    hinweise = [
+        dataclasses.asdict(befund)
+        for befund in pruefe_paragraph14(rechnung, stammdaten)
+        if not befund.blockierend
+    ]
     return JSONResponse(
         {
             "nummer": rechnung.nummer,
+            "hinweise": hinweise,
             "brutto": str(ergebnis.summen.brutto),
             "pdf": f"/api/ablage/{rechnung.nummer}/pdf",
             "xml": f"/api/ablage/{rechnung.nummer}/xml",

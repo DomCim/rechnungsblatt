@@ -324,12 +324,14 @@ def _pruefe_positionen(rechnung: Rechnung, stammdaten: Stammdaten) -> list[Befun
                     "beider Parteien.",
                 )
             )
-    befunde += _pruefe_kategorie_gegen_land(rechnung, kategorien)
+    befunde += _pruefe_kategorie_gegen_land(rechnung, stammdaten, kategorien)
     return befunde
 
 
 def _pruefe_kategorie_gegen_land(
-    rechnung: Rechnung, kategorien: set[Steuerkategorie]
+    rechnung: Rechnung,
+    stammdaten: Stammdaten,
+    kategorien: set[Steuerkategorie],
 ) -> list[Befund]:
     """Passt die gewaehlte Steuerkategorie zum Sitz des Empfaengers?
 
@@ -366,6 +368,24 @@ def _pruefe_kategorie_gegen_land(
                     f"voraus (Art. 196 MwStSystRL); {land} gehört nicht dazu. "
                     "Für eine sonstige Leistung dorthin ist „Nicht steuerbar“ "
                     "die richtige Kategorie, für eine Warenlieferung „Ausfuhr“.",
+                )
+            )
+
+    if Steuerkategorie.NICHT_STEUERBAR in kategorien:
+        # Folge aus BR-O-02: Bei "nicht steuerbar" darf die eigene USt-IdNr.
+        # nicht im Beleg stehen (siehe cii.py). Der Verkaeufer weist sich
+        # dann ueber seine Steuernummer aus -- hat er keine, laesst sich
+        # BR-CO-26 nicht mehr erfuellen und es entstuende ein ungueltiger
+        # Beleg. Lieber hier ein klarer Satz als dort ein Schematron-Fehler.
+        if not (stammdaten.steuernummer or "").strip():
+            befunde.append(
+                Befund(
+                    "O2",
+                    "stammdaten.steuernummer",
+                    "Für eine nicht steuerbare Leistung darf die USt-IdNr. nicht "
+                    "auf der Rechnung stehen (EN 16931, BR-O-2). Tragen Sie "
+                    "deshalb Ihre Steuernummer in den Stammdaten ein — ohne sie "
+                    "fehlt dem Beleg jede Kennung des Rechnungsstellers.",
                 )
             )
 
