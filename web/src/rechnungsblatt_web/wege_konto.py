@@ -13,8 +13,9 @@ import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from . import konten, post, zweifaktor
+from . import konten, passkey, post, tresor, zweifaktor
 from .basis import (
+    sitzungsschluessel,
     SITZUNG_KOPFZEILE,
     SITZUNG_COOKIE,
     SPAETER,
@@ -296,6 +297,149 @@ def mfa_ausschalten(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
         raise HTTPException(422, detail={"grund": "Das Passwort stimmt nicht."})
     konten.schalte_mfa_aus(person.id)
     return {"aus": True}
+
+
+# ---------------------------------------------------------------- Passkeys
+#
+# Der Ablauf ist zweigeteilt, weil WebAuthn es so verlangt: Der Server
+# stellt eine Aufgabe, der Browser laesst sie vom Authenticator
+# unterschreiben, der Server prueft die Unterschrift gegen die Aufgabe.
+
+def _rp_und_herkunft(anfrage: Request) -> tuple[str, str]:
+    adresse = oeffentliche_adresse(anfrage)
+    return passkey.rp_aus_adresse(adresse), adresse
+
+
+@wege.get("/api/ich/passkeys")
+def passkeys_liste(person: Nutzer = Depends(angemeldet)) -> list[dict]:
+    return konten.passkeys_von(person.id)
+
+
+@wege.post("/api/ich/passkey/start")
+def passkey_start(anfrage: Request, person: Nutzer = Depends(angemeldet)) -> dict:
+    rp_id, _ = _rp_und_herkunft(anfrage)
+    kennung, optionen = passkey.anlegen_beginnen(
+        person.id, person.email, rp_id, konten.passkey_kennungen_von(person.id)
+    )
+    # Das Salz kommt vom Server, damit es genau eine Quelle hat: Wer es
+    # aendert, macht jede bestehende Huelle unlesbar.
+    return {"vorgang": kennung, "optionen": optionen,
+            "salz": passkey.b64(passkey.SALZ)}
+
+
+@wege.post("/api/ich/passkey/fertig")
+def passkey_fertig(
+    daten: dict, anfrage: Request, person: Nutzer = Depends(angemeldet)
+) -> dict:
+    """Nimmt den Passkey an -- aber nur MIT PRF-Geheimnis.
+
+    Ohne das Geheimnis liesse sich der Datenschluessel nicht verpacken,
+    und der Passkey koennte die verschluesselte Ablage spaeter nicht
+    oeffnen. Ein solcher Passkey waere ein zweites, schwaecheres
+    Sicherheitsniveau -- deshalb entsteht er hier gar nicht erst.
+    """
+    geheimnis = str(daten.get("prf", "") or "").strip()
+    if not geheimnis:
+        raise HTTPException(
+            422,
+            detail={
+                "code": "kein_prf",
+                "grund": "Dieser Authenticator liefert kein Schlüsselmaterial "
+                "(WebAuthn-PRF). Ohne das könnte der Passkey Ihre Rechnungen "
+                "nicht entschlüsseln — melden Sie sich weiter mit Passwort an.",
+            },
+        )
+    datenschluessel = konten.datenschluessel_der_sitzung(sitzungsschluessel(anfrage))
+    if datenschluessel is None:
+        raise HTTPException(
+            409,
+            detail={"grund": "Diese Sitzung trägt keinen Schlüssel. Bitte neu anmelden."},
+        )
+
+    rp_id, herkunft = _rp_und_herkunft(anfrage)
+    try:
+        aufgabe = passkey.hole_aufgabe(str(daten.get("vorgang", "")))
+        geprueft = passkey.anlegen_pruefen(
+            daten.get("antwort") or {}, aufgabe, rp_id, herkunft
+        )
+    except passkey.PasskeyFehler as fehler:
+        raise HTTPException(422, detail={"grund": str(fehler)}) from fehler
+
+    konten.lege_passkey_an(
+        person.id,
+        passkey.b64(geprueft.credential_id),
+        geprueft.credential_public_key,
+        geprueft.sign_count,
+        str(daten.get("name", "") or "Passkey"),
+        tresor.verpacke(datenschluessel, geheimnis),
+    )
+    return {"angelegt": True}
+
+
+@wege.delete("/api/ich/passkeys/{kennung}")
+def passkey_loeschen(kennung: str, person: Nutzer = Depends(angemeldet)) -> dict:
+    if not konten.loesche_passkey(person.id, kennung):
+        raise HTTPException(404, detail={"grund": "Kein solcher Passkey."})
+    return {"geloescht": kennung}
+
+
+@wege.post("/api/anmelden/passkey/start")
+def passkey_anmelden_start(anfrage: Request) -> dict:
+    """Ohne Anmeldung erreichbar -- hier faengt sie ja erst an.
+
+    Es geht keine Liste hinaus: Der Passkey ist auffindbar (residentKey),
+    der Browser bietet selbst an, was er hat. Eine Liste verriete
+    ausserdem, welche Konten es gibt.
+    """
+    rp_id, _ = _rp_und_herkunft(anfrage)
+    kennung, optionen = passkey.anmelden_beginnen(rp_id)
+    return {"vorgang": kennung, "optionen": optionen,
+            "salz": passkey.b64(passkey.SALZ)}
+
+
+@wege.post("/api/anmelden/passkey")
+def passkey_anmelden(daten: dict, anfrage: Request) -> JSONResponse:
+    """Anmeldung mit Passkey -- und das PRF-Geheimnis oeffnet die Huelle."""
+    geheimnis = str(daten.get("prf", "") or "").strip()
+    antwort_daten = daten.get("antwort") or {}
+    kennung = str(antwort_daten.get("id", "") or "")
+    eintrag = konten.passkey(kennung)
+    if not eintrag or not geheimnis:
+        raise HTTPException(401, detail={"grund": "Anmeldung nicht möglich."})
+
+    rp_id, herkunft = _rp_und_herkunft(anfrage)
+    try:
+        aufgabe = passkey.hole_aufgabe(str(daten.get("vorgang", "")))
+        geprueft = passkey.anmelden_pruefen(
+            antwort_daten, aufgabe, rp_id, herkunft,
+            bytes(eintrag["schluessel"]), eintrag["zaehler"],
+        )
+    except passkey.PasskeyFehler as fehler:
+        raise HTTPException(401, detail={"grund": str(fehler)}) from fehler
+
+    person = konten.nutzer(eintrag["nutzer"])
+    if person is None or person.status == konten.STATUS_GESPERRT:
+        raise HTTPException(403, detail={"grund": "Ihr Konto ist gesperrt."})
+    try:
+        datenschluessel = tresor.oeffne(bytes(eintrag["huelle"]), geheimnis)
+    except tresor.TresorFehler as fehler:
+        # Der Passkey stimmt, das Schluesselmaterial nicht -- etwa, weil er
+        # auf einem anderen Geraet neu angelegt wurde.
+        raise HTTPException(
+            401, detail={"grund": "Dieser Passkey öffnet Ihre Daten nicht."}
+        ) from fehler
+
+    # KEIN zweiter Faktor: Ein Passkey IST bereits zweierlei -- Besitz des
+    # Geraets und Nachweis der Person (userVerification ist Pflicht, siehe
+    # passkey.py). Noch einen Code zu verlangen, waere Theater.
+    konten.merke_passkey_nutzung(kennung, geprueft.new_sign_count)
+    schluessel = konten.starte_sitzung(person.id, datenschluessel)
+    nutzdaten = nutzer_json(person)
+    if SITZUNG_KOPFZEILE:
+        nutzdaten["sitzung"] = schluessel
+    antwort = JSONResponse(nutzdaten)
+    setze_sitzungscookie(antwort, schluessel, anfrage)
+    return antwort
 
 
 @wege.post("/api/abmelden")

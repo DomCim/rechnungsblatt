@@ -105,6 +105,10 @@
         </div>
         <button class="knopf" type="submit" data-i18n="anmeldenKnopf">Anmelden</button>
       </form>
+      <div class="zeile" id="pkZeile" style="margin-top:10px;" hidden>
+        <button class="knopf leise" type="button" id="pkAnmelden"
+                data-i18n="pkAnmelden">Mit Passkey anmelden</button>
+      </div>
       <div class="meldung" id="anmeldeMeldung" role="status" aria-live="polite"></div>
       <p class="beschreibung" style="margin:12px 0 0;">
         <a class="verweis" href="#" id="vergessenVerweis"
@@ -244,7 +248,10 @@
       gesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber.",
       mfaCode: "Code aus Ihrer App",
       mfaCodeHinweis: "Sechs Ziffern — oder einer Ihrer Ersatzcodes, falls das Telefon nicht zur Hand ist.",
-      mfaNoetig: "Dieses Konto verlangt einen zweiten Faktor."
+      mfaNoetig: "Dieses Konto verlangt einen zweiten Faktor.",
+      pkAnmelden: "Mit Passkey anmelden",
+      pkLaeuft: "Warten auf Ihr Gerät …",
+      pkAbgebrochen: "Abgebrochen."
     },
     en: {
       titel: "Sign in",
@@ -276,7 +283,10 @@
       gesperrt: "Your account is blocked. Please contact the operator.",
       mfaCode: "Code from your app",
       mfaCodeHinweis: "Six digits — or one of your backup codes if your phone is not at hand.",
-      mfaNoetig: "This account requires a second factor."
+      mfaNoetig: "This account requires a second factor.",
+      pkAnmelden: "Sign in with a passkey",
+      pkLaeuft: "Waiting for your device …",
+      pkAbgebrochen: "Cancelled."
     }
   };
 
@@ -326,6 +336,40 @@
       return;
     }
     if (el("anmeldeCode").value.trim()) el("anmeldeCode").value = "";
+    melde(ziel, grund(antwort), false);
+  });
+
+  // ---------- Anmelden mit Passkey ----------
+  if (RB.passkeysMoeglich()) el("pkZeile").hidden = false;
+
+  el("pkAnmelden").addEventListener("click", async function () {
+    var ziel = el("anmeldeMeldung");
+    melde(ziel, RB.t("pkLaeuft"), true);
+    var start = await RB.api("/api/anmelden/passkey/start", { method: "POST" });
+    if (!start.ok) { melde(ziel, grund(start), false); return; }
+
+    var optionen = RB.optionenAufbereiten(start.daten.optionen);
+    optionen.extensions = { prf: { eval: { first: RB.ausB64(start.daten.salz) } } };
+
+    var zeugnis;
+    try {
+      zeugnis = await navigator.credentials.get({ publicKey: optionen });
+    } catch (fehler) { melde(ziel, RB.t("pkAbgebrochen"), false); return; }
+
+    var ergebnisse = zeugnis.getClientExtensionResults();
+    var geheim = ergebnisse.prf && ergebnisse.prf.results && ergebnisse.prf.results.first;
+    if (!geheim) { melde(ziel, RB.t("pkAbgebrochen"), false); return; }
+
+    var antwort = await RB.api("/api/anmelden/passkey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        vorgang: start.daten.vorgang,
+        antwort: RB.antwortAlsJson(zeugnis),
+        prf: RB.nachB64(geheim)
+      })
+    });
+    if (antwort.ok) { window.location.href = "/app"; return; }
     melde(ziel, grund(antwort), false);
   });
 

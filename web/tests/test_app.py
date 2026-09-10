@@ -572,3 +572,28 @@ def test_laenderliste_kommt_vom_server(client):
     # Der Name der Nummer reist mit: Danach fragt der Kunde seinen Kunden.
     frankreich = next(l for l in daten["eu"] if l["kennung"] == "FR")
     assert frankreich["nummer_heisst"] == "TVA intracommunautaire"
+
+
+@benoetigt_gs
+def test_app_leitet_auch_bei_fertiger_einrichtung_weiter(client):
+    """`/app` ist der Weg, auf den die Anmeldung schickt — er muss tragen.
+
+    Bis zum 10.09.2026 antwortete er bei jedem FERTIG eingerichteten
+    Mandanten mit 409 „kein_schluessel“: Er las die verschlüsselten
+    Stammdaten über einen Pfad ohne Datenschlüssel. Wer seine Einrichtung
+    abgeschlossen hatte, sah nach dem Anmelden eine JSON-Fehlerseite statt
+    des Rechnungsformulars. Im Browsertest aufgefallen, hier festgenagelt.
+    """
+    _richte_ein(client)
+
+    antwort = client.get("/app", follow_redirects=False)
+
+    assert antwort.status_code == 303, antwort.text
+    assert antwort.headers["location"] == "/app/rechnung"
+
+
+def test_app_ohne_einrichtung_fuehrt_in_den_assistenten(client):
+    antwort = client.get("/app", follow_redirects=False)
+
+    assert antwort.status_code == 303
+    assert antwort.headers["location"] == "/app/willkommen"
