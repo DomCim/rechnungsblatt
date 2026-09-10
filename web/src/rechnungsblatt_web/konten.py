@@ -108,6 +108,12 @@ class Nutzer:
     # gezeigt wurde. Am Konto und nicht im Browser: Wer das Gerät wechselt,
     # soll ihn nicht von vorn zu sehen bekommen.
     hinweis_gesehen: dt.datetime | None = None
+    # Seit wann der zweite Faktor verlangt wird. NULL = aus.
+    #
+    # Das Geheimnis selbst steht ABSICHTLICH nicht hier: Diese Klasse reist
+    # durch die halbe Anwendung und landet als JSON in der Oberflaeche. Wer
+    # es braucht, holt es einzeln ueber `mfa_geheimnis_von`.
+    mfa_aktiv: dt.datetime | None = None
 
     @property
     def ist_admin(self) -> bool:
@@ -222,7 +228,13 @@ CREATE TABLE IF NOT EXISTS nutzer (
     stripe_kunde       TEXT,
     stripe_abo         TEXT,
     -- Wann zuletzt der Hinweis des Betreibers nach einem Beleg erschien.
-    hinweis_gesehen    TIMESTAMPTZ
+    hinweis_gesehen    TIMESTAMPTZ,
+    -- Zweiter Faktor (TOTP). Das Geheimnis liegt mit dem Serverschluessel
+    -- verschluesselt; die Ersatzcodes liegen gehasht wie Passwoerter, durch
+    -- Zeilenumbruch getrennt, und werden beim Einloesen entfernt.
+    mfa_geheimnis      TEXT,
+    mfa_aktiv          TIMESTAMPTZ,
+    mfa_ersatzcodes    TEXT NOT NULL DEFAULT ''
 );
 
 CREATE TABLE IF NOT EXISTS sitzungen (
@@ -339,6 +351,9 @@ ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS stripe_abo TEXT;
 -- der Betreiber vorher, dass gekuendigt ist.
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS abo_endet TIMESTAMPTZ;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS hinweis_gesehen TIMESTAMPTZ;
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS mfa_geheimnis TEXT;
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS mfa_aktiv TIMESTAMPTZ;
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS mfa_ersatzcodes TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS nutzer_steuer_index ON nutzer (steuer_index)
   WHERE steuer_index IS NOT NULL;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS email_bestaetigt TIMESTAMPTZ;
@@ -587,7 +602,7 @@ def loesche_tarif(schluessel: str) -> None:
 _NUTZER_SPALTEN = (
     "id, email, rolle, status, tarif, guthaben_cent, passwort_wechseln, "
     "angelegt, zuletzt_angemeldet, email_bestaetigt, abo_endet, "
-    "hinweis_gesehen"
+    "hinweis_gesehen, mfa_aktiv"
 )
 
 
@@ -605,6 +620,7 @@ def _nutzer_aus_zeile(zeile: dict) -> Nutzer:
         email_bestaetigt=zeile["email_bestaetigt"],
         abo_endet=zeile["abo_endet"],
         hinweis_gesehen=zeile["hinweis_gesehen"],
+        mfa_aktiv=zeile["mfa_aktiv"],
     )
 
 
@@ -1219,6 +1235,111 @@ def merke_hinweis_gesehen(nutzer_id: int) -> None:
             "UPDATE nutzer SET hinweis_gesehen = now() WHERE id = %s",
             (nutzer_id,),
         )
+
+
+# ---------------------------------------------------------------- Zweiter Faktor
+
+def merke_mfa_geheimnis(nutzer_id: int, geheimnis: str) -> None:
+    """Legt das Geheimnis ab -- noch NICHT eingeschaltet.
+
+    Zwei Schritte mit Absicht: Erst wenn der Kunde einen Code aus seiner
+    App eingibt, ist bewiesen, dass er das Geheimnis wirklich hat. Wer
+    sofort einschaltete, sperrte jeden aus, der den QR-Code nicht sauber
+    eingelesen hat.
+    """
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET mfa_geheimnis = %s, mfa_aktiv = NULL WHERE id = %s",
+            (_verpacke_geheimnis(geheimnis), nutzer_id),
+        )
+
+
+def passwort_stimmt_fuer(nutzer_id: int, passwort: str) -> bool:
+    """Prueft das Passwort eines angemeldeten Kontos noch einmal nach.
+
+    Gebraucht dort, wo eine offene Sitzung allein nicht genuegen soll --
+    beim Abschalten des zweiten Faktors etwa. Ohne diese Nachfrage
+    reichte ein unbeaufsichtigter Rechner.
+    """
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT passwort_hash FROM nutzer WHERE id = %s", (nutzer_id,)
+        ).fetchone()
+    return zeile is not None and passwort_stimmt(passwort, zeile["passwort_hash"])
+
+
+def mfa_geheimnis_von(nutzer_id: int) -> str | None:
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT mfa_geheimnis FROM nutzer WHERE id = %s", (nutzer_id,)
+        ).fetchone()
+    if zeile is None or not zeile["mfa_geheimnis"]:
+        return None
+    return _entpacke_geheimnis(zeile["mfa_geheimnis"])
+
+
+def schalte_mfa_ein(nutzer_id: int, ersatzcodes: list[str]) -> None:
+    """Schaltet den zweiten Faktor scharf und legt die Ersatzcodes gehasht ab."""
+    gehasht = "\n".join(hashe_passwort(code) for code in ersatzcodes)
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET mfa_aktiv = now(), mfa_ersatzcodes = %s WHERE id = %s",
+            (gehasht, nutzer_id),
+        )
+
+
+def schalte_mfa_aus(nutzer_id: int) -> None:
+    """Schaltet ab und raeumt auf -- Geheimnis und Ersatzcodes verschwinden.
+
+    Auch der Betreiber darf das (Adminbereich): Ein Kunde ohne Telefon und
+    ohne Ersatzcodes kaeme sonst nie wieder herein. Eine Hintertuer ist es
+    nicht -- an die Rechnungen kommt nur, wer das Passwort hat, und das
+    aendert sich hierdurch nicht.
+    """
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET mfa_geheimnis = NULL, mfa_aktiv = NULL, "
+            "mfa_ersatzcodes = '' WHERE id = %s",
+            (nutzer_id,),
+        )
+
+
+def loese_ersatzcode_ein(nutzer_id: int, code: str) -> bool:
+    """Prueft einen Ersatzcode und verbraucht ihn.
+
+    Einmal und nie wieder: Wer ihn abgefangen hat, kommt damit kein
+    zweites Mal herein.
+    """
+    code = (code or "").strip()
+    if not code:
+        return False
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT mfa_ersatzcodes FROM nutzer WHERE id = %s", (nutzer_id,)
+        ).fetchone()
+        if zeile is None:
+            return False
+        uebrig = [z for z in (zeile["mfa_ersatzcodes"] or "").split("\n") if z]
+        for gespeichert in uebrig:
+            if passwort_stimmt(code, gespeichert):
+                rest = [z for z in uebrig if z != gespeichert]
+                verb.execute(
+                    "UPDATE nutzer SET mfa_ersatzcodes = %s WHERE id = %s",
+                    ("\n".join(rest), nutzer_id),
+                )
+                return True
+    return False
+
+
+def offene_ersatzcodes(nutzer_id: int) -> int:
+    """Wie viele Ersatzcodes noch da sind -- die Zahl darf die Oberflaeche zeigen."""
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT mfa_ersatzcodes FROM nutzer WHERE id = %s", (nutzer_id,)
+        ).fetchone()
+    if zeile is None:
+        return 0
+    return len([z for z in (zeile["mfa_ersatzcodes"] or "").split("\n") if z])
 
 
 # ---------------------------------------------------------------- Meldungen
