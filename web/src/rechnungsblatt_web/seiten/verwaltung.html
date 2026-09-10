@@ -574,6 +574,8 @@
       spEmail: "E-Mail", spStatus: "Status", spRolle: "Rolle", spTarif: "Tarif",
       spMonat: "Monat", spGuthaben: "Guthaben", spAktion: "Aktion",
       statusFrei: "frei", statusWartet: "wartet", statusGesperrt: "gesperrt",
+      mfaZuruecksetzen: "2FA zurücksetzen",
+      mfaFrage: "Zwei-Faktor-Anmeldung für {email} zurücksetzen?\n\nDas Konto kommt danach mit Passwort allein herein. An die Rechnungen kommen Sie dadurch nicht — die hängen am Passwort des Kunden.",
       rolleKunde: "Kunde", rolleAdmin: "Admin",
       freigeben: "Freigeben", sperren: "Sperren", entsperren: "Entsperren",
       loeschen: "Löschen",
@@ -685,6 +687,8 @@
       spEmail: "E-mail", spStatus: "Status", spRolle: "Role", spTarif: "Plan",
       spMonat: "Month", spGuthaben: "Credit", spAktion: "Action",
       statusFrei: "active", statusWartet: "waiting", statusGesperrt: "blocked",
+      mfaZuruecksetzen: "Reset 2FA",
+      mfaFrage: "Reset two-factor sign-in for {email}?\n\nThe account will then get in with the password alone. This does not give you access to their invoices — those hang on the customer's password.",
       rolleKunde: "Customer", rolleAdmin: "Admin",
       freigeben: "Activate", sperren: "Block", entsperren: "Unblock",
       loeschen: "Delete",
@@ -910,6 +914,15 @@
           async function () {
             if (await sende("/api/verwaltung/nutzer/" + person.id + "/status", { status: "frei" })) lade();
           }));
+      }
+      if (person.mfa_aktiv) {
+        // Kundendienstfall: Telefon weg, Ersatzcodes weg. Keine
+        // Hintertuer -- der Datenschluessel haengt am Passwort, nicht am
+        // zweiten Faktor.
+        kasten.appendChild(knopf(RB.t("mfaZuruecksetzen"), async function () {
+          if (!window.confirm(RB.t("mfaFrage").replace("{email}", person.email))) return;
+          if (await sende("/api/verwaltung/nutzer/" + person.id + "/mfa-aus", {})) lade();
+        }));
       }
       if (person.status !== "gesperrt") {
         kasten.appendChild(knopf(RB.t("sperren"), async function () {

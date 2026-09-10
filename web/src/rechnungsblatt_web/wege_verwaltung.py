@@ -57,6 +57,9 @@ def verwaltung_nutzer(_: Nutzer = Depends(verwalter)) -> list[dict]:
             ),
 
             "verbraucht_monat": konten.verbrauch_monat(person.id),
+            # Damit die Liste den Ruecksetzknopf nur dort zeigt, wo er
+            # etwas bewirkt.
+            "mfa_aktiv": person.mfa_aktiv is not None,
 
         }
 

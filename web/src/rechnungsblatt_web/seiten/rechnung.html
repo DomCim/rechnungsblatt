@@ -228,7 +228,14 @@
         </div>
         <div class="feld" data-feld="empfaenger.ust_idnr">
           <label for="eUstIdnr" data-i18n="eUstIdnr">USt-IdNr. (bei Reverse Charge / EU)</label>
-          <input id="eUstIdnr">
+          <div class="zeile" style="gap:8px; align-items:stretch;">
+            <input id="eUstIdnr" style="flex:1;">
+            <!-- Auf Knopfdruck, nie beim Erzeugen: Der Beleg darf an
+                 keinem fremden Server haengen. -->
+            <button type="button" class="knopf leise" id="ustidPruefen"
+                    data-i18n="ustidPruefen">Prüfen</button>
+          </div>
+          <p class="feldhinweis" id="ustidStand" hidden></p>
           <span class="fehler"></span>
         </div>
         <div class="feld" data-feld="empfaenger.email">
@@ -414,6 +421,11 @@
       eLand: "Land",
       hLand: "Zwei Buchstaben nach ISO 3166 — DE, FR, CH. Er entscheidet mit über den Steuerfall.",
       hinweisTitel: "Bitte noch prüfen",
+      ustidPruefen: "Prüfen",
+      ustidLaeuft: "Frage bei MIAS/VIES nach …",
+      ustidGueltig: "Bestätigt am {datum}{name}.",
+      ustidUngueltig: "MIAS/VIES kennt diese Nummer nicht. Bitte beim Kunden nachfragen.",
+      ustidUnbekannt: "Der Dienst antwortet gerade nicht ({grund}). Das sagt nichts über die Nummer — die Rechnung lässt sich trotzdem schreiben.",
       vorschlagEu: "Empfänger in {land}. Mit {nummer} ist Reverse Charge hier der Regelfall.",
       vorschlagEuOhneNummer: "Empfänger in {land} — ohne dessen {nummer} bleibt es beim Inlandsfall. Ohne die Nummer ist nicht belegt, dass er Unternehmer ist.",
       vorschlagDrittland: "Empfänger außerhalb der EU. Bei einer Dienstleistung ist „nicht steuerbar“ richtig, bei einer Warenlieferung „Ausfuhr“ — das entscheiden Sie.",
@@ -435,6 +447,11 @@
       eLand: "Country",
       hLand: "Two letters per ISO 3166 — DE, FR, CH. It co-determines the tax treatment.",
       hinweisTitel: "Worth a second look",
+      ustidPruefen: "Check",
+      ustidLaeuft: "Asking MIAS/VIES …",
+      ustidGueltig: "Confirmed on {datum}{name}.",
+      ustidUngueltig: "MIAS/VIES does not know this number. Please ask your customer.",
+      ustidUnbekannt: "The service is not answering right now ({grund}). That says nothing about the number — you can still write the invoice.",
       vorschlagEu: "Recipient in {land}. With a {nummer} reverse charge is the normal case here.",
       vorschlagEuOhneNummer: "Recipient in {land} — without their {nummer} it stays a domestic case. Without the number there is no evidence that they are a business.",
       vorschlagDrittland: "Recipient outside the EU. For a service “not taxable” is right, for goods “export” — that is your call.",
@@ -888,6 +905,56 @@
     kasten.hidden = false;
   }
 
+  // ---------- Bestaetigungsabfrage ----------
+  function ustidZeigen(ergebnis) {
+    var kasten = el("ustidStand");
+    if (!ergebnis) { kasten.hidden = true; return; }
+    var datum = (ergebnis.zeitpunkt || "").slice(0, 10);
+    var name = ergebnis.name ? " — " + ergebnis.name : "";
+    if (ergebnis.stand === "gueltig") {
+      kasten.textContent = RB.t("ustidGueltig")
+        .replace("{datum}", datum).replace("{name}", name);
+    } else if (ergebnis.stand === "ungueltig") {
+      kasten.textContent = RB.t("ustidUngueltig");
+    } else {
+      kasten.textContent = RB.t("ustidUnbekannt")
+        .replace("{grund}", ergebnis.grund || "—");
+    }
+    kasten.hidden = false;
+  }
+
+  async function ladeUstidStand() {
+    var antwort = await RB.api("/api/ustid/pruefungen");
+    if (!antwort.ok || !antwort.daten) return;
+    gPruefungen = antwort.daten;
+    zeigeGemerkteNummer();
+  }
+
+  var gPruefungen = {};
+
+  function zeigeGemerkteNummer() {
+    var nummer = el("eUstIdnr").value.replace(/[\s.\-\/]/g, "").toUpperCase();
+    ustidZeigen(nummer ? gPruefungen[nummer] : null);
+  }
+
+  el("ustidPruefen").addEventListener("click", async function () {
+    var kasten = el("ustidStand");
+    kasten.textContent = RB.t("ustidLaeuft");
+    kasten.hidden = false;
+    var antwort = await RB.api("/api/ustid/pruefen", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nummer: el("eUstIdnr").value.trim(),
+        land: el("eLand").value.trim().toUpperCase()
+      })
+    });
+    if (!antwort.ok || !antwort.daten) { kasten.hidden = true; return; }
+    gPruefungen[antwort.daten.nummer] = antwort.daten;
+    ustidZeigen(antwort.daten);
+  });
+
+  el("eUstIdnr").addEventListener("input", zeigeGemerkteNummer);
   el("eLand").addEventListener("input", zeichneVorschlag);
   el("eUstIdnr").addEventListener("input", zeichneVorschlag);
 
@@ -1237,6 +1304,7 @@
   ladeAblage();
   ladeKunden();
   ladeLaender();
+  ladeUstidStand();
   // Erst die Artikel, dann die Vorlagen: der Preisabgleich beim Laden
   // einer Vorlage braucht den Artikelstamm.
   ladeArtikel().then(ladeVorlagen);
