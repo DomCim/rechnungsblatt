@@ -358,11 +358,15 @@ def _pruefe_kategorie_gegen_land(
     befunde: list[Befund] = []
     land = (rechnung.empfaenger.anschrift.land or "").strip().upper()
 
+    # RC3 ist bewusst uebersprungen: In did0m-verwaltung traegt diese
+    # Kennung seit dem 10.09.2026 ein falsches Nummernformat. RC1 und RC2
+    # meinen in beiden Systemen dasselbe -- das soll so bleiben, und dann
+    # darf RC3 hier nicht etwas anderes heissen.
     if Steuerkategorie.REVERSE_CHARGE in kategorien and land:
         if laender.ist_laenderkennzeichen(land) and not laender.ist_eu(land):
             befunde.append(
                 Befund(
-                    "RC3",
+                    "RC4",
                     "rechnung.positionen",
                     f"Reverse Charge setzt einen Empfänger im Gemeinschaftsgebiet "
                     f"voraus (Art. 196 MwStSystRL); {land} gehört nicht dazu. "

@@ -115,7 +115,7 @@ def test_hinweis_haelt_die_erzeugung_nicht_auf(rechnung, stammdaten):
     erzwinge_paragraph14(seltsam, stammdaten)      # darf nicht werfen
 
 
-# --- Kategorie gegen Land (RC3, O1) ----------------------------------
+# --- Kategorie gegen Land (RC4, O1) ----------------------------------
 
 def test_reverse_charge_in_die_schweiz_blockiert(rechnung, stammdaten):
     """Art. 196 MwStSystRL gilt nur im Gemeinschaftsgebiet."""
@@ -125,8 +125,8 @@ def test_reverse_charge_in_die_schweiz_blockiert(rechnung, stammdaten):
     )
     befunde = pruefe_paragraph14(kaputt, stammdaten)
 
-    assert "RC3" in blockierend(befunde)
-    text = next(b.text for b in befunde if b.code == "RC3")
+    assert "RC4" in blockierend(befunde)
+    text = next(b.text for b in befunde if b.code == "RC4")
     assert "Nicht steuerbar" in text and "Ausfuhr" in text
 
 
@@ -135,7 +135,7 @@ def test_reverse_charge_nach_frankreich_ist_richtig(rechnung, stammdaten):
         rechnung, land="FR", ust_idnr="FR53987550159",
         kategorie=Steuerkategorie.REVERSE_CHARGE,
     )
-    assert "RC3" not in codes(pruefe_paragraph14(gut, stammdaten))
+    assert "RC4" not in codes(pruefe_paragraph14(gut, stammdaten))
 
 
 def test_inlaendisches_reverse_charge_bleibt_erlaubt(rechnung, stammdaten):
@@ -144,7 +144,7 @@ def test_inlaendisches_reverse_charge_bleibt_erlaubt(rechnung, stammdaten):
         rechnung, land="DE", ust_idnr="DE123456789",
         kategorie=Steuerkategorie.REVERSE_CHARGE,
     )
-    assert "RC3" not in codes(pruefe_paragraph14(gut, stammdaten))
+    assert "RC4" not in codes(pruefe_paragraph14(gut, stammdaten))
 
 
 def test_nicht_steuerbar_laesst_sich_nicht_mischen(rechnung, stammdaten):
