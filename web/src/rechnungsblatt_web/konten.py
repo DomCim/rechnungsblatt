@@ -319,6 +319,23 @@ CREATE TABLE IF NOT EXISTS meldungen (
     angelegt      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS meldungen_nutzer ON meldungen (nutzer, angelegt);
+
+-- Passkeys. `huelle` ist der Datenschluessel, verpackt mit dem
+-- PRF-Geheimnis dieses Passkeys -- die dritte Huelle neben Passwort und
+-- Wiederherstellungscode. Ohne sie gibt es keinen Eintrag: Ein Passkey
+-- ohne PRF koennte die verschluesselte Ablage nicht oeffnen und waere
+-- ein zweites, schwaecheres Sicherheitsniveau.
+CREATE TABLE IF NOT EXISTS passkeys (
+    kennung    TEXT PRIMARY KEY,
+    nutzer     BIGINT NOT NULL REFERENCES nutzer(id) ON DELETE CASCADE,
+    schluessel BYTEA NOT NULL,
+    zaehler    BIGINT NOT NULL DEFAULT 0,
+    name       TEXT NOT NULL DEFAULT '',
+    huelle     BYTEA NOT NULL,
+    angelegt   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    zuletzt    TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS passkeys_nutzer ON passkeys (nutzer);
 """
 
 # Nachträgliche Spalten.
@@ -1235,6 +1252,75 @@ def merke_hinweis_gesehen(nutzer_id: int) -> None:
             "UPDATE nutzer SET hinweis_gesehen = now() WHERE id = %s",
             (nutzer_id,),
         )
+
+
+# ---------------------------------------------------------------- Passkeys
+
+def lege_passkey_an(nutzer_id: int, kennung: str, schluessel: bytes,
+                    zaehler: int, name: str, huelle: bytes) -> None:
+    """Legt einen Passkey samt Huelle um den Datenschluessel an."""
+    with verbindung() as verb:
+        verb.execute(
+            """INSERT INTO passkeys
+                   (kennung, nutzer, schluessel, zaehler, name, huelle)
+               VALUES (%s, %s, %s, %s, %s, %s)
+               ON CONFLICT (kennung) DO NOTHING""",
+            (kennung, nutzer_id, schluessel, zaehler, name[:60], huelle),
+        )
+
+
+def passkeys_von(nutzer_id: int) -> list[dict]:
+    """Was die Oberflaeche zeigen darf -- ohne Schluessel und ohne Huelle."""
+    with verbindung() as verb:
+        zeilen = verb.execute(
+            "SELECT kennung, name, angelegt, zuletzt FROM passkeys "
+            "WHERE nutzer = %s ORDER BY angelegt",
+            (nutzer_id,),
+        ).fetchall()
+    return [
+        {
+            "kennung": z["kennung"],
+            "name": z["name"],
+            "angelegt": z["angelegt"].isoformat(timespec="seconds"),
+            "zuletzt": z["zuletzt"].isoformat(timespec="seconds") if z["zuletzt"] else None,
+        }
+        for z in zeilen
+    ]
+
+
+def passkey_kennungen_von(nutzer_id: int) -> list[str]:
+    with verbindung() as verb:
+        zeilen = verb.execute(
+            "SELECT kennung FROM passkeys WHERE nutzer = %s", (nutzer_id,)
+        ).fetchall()
+    return [z["kennung"] for z in zeilen]
+
+
+def passkey(kennung: str) -> dict | None:
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "SELECT * FROM passkeys WHERE kennung = %s", (kennung,)
+        ).fetchone()
+    return dict(zeile) if zeile else None
+
+
+def merke_passkey_nutzung(kennung: str, zaehler: int) -> None:
+    """Zaehler fortschreiben -- er entlarvt einen geklonten Authenticator."""
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE passkeys SET zaehler = %s, zuletzt = now() WHERE kennung = %s",
+            (zaehler, kennung),
+        )
+
+
+def loesche_passkey(nutzer_id: int, kennung: str) -> bool:
+    with verbindung() as verb:
+        zeile = verb.execute(
+            "DELETE FROM passkeys WHERE kennung = %s AND nutzer = %s "
+            "RETURNING kennung",
+            (kennung, nutzer_id),
+        ).fetchone()
+    return zeile is not None
 
 
 # ---------------------------------------------------------------- Zweiter Faktor
