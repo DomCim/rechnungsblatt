@@ -380,6 +380,15 @@
       <div class="feld">
         <label for="werbungZiel" data-i18n="fWerbungZiel">Verweis</label>
         <input id="werbungZiel" placeholder="https://did0m.dev"></div>
+      <div class="feld breit">
+        <label for="werbungAbstand" data-i18n="fWerbungAbstand">Auch nach einer Rechnung, h&ouml;chstens alle &hellip; Tage</label>
+        <input id="werbungAbstand" type="number" min="0" step="1" placeholder="0">
+        <p class="feldhinweis" data-i18n="hWerbungAbstand">
+          <span class="kennung">0</span> oder leer: nur im Konto, wie bisher.
+          <span class="kennung">30</span>: zus&auml;tzlich nach einer erzeugten
+          Rechnung, aber h&ouml;chstens alle drei&szlig;ig Tage je Kunde. Die
+          Karte steht dort unter den Kn&ouml;pfen zum PDF, nie davor.
+        </p></div>
     </div>
     <div class="zeile" style="margin-top:14px;">
       <button type="button" class="knopf" id="werbungSpeichern"
@@ -615,6 +624,8 @@
       fWerbungText: "Text", fWerbungKnopf: "Knopfbeschriftung",
       fWerbungZiel: "Verweis",
       hWerbungText: "**fett**, *kursiv*, eine Leerzeile trennt Absätze. Mehr gibt es nicht — der Text wird aus Textbausteinen zusammengesetzt und nie als HTML eingefügt.",
+      fWerbungAbstand: "Auch nach einer Rechnung, höchstens alle … Tage",
+      hWerbungAbstand: "0 oder leer: nur im Konto, wie bisher. 30: zusätzlich nach einer erzeugten Rechnung, aber höchstens alle dreißig Tage je Kunde. Die Karte steht dort unter den Knöpfen zum PDF, nie davor.",
       werbungZielFehlt: "Der Verweis muss mit https:// beginnen.",
       stripeTitel: "Zahlungen",
       stripeText: "Ohne Schlüssel bietet die App keine Zahlung an — Tarife und Guthaben setzen Sie dann weiter von Hand, wie bisher. Die Schlüssel werden verschlüsselt abgelegt und nie wieder angezeigt.",
@@ -724,6 +735,8 @@
       fWerbungText: "Text", fWerbungKnopf: "Button label",
       fWerbungZiel: "Link",
       hWerbungText: "**bold**, *italic*, a blank line starts a new paragraph. That is all there is — the text is assembled from text nodes and never inserted as HTML.",
+      fWerbungAbstand: "Also after an invoice, at most every … days",
+      hWerbungAbstand: "0 or empty: only in the account, as before. 30: additionally after an invoice has been created, but at most every thirty days per customer. There the card sits below the buttons to the PDF, never in front of them.",
       werbungZielFehlt: "The link must start with https://.",
       stripeTitel: "Payments",
       stripeText: "Without keys the app offers no payment — you then set plans and credit by hand, as before. The keys are stored encrypted and never shown again.",
@@ -1426,6 +1439,7 @@
     el("werbungTextFeld").value = werte.werbung_text || "";
     el("werbungKnopf").value = werte.werbung_knopf || "";
     el("werbungZiel").value = werte.werbung_ziel || "";
+    el("werbungAbstand").value = werte.werbung_abstand_tage || "";
     el("stripeFrei").checked = ["1", "ja", "true", "an"].indexOf(
       (werte.stripe_freier_betrag || "").toLowerCase()) >= 0;
     el("githubRepo").value = werte.github_repo || "";
@@ -1659,7 +1673,9 @@ el("werbungSpeichern").addEventListener("click", async function () {
       werbung_titel: el("werbungTitelFeld").value.trim(),
       werbung_text: el("werbungTextFeld").value.trim(),
       werbung_knopf: el("werbungKnopf").value.trim(),
-      werbung_ziel: ziel
+      werbung_ziel: ziel,
+      // Leer heisst 0 heisst "nach einem Beleg gar nicht".
+      werbung_abstand_tage: el("werbungAbstand").value.trim() || "0"
     })
   });
   kasten.className = "meldung hinweis" + (antwort.ok ? " gut" : "");

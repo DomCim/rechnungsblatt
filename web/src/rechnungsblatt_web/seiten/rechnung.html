@@ -328,6 +328,11 @@
            Beleg ist erzeugt, hier ist nichts mehr aufzuhalten — es ist
            eine Bitte, noch einmal hinzusehen. -->
       <div id="hinweiseBefund" style="margin-top:12px;" hidden></div>
+      <!-- Ein Wort des Betreibers, nur nach einem erzeugten Beleg und nur
+           im vom Adminbereich gesetzten Abstand. Steht UNTER den beiden
+           Knoepfen: Wer gerade eine Rechnung erzeugt hat, will sie
+           oeffnen und verschicken -- nichts darf davorstehen. -->
+      <div id="hinweisNachBeleg" style="margin-top:14px;" hidden></div>
     </section>
   </form>
 
@@ -726,6 +731,7 @@
     ladeKunden();
     el("nummer").value = "";  // nächster Vorschlag aus dem Nummernkreis
     ladeNummer();
+    zeigeHinweis();
   });
 
   // Nicht blockierende Befunde: erzeugt ist erzeugt, aber etwas ist
@@ -752,6 +758,45 @@
     });
     kasten.appendChild(liste);
     kasten.hidden = false;
+  }
+
+  // ---------- Hinweis des Betreibers ----------
+  // Erst hier abgefragt und nicht beim Laden der Seite: Wer nie eine
+  // Rechnung fertigstellt, soll dafuer auch keine Anfrage kosten.
+  async function zeigeHinweis() {
+    var kasten = el("hinweisNachBeleg");
+    if (!kasten.hidden) return;          // steht schon da
+    var antwort = await RB.api("/api/hinweis");
+    var h = antwort.ok && antwort.daten;
+    if (!h || !h.an || !h.nach_beleg) return;
+
+    var karte = document.createElement("section");
+    karte.className = "karte";
+    var titel = document.createElement("h2");
+    titel.textContent = h.titel;
+    karte.appendChild(titel);
+    if (h.text) {
+      var text = document.createElement("div");
+      text.className = "beschreibung";
+      RB.auszeichnen(text, h.text);
+      karte.appendChild(text);
+    }
+    var zeile = document.createElement("div");
+    zeile.className = "zeile";
+    var knopf = document.createElement("a");
+    knopf.className = "knopf leise";
+    knopf.href = h.ziel;
+    knopf.target = "_blank";
+    knopf.rel = "noopener";
+    knopf.textContent = h.knopf;
+    zeile.appendChild(knopf);
+    karte.appendChild(zeile);
+
+    kasten.textContent = "";
+    kasten.appendChild(karte);
+    kasten.hidden = false;
+    // Gemeldet wird erst jetzt: Gezaehlt gehoert, was zu sehen war.
+    RB.api("/api/hinweis/gesehen", { method: "POST" });
   }
 
   el("xrechnung").addEventListener("click", async function () {
