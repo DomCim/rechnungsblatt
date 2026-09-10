@@ -13,7 +13,7 @@ import datetime as dt
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from . import konten, post
+from . import konten, post, zweifaktor
 from .basis import (
     SITZUNG_KOPFZEILE,
     SITZUNG_COOKIE,
@@ -194,6 +194,18 @@ def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
                 "grund": "Bitte bestätigen Sie zuerst Ihre E-Mail-Adresse.",
             },
         )
+    if person.mfa_aktiv is not None and not _zweiter_faktor_stimmt(person, daten):
+        # Kein eigener Schritt auf dem Server, keine halbe Sitzung: Die
+        # Oberflaeche fragt den Code nach und schickt Passwort UND Code
+        # zusammen erneut. Damit liegt zwischendurch nirgends ein halb
+        # angemeldeter Zustand samt Datenschluessel herum.
+        raise HTTPException(
+            401,
+            detail={
+                "code": "mfa_noetig",
+                "grund": "Bitte den sechsstelligen Code aus Ihrer App eingeben.",
+            },
+        )
     if datenschluessel is None:
         # Konto aus der Zeit vor der Verschlüsselung (oder der Startadmin,
         # der ohne Registrierung entsteht): Hülle jetzt nachlegen, solange
@@ -209,6 +221,81 @@ def anmelden(daten: dict, anfrage: Request) -> JSONResponse:
     antwort = JSONResponse(nutzdaten)
     setze_sitzungscookie(antwort, schluessel, anfrage)
     return antwort
+
+
+def _zweiter_faktor_stimmt(person: Nutzer, daten: dict) -> bool:
+    """Sechsstelliger Code aus der App — oder ein Ersatzcode.
+
+    Der Ersatzcode wird dabei verbraucht. Beides in einem Feld, weil der
+    Kunde im Zweifel ohnehin eintippt, was er gerade hat.
+    """
+    eingabe = str(daten.get("code", "") or "").strip()
+    if not eingabe:
+        return False
+    geheimnis = konten.mfa_geheimnis_von(person.id)
+    if geheimnis and zweifaktor.stimmt(geheimnis, eingabe):
+        return True
+    return konten.loese_ersatzcode_ein(person.id, eingabe)
+
+
+@wege.post("/api/ich/mfa/start")
+def mfa_start(person: Nutzer = Depends(angemeldet)) -> dict:
+    """Ein neues Geheimnis samt QR-Bild — noch nicht scharf.
+
+    Scharf wird es erst, wenn der Kunde einen Code daraus vorzeigt. Wer
+    sofort einschaltete, sperrte jeden aus, dessen App den QR-Code nicht
+    sauber gelesen hat.
+    """
+    if person.mfa_aktiv is not None:
+        raise HTTPException(
+            409,
+            detail={"grund": "Der zweite Faktor ist bereits eingeschaltet."},
+        )
+    geheimnis = zweifaktor.neues_geheimnis()
+    konten.merke_mfa_geheimnis(person.id, geheimnis)
+    adresse = zweifaktor.otpauth_adresse(person.email, geheimnis)
+    return {
+        # Zum Abtippen, wenn die Kamera streikt.
+        "geheimnis": geheimnis,
+        "adresse": adresse,
+        "qr": zweifaktor.qr_svg(adresse),
+    }
+
+
+@wege.post("/api/ich/mfa/ein")
+def mfa_einschalten(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
+    """Schaltet scharf und gibt die Ersatzcodes heraus — EINMAL."""
+    geheimnis = konten.mfa_geheimnis_von(person.id)
+    if not geheimnis:
+        raise HTTPException(
+            409, detail={"grund": "Bitte zuerst den QR-Code einlesen."}
+        )
+    if not zweifaktor.stimmt(geheimnis, str(daten.get("code", ""))):
+        raise HTTPException(
+            422,
+            detail={
+                "code": "code_falsch",
+                "grund": "Der Code stimmt nicht. Geht die Uhr des Telefons richtig?",
+            },
+        )
+    codes = zweifaktor.neue_ersatzcodes()
+    konten.schalte_mfa_ein(person.id, codes)
+    # Gehasht abgelegt, hier zum ersten und letzten Mal im Klartext --
+    # dieselbe Regel wie beim Wiederherstellungscode.
+    return {"ersatzcodes": codes}
+
+
+@wege.post("/api/ich/mfa/aus")
+def mfa_ausschalten(daten: dict, person: Nutzer = Depends(angemeldet)) -> dict:
+    """Abschalten verlangt das Passwort.
+
+    Sonst genuegte eine offene Sitzung an einem unbeaufsichtigten Rechner,
+    um den zweiten Faktor loszuwerden -- und er waere seinen Zweck los.
+    """
+    if not konten.passwort_stimmt_fuer(person.id, str(daten.get("passwort", ""))):
+        raise HTTPException(422, detail={"grund": "Das Passwort stimmt nicht."})
+    konten.schalte_mfa_aus(person.id)
+    return {"aus": True}
 
 
 @wege.post("/api/abmelden")

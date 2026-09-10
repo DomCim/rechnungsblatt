@@ -92,6 +92,17 @@
           <label for="anmeldePasswort" data-i18n="passwort">Passwort</label>
           <input id="anmeldePasswort" type="password" autocomplete="current-password" required>
         </div>
+        <!-- Erscheint erst, wenn der Server den zweiten Faktor verlangt.
+             Wer ihn nicht eingeschaltet hat, sieht das Feld nie. -->
+        <div class="feld" id="mfaFeld" hidden>
+          <label for="anmeldeCode" data-i18n="mfaCode">Code aus Ihrer App</label>
+          <input id="anmeldeCode" inputmode="numeric" autocomplete="one-time-code"
+                 maxlength="11" placeholder="123456">
+          <p class="feldhinweis" data-i18n="mfaCodeHinweis">
+            Sechs Ziffern &mdash; oder einer Ihrer Ersatzcodes, falls das
+            Telefon nicht zur Hand ist.
+          </p>
+        </div>
         <button class="knopf" type="submit" data-i18n="anmeldenKnopf">Anmelden</button>
       </form>
       <div class="meldung" id="anmeldeMeldung" role="status" aria-live="polite"></div>
@@ -230,7 +241,10 @@
       zurueck: "Zurück zur Übersicht",
       registriert: "Konto angelegt. Wir haben Ihnen einen Bestätigungscode geschickt.",
       bereitZumAnmelden: "Alles erledigt — Sie können sich jetzt anmelden.",
-      gesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber."
+      gesperrt: "Ihr Konto ist gesperrt. Bitte wenden Sie sich an den Betreiber.",
+      mfaCode: "Code aus Ihrer App",
+      mfaCodeHinweis: "Sechs Ziffern — oder einer Ihrer Ersatzcodes, falls das Telefon nicht zur Hand ist.",
+      mfaNoetig: "Dieses Konto verlangt einen zweiten Faktor."
     },
     en: {
       titel: "Sign in",
@@ -259,7 +273,10 @@
       zurueck: "Back to the overview",
       registriert: "Account created. We have sent you a confirmation code.",
       bereitZumAnmelden: "All done — you can sign in now.",
-      gesperrt: "Your account is blocked. Please contact the operator."
+      gesperrt: "Your account is blocked. Please contact the operator.",
+      mfaCode: "Code from your app",
+      mfaCodeHinweis: "Six digits — or one of your backup codes if your phone is not at hand.",
+      mfaNoetig: "This account requires a second factor."
     }
   };
 
@@ -289,13 +306,26 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: el("anmeldeEmail").value,
-        passwort: el("anmeldePasswort").value
+        passwort: el("anmeldePasswort").value,
+        // Leer, solange niemand danach gefragt hat.
+        code: el("anmeldeCode").value.trim()
       })
     });
     if (antwort.ok) {
       window.location.href = "/app";
       return;
     }
+    var kennung = antwort.daten && antwort.daten.detail && antwort.daten.detail.code;
+    if (kennung === "mfa_noetig") {
+      // Kein zweiter Schritt auf dem Server und keine halbe Sitzung: Das
+      // Passwort steht noch im Feld, es geht beim naechsten Absenden
+      // zusammen mit dem Code hinaus.
+      el("mfaFeld").hidden = false;
+      el("anmeldeCode").focus();
+      melde(ziel, RB.t("mfaNoetig"), true);
+      return;
+    }
+    if (el("anmeldeCode").value.trim()) el("anmeldeCode").value = "";
     melde(ziel, grund(antwort), false);
   });
 
