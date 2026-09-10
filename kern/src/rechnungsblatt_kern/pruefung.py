@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from . import laender
 from .modell import Belegtyp, Empfaenger, Profil, Rechnung, Stammdaten, Steuerkategorie
 
 _IBAN_MUSTER = re.compile(r"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$")
@@ -20,6 +21,14 @@ class Befund:
     code: str
     feld: str
     text: str
+    #: Blockiert die Erzeugung. ``False`` heisst: auffaellig, aber moeglich.
+    #
+    # Gebraucht dort, wo die Pruefung sich irren KANN. Das Muster einer
+    # auslaendischen USt-IdNr. etwa steht in einer Tabelle, die zu eng sein
+    # koennte; ein Kunde mit gueltiger Nummer duerfte dann gar nicht mehr
+    # abrechnen. Ein Widerspruch dagegen -- ein franzoesisches Praefix an
+    # einer deutschen Anschrift -- kann es nicht geben und blockiert.
+    blockierend: bool = True
 
 
 class UngueltigeRechnung(Exception):
@@ -52,7 +61,9 @@ def erzwinge_paragraph14(
     stammdaten: Stammdaten,
     profil: Profil = Profil.EN16931,
 ) -> None:
-    befunde = pruefe_paragraph14(rechnung, stammdaten, profil)
+    befunde = [
+        b for b in pruefe_paragraph14(rechnung, stammdaten, profil) if b.blockierend
+    ]
     if befunde:
         raise UngueltigeRechnung(befunde)
 
@@ -97,6 +108,20 @@ def _pruefe_empfaenger(empfaenger: Empfaenger, profil: Profil) -> list[Befund]:
     if not empfaenger.name.strip():
         befunde.append(Befund("E1", "empfaenger.name", "Name des Empfängers fehlt."))
     befunde += _pruefe_anschrift(empfaenger.anschrift, "empfaenger.anschrift", "E2")
+    land = (empfaenger.anschrift.land or "").strip()
+    if land and not laender.ist_laenderkennzeichen(land):
+        # Ein ausgeschriebenes "Frankreich" landet als CountryID (BT-55) im
+        # XML und macht den Beleg ungueltig -- der Validator prueft gegen die
+        # ISO-Codeliste. Das faellt sonst erst beim Empfaenger auf.
+        befunde.append(
+            Befund(
+                "E3",
+                "empfaenger.anschrift",
+                f"„{land}“ ist kein Länderkennzeichen. Erwartet werden zwei "
+                "Großbuchstaben nach ISO 3166-1, etwa DE, FR oder CH.",
+            )
+        )
+    befunde += _pruefe_ustidnr_des_empfaengers(empfaenger)
     if profil is Profil.XRECHNUNG:
         if not (empfaenger.leitweg_id or "").strip():
             befunde.append(
@@ -115,6 +140,49 @@ def _pruefe_empfaenger(empfaenger: Empfaenger, profil: Profil) -> list[Befund]:
                     "(BT-49, PEPPOL-EN16931-R010).",
                 )
             )
+    return befunde
+
+
+def _pruefe_ustidnr_des_empfaengers(empfaenger: Empfaenger) -> list[Befund]:
+    """Praefix und Muster der USt-IdNr. des Empfaengers.
+
+    Zwei Stufen mit Absicht: Das **Praefix** muss zum Land passen, sonst
+    widersprechen sich zwei Angaben auf demselben Beleg. Das **Muster**
+    stammt aus einer Tabelle, die zu eng sein koennte -- es meldet sich als
+    Hinweis. Beweisen laesst sich mit beidem nichts: Ob es die Nummer gibt,
+    sagt allein die Bestaetigungsabfrage nach § 18e UStG.
+    """
+    nummer = (empfaenger.ust_idnr or "").strip()
+    if not nummer:
+        return []
+    land = empfaenger.anschrift.land
+    befunde: list[Befund] = []
+
+    passt = laender.praefix_passt(nummer, land)
+    if passt is False:
+        erlaubt = " oder ".join(laender.erlaubte_praefixe(land))
+        befunde.append(
+            Befund(
+                "E4",
+                "empfaenger.ust_idnr",
+                f"Die USt-IdNr. beginnt mit „{laender.normalisiere_nummer(nummer)[:2]}“, "
+                f"die Anschrift liegt in {land}. Erwartet wird „{erlaubt}“.",
+            )
+        )
+        return befunde                      # ein Widerspruch genuegt
+
+    if laender.muster_passt(nummer, land) is False:
+        eintrag = laender.land_zu(land)
+        name = eintrag.nummer_heisst if eintrag else "USt-IdNr."
+        befunde.append(
+            Befund(
+                "E5",
+                "empfaenger.ust_idnr",
+                f"Die Nummer sieht für {land} ungewöhnlich aus — dort heißt sie "
+                f"{name}. Bitte prüfen; die Rechnung lässt sich trotzdem erzeugen.",
+                blockierend=False,
+            )
+        )
     return befunde
 
 
@@ -256,6 +324,67 @@ def _pruefe_positionen(rechnung: Rechnung, stammdaten: Stammdaten) -> list[Befun
                     "beider Parteien.",
                 )
             )
+    befunde += _pruefe_kategorie_gegen_land(rechnung, kategorien)
+    return befunde
+
+
+def _pruefe_kategorie_gegen_land(
+    rechnung: Rechnung, kategorien: set[Steuerkategorie]
+) -> list[Befund]:
+    """Passt die gewaehlte Steuerkategorie zum Sitz des Empfaengers?
+
+    Zwei Regeln, beide blockierend, beide ohne Ermessen:
+
+    **Reverse Charge gibt es nur im Gemeinschaftsgebiet.** Art. 196
+    MwStSystRL bindet die Steuerschuld des Empfaengers an einen anderen
+    Mitgliedstaat. Bei einem Schweizer Kunden waere die Aussage schlicht
+    falsch -- dort gilt Schweizer Recht. Deutschland selbst bleibt erlaubt:
+    § 13b UStG kennt inlaendisches Reverse Charge (Bauleistungen,
+    Gebaeudereinigung, Schrott), und das traegt denselben Code AE.
+
+    **Nicht steuerbar vertraegt sich mit nichts.** EN 16931 laesst neben
+    einer O-Position keine andere Steuerkategorie im selben Beleg zu; der
+    Validator lehnt eine gemischte Rechnung ab. Hier abzufangen ist
+    freundlicher, als den Kunden mit einem Schematron-Fehler stehen zu
+    lassen.
+
+    Zu O und Inland sagt die Pruefung bewusst NICHTS: Eine Leistung an einen
+    deutschen Kunden kann sehr wohl im Ausland steuerbar sein -- ein
+    Grundstueck in Wien etwa, § 3a Abs. 3 Nr. 1 UStG. Wer das blockierte,
+    laege falsch.
+    """
+    befunde: list[Befund] = []
+    land = (rechnung.empfaenger.anschrift.land or "").strip().upper()
+
+    if Steuerkategorie.REVERSE_CHARGE in kategorien and land:
+        if laender.ist_laenderkennzeichen(land) and not laender.ist_eu(land):
+            befunde.append(
+                Befund(
+                    "RC3",
+                    "rechnung.positionen",
+                    f"Reverse Charge setzt einen Empfänger im Gemeinschaftsgebiet "
+                    f"voraus (Art. 196 MwStSystRL); {land} gehört nicht dazu. "
+                    "Für eine sonstige Leistung dorthin ist „Nicht steuerbar“ "
+                    "die richtige Kategorie, für eine Warenlieferung „Ausfuhr“.",
+                )
+            )
+
+    if Steuerkategorie.NICHT_STEUERBAR in kategorien and len(kategorien) > 1:
+        andere = ", ".join(
+            sorted(
+                k.name for k in kategorien if k is not Steuerkategorie.NICHT_STEUERBAR
+            )
+        )
+        befunde.append(
+            Befund(
+                "O1",
+                "rechnung.positionen",
+                "„Nicht steuerbar“ lässt sich nicht mit einer anderen "
+                f"Steuerkategorie auf demselben Beleg mischen (hier: {andere}). "
+                "EN 16931 verbietet das; die Rechnung würde bei der Prüfung "
+                "abgelehnt. Bitte zwei getrennte Rechnungen schreiben.",
+            )
+        )
     return befunde
 
 

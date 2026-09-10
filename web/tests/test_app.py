@@ -245,14 +245,18 @@ def test_kundenstamm_wird_gepflegt(client):
         RECHNUNG,
         empfaenger=dict(
             RECHNUNG["empfaenger"],
-            ust_idnr="ATU12345678",
+            # Deutsche Nummer zu deutscher Anschrift: Eine ATU-Nummer stand
+            # hier frueher an einer Anschrift in Hof -- seit dem Befund E4
+            # ist das ein Widerspruch. Hier geht es um den Kundenstamm, nicht
+            # um den Steuerfall.
+            ust_idnr="DE123456789",
             email="buchhaltung@beispielkunde.example",
         ),
     )
     assert client.post("/api/rechnung", json=mit_details).status_code == 200
     kunden = client.get("/api/kunden").json()
     assert kunden[0]["name"] == "Beispielkunde GmbH"
-    assert kunden[0]["ust_idnr"] == "ATU12345678"
+    assert kunden[0]["ust_idnr"] == "DE123456789"
     assert kunden[0]["email"] == "buchhaltung@beispielkunde.example"
 
     # gleicher Kunde erneut, andere Daten → Upsert, kein Duplikat
