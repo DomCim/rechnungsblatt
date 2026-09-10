@@ -115,7 +115,7 @@ def test_hinweis_haelt_die_erzeugung_nicht_auf(rechnung, stammdaten):
     erzwinge_paragraph14(seltsam, stammdaten)      # darf nicht werfen
 
 
-# --- Kategorie gegen Land (RC4, O1) ----------------------------------
+# --- Kategorie gegen Land (RC4, O2) ----------------------------------
 
 def test_reverse_charge_in_die_schweiz_blockiert(rechnung, stammdaten):
     """Art. 196 MwStSystRL gilt nur im Gemeinschaftsgebiet."""
@@ -165,7 +165,7 @@ def test_nicht_steuerbar_laesst_sich_nicht_mischen(rechnung, stammdaten):
             ),
         ],
     )
-    assert "O1" in blockierend(pruefe_paragraph14(gemischt, stammdaten))
+    assert "O2" in blockierend(pruefe_paragraph14(gemischt, stammdaten))
 
 
 def test_nicht_steuerbar_allein_geht_durch(rechnung, stammdaten):
@@ -211,7 +211,7 @@ def test_ohne_steuernummer_kein_nicht_steuerbarer_beleg(rechnung, stammdaten):
         rechnung, land="CH", ust_idnr=None,
         kategorie=Steuerkategorie.NICHT_STEUERBAR,
     )
-    assert "O2" in blockierend(pruefe_paragraph14(beleg, nur_ustidnr))
+    assert "O1" in blockierend(pruefe_paragraph14(beleg, nur_ustidnr))
 
 
 def test_mit_steuernummer_geht_es_durch(rechnung, stammdaten):
@@ -219,7 +219,7 @@ def test_mit_steuernummer_geht_es_durch(rechnung, stammdaten):
         rechnung, land="CH", ust_idnr=None,
         kategorie=Steuerkategorie.NICHT_STEUERBAR,
     )
-    assert "O2" not in codes(pruefe_paragraph14(beleg, stammdaten))
+    assert "O1" not in codes(pruefe_paragraph14(beleg, stammdaten))
 
 
 def test_die_xml_laesst_bei_o_die_ustidnr_weg(rechnung, stammdaten):

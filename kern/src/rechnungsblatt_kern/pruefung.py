@@ -406,7 +406,7 @@ def _pruefe_kategorie_gegen_land(
         if not (stammdaten.steuernummer or "").strip():
             befunde.append(
                 Befund(
-                    "O2",
+                    "O1",
                     "stammdaten.steuernummer",
                     "Für eine nicht steuerbare Leistung darf die USt-IdNr. nicht "
                     "auf der Rechnung stehen (EN 16931, BR-O-2). Tragen Sie "
@@ -423,7 +423,7 @@ def _pruefe_kategorie_gegen_land(
         )
         befunde.append(
             Befund(
-                "O1",
+                "O2",
                 "rechnung.positionen",
                 "„Nicht steuerbar“ lässt sich nicht mit einer anderen "
                 f"Steuerkategorie auf demselben Beleg mischen (hier: {andere}). "
