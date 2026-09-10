@@ -104,6 +104,10 @@ class Nutzer:
     # Gesetzt, sobald ein Abo gekündigt ist — es läuft bis dahin weiter.
     # Stripe meldet die Kündigung sofort, das Ende aber erst später.
     abo_endet: dt.datetime | None = None
+    # Wann diesem Konto zuletzt der Hinweis des Betreibers nach einem Beleg
+    # gezeigt wurde. Am Konto und nicht im Browser: Wer das Gerät wechselt,
+    # soll ihn nicht von vorn zu sehen bekommen.
+    hinweis_gesehen: dt.datetime | None = None
 
     @property
     def ist_admin(self) -> bool:
@@ -216,7 +220,9 @@ CREATE TABLE IF NOT EXISTS nutzer (
     -- Stripe-Kunde und laufendes Abo. Nur Fremdschlüssel, keine
     -- Zahlungsdaten — die liegen bei Stripe.
     stripe_kunde       TEXT,
-    stripe_abo         TEXT
+    stripe_abo         TEXT,
+    -- Wann zuletzt der Hinweis des Betreibers nach einem Beleg erschien.
+    hinweis_gesehen    TIMESTAMPTZ
 );
 
 CREATE TABLE IF NOT EXISTS sitzungen (
@@ -332,6 +338,7 @@ ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS stripe_abo TEXT;
 -- kommt erst dann. Ohne dieses Feld wuesste weder der Kunde noch
 -- der Betreiber vorher, dass gekuendigt ist.
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS abo_endet TIMESTAMPTZ;
+ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS hinweis_gesehen TIMESTAMPTZ;
 CREATE INDEX IF NOT EXISTS nutzer_steuer_index ON nutzer (steuer_index)
   WHERE steuer_index IS NOT NULL;
 ALTER TABLE nutzer ADD COLUMN IF NOT EXISTS email_bestaetigt TIMESTAMPTZ;
@@ -579,7 +586,8 @@ def loesche_tarif(schluessel: str) -> None:
 
 _NUTZER_SPALTEN = (
     "id, email, rolle, status, tarif, guthaben_cent, passwort_wechseln, "
-    "angelegt, zuletzt_angemeldet, email_bestaetigt, abo_endet"
+    "angelegt, zuletzt_angemeldet, email_bestaetigt, abo_endet, "
+    "hinweis_gesehen"
 )
 
 
@@ -596,6 +604,7 @@ def _nutzer_aus_zeile(zeile: dict) -> Nutzer:
         zuletzt_angemeldet=zeile["zuletzt_angemeldet"],
         email_bestaetigt=zeile["email_bestaetigt"],
         abo_endet=zeile["abo_endet"],
+        hinweis_gesehen=zeile["hinweis_gesehen"],
     )
 
 
@@ -934,6 +943,12 @@ SMTP_FELDER = ("smtp_host", "smtp_port", "smtp_benutzer", "smtp_passwort",
                # wenn er nicht wirkt.
                "werbung_an", "werbung_titel", "werbung_text",
                "werbung_knopf", "werbung_ziel",
+               # Wie viele Tage zwischen zwei Hinweisen nach einem Beleg
+               # liegen muessen. Leer oder 0 heisst: nach einem Beleg gar
+               # nicht -- dann steht der Hinweis nur im Konto, wie bisher.
+               # Bewusst als Wert und nicht im Code: Was der Kunde als
+               # zudringlich empfindet, entscheidet nicht der Entwickler.
+               "werbung_abstand_tage",
                # GitHub. Ziel der Meldungen aus dem Arbeitsbereich
                # ("DomCim/rechnungsblatt"); der Token liegt verschluesselt.
                # Beides als Einstellung, damit sich das Ziel wechseln laesst,
@@ -1195,6 +1210,15 @@ def zahlungen_von(nutzer_id: int, grenze: int = 20) -> list[dict]:
             (nutzer_id, grenze),
         ).fetchall()
     return [dict(z) for z in zeilen]
+
+
+def merke_hinweis_gesehen(nutzer_id: int) -> None:
+    """Haelt fest, dass der Hinweis diesem Konto gerade gezeigt wurde."""
+    with verbindung() as verb:
+        verb.execute(
+            "UPDATE nutzer SET hinweis_gesehen = now() WHERE id = %s",
+            (nutzer_id,),
+        )
 
 
 # ---------------------------------------------------------------- Meldungen

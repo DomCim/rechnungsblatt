@@ -8,6 +8,7 @@ Anmeldeentscheidung gehört und ohne Konto abrufbar sein muss.
 from __future__ import annotations
 
 import contextlib
+import datetime as dt
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -253,7 +254,45 @@ def hinweis(person: Nutzer = Depends(angemeldet)) -> dict:
         "text": text,
         "knopf": (werte.get("werbung_knopf") or "").strip() or "Mehr erfahren",
         "ziel": ziel,
+        # Ob er ZUSAETZLICH nach einem erzeugten Beleg erscheinen darf.
+        #
+        # Die Karte im Konto ist harmlos: Wer sie sehen will, muss dorthin
+        # gehen. Nach einem Beleg erscheint sie ungefragt -- deshalb haengt
+        # nur dieser Ort an der Drossel, und sie ist von Haus aus zu.
+        "nach_beleg": _darf_nach_beleg(person, werte),
     }
+
+
+def _abstand_tage(werte: dict) -> int:
+    """Wie viele Tage zwischen zwei Hinweisen liegen muessen. 0 = gar nicht."""
+    try:
+        return max(0, int((werte.get("werbung_abstand_tage") or "0").strip() or 0))
+    except ValueError:
+        # Ein unlesbarer Wert soll nicht dazu fuehren, dass der Hinweis
+        # ploetzlich bei jedem Beleg erscheint.
+        return 0
+
+
+def _darf_nach_beleg(person: Nutzer, werte: dict) -> bool:
+    tage = _abstand_tage(werte)
+    if not tage:
+        return False
+    if person.hinweis_gesehen is None:
+        return True
+    vergangen = dt.datetime.now(dt.timezone.utc) - person.hinweis_gesehen
+    return vergangen >= dt.timedelta(days=tage)
+
+
+@wege.post("/api/hinweis/gesehen")
+def hinweis_gesehen(person: Nutzer = Depends(angemeldet)) -> dict:
+    """Der Hinweis wurde gerade gezeigt — die Drossel beginnt zu laufen.
+
+    Gemeldet von der Oberflaeche und nicht beim Abruf gesetzt: Abgerufen
+    wird auch, wenn am Ende gar nichts erscheint, weil Titel oder Ziel
+    fehlen. Gezaehlt werden soll, was der Kunde wirklich gesehen hat.
+    """
+    konten.merke_hinweis_gesehen(person.id)
+    return {"gemerkt": True}
 
 
 @wege.post("/api/ich/passwort")
