@@ -1,0 +1,11 @@
+{
+  "_hinweis": "Siehe did0m-verwaltung/module.json. Schluessel aus dem DiD0m-Modulkatalog.",
+  "module": [
+    "kern", "website", "rechnungen", "erechnung", "kontakte", "offline"
+  ],
+  "anmerkungen": {
+    "erechnung": "ZUGFeRD und XRechnung, CII. Kategorien inkl. REVERSE_CHARGE und IG_LIEFERUNG.",
+    "rechnungen": "Gutschrift und Storno, Nummernkreis, Pflichtangaben nach § 14 UStG.",
+    "kontakte": "Kunden- und Artikelstamm, kein volles CRM."
+  }
+}
